@@ -28,7 +28,6 @@ import java.util.List;
 public class ConverterController {
     private final ExcelReaderService excelReaderService;
     private final FdaPnRecordSaver fdaPnRecordSaver;
-    private final ValidationService validationService;
 
     @PostMapping("/excel-to-xml")
     public Object convertExcelToXml(@RequestParam("file") MultipartFile file) {
@@ -36,7 +35,9 @@ public class ConverterController {
             Workbook workbook = WorkbookFactory.create(file.getInputStream());
             Sheet sheet = workbook.getSheetAt(0);
             ExcelResponse excelResponse = excelReaderService.mapExcelToCustomerDetails(sheet);
-            //TODO CHECK VALIDATIONS
+            if(!excelResponse.getValidationErrors().isEmpty()){
+                return fdaPnRecordSaver.failureRecords(excelResponse.getCustomerDetails(),excelResponse.getValidationErrors());
+            }
             fdaPnRecordSaver.save(excelResponse.getCustomerDetails());
             return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
         } catch (Exception e) {

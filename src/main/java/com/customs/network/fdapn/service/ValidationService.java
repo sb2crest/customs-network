@@ -198,7 +198,7 @@ public class ValidationService {
         }
 
         String end = customerDetails.getEnd();
-        if (end == null || end.equalsIgnoreCase("End")) {
+        if (end == null ) {
             validationErrorList.add(createValidationError("End", "The field should be End", end));
         }
 
@@ -213,7 +213,7 @@ public class ValidationService {
             customerFdaPnFailure.setUserId(customerDetails.getUserId());
             customerFdaPnFailure.setCreatedOn(String.valueOf(new Date()));
             customerFdaPnFailure.setReferenceIdentifierNo(customerDetails.getReferenceIdentifierNo());
-            customerFdaPnFailure.setErrors(validationErrorList);
+            customerFdaPnFailure.setResponseJson(validationErrorList);
         }
 
         return validationErrorList;

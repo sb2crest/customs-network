@@ -14,5 +14,6 @@ public class CustomsFdaPnSubmitDTO {
     private String createdOn;
     private String updatedOn;
     private String status;
-    private CustomerDetails responseJson;
+    private CustomerDetails requestJson;
+    private String responseJson;
 }

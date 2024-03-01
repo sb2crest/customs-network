@@ -13,7 +13,7 @@ public class CustomerFdaPnFailure {
     private String referenceIdentifierNo;
     private String createdOn;
     private String status;
-    private List<ValidationError> errors;
+    private List<ValidationError> responseJson;
     private CustomerDetails requestJson;
 
 }

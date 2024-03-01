@@ -20,10 +20,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -41,10 +39,13 @@ public class FdaPnRecordSaver {
         }
         CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
         Date date = new Date();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+        String formattedDate = dateFormat.format(date);
 
-        String batchId = customerDetails.getUserId() + "_" + date.toString();
+        String batchId = customerDetails.getUserId()+formattedDate;
         customsFdapnSubmit.setBatchId(batchId);
-        String traceId = date.toString() + "_" + generateSequentialNumber();
+
+        String traceId = formattedDate + generateSequentialNumber();
         customsFdapnSubmit.setTraceId(traceId);
         customsFdapnSubmit.setUserId(customerDetails.getUserId());
         customsFdapnSubmit.setAccountId(customerDetails.getAccountId());
@@ -53,7 +54,8 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
         customsFdapnSubmit.setStatus(String.valueOf(Status.SUCCESS));
-        customsFdapnSubmit.setJsonData(convertObjectToJson(customerDetails));
+        customsFdapnSubmit.setRequestJson(convertObjectToJson(customerDetails));
+        customsFdapnSubmit.setResponseJson("successfully Submit to MQ..Waiting for the Response");
         customsFdapnSubmitRepository.save(customsFdapnSubmit);
     }
 
@@ -63,9 +65,12 @@ public class FdaPnRecordSaver {
         }
         CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
         Date date = new Date();
-        String batchId = customerDetails.getUserId() + "_" + date.getDate();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+        String formattedDate = dateFormat.format(date);
+
+        String batchId = customerDetails.getUserId()+formattedDate;
         customsFdapnSubmit.setBatchId(batchId);
-        String traceId = date.toString() + "_" + generateSequentialNumber();
+        String traceId = formattedDate + generateSequentialNumber();
         customsFdapnSubmit.setTraceId(traceId);
         customsFdapnSubmit.setUserId(customerDetails.getUserId());
         customsFdapnSubmit.setAccountId(customerDetails.getAccountId());
@@ -74,7 +79,8 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
         customsFdapnSubmit.setStatus(String.valueOf(Status.FAILED));
-        customsFdapnSubmit.setJsonData(convertObjectToJson(customerDetails));
+        customsFdapnSubmit.setRequestJson(convertObjectToJson(customerDetails));
+        customsFdapnSubmit.setResponseJson(convertObjectToValidationJson(validationErrors));
         CustomsFdapnSubmit record = customsFdapnSubmitRepository.save(customsFdapnSubmit);
         CustomerFdaPnFailure dto = new CustomerFdaPnFailure();
         dto.setBatchId(record.getBatchId());
@@ -82,13 +88,16 @@ public class FdaPnRecordSaver {
         dto.setReferenceIdentifierNo(record.getReferenceId());
         dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
         dto.setStatus(record.getStatus());
-        dto.setErrors(validationErrors);
-        dto.setRequestJson(transform(record.getJsonData()));
+        dto.setResponseJson(validationErrors);
+        dto.setRequestJson(transform(record.getRequestJson()));
         return dto;
     }
 
     private String convertObjectToJson(CustomerDetails customerDetails) throws JsonProcessingException {
         return objectMapper.writeValueAsString(customerDetails);
+    }
+    private String convertObjectToValidationJson(List<ValidationError> validationError) throws JsonProcessingException {
+        return Collections.singletonList(objectMapper.writeValueAsString(validationError)).toString();
     }
 
     private String generateSequentialNumber() {
@@ -114,7 +123,8 @@ public class FdaPnRecordSaver {
                     dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
                     dto.setUpdatedOn(DateUtils.formatDate(record.getUpdatedOn()));
                     dto.setStatus(record.getStatus());
-                    dto.setResponseJson(transform(record.getJsonData()));
+                    dto.setRequestJson(transform(record.getRequestJson()));
+                    dto.setResponseJson("successfully Submit to MQ ");
                     customsFdaPnSubmitDTOList.add(dto);
                 });
         return customsFdaPnSubmitDTOList;
@@ -145,26 +155,6 @@ public class FdaPnRecordSaver {
     }
 
 
-    private List<CustomsFdaPnSubmitDTO> getAllFdaPnRecords() {
-        List<CustomsFdapnSubmit> customsFdaPnSubmits = customsFdapnSubmitRepository.findAll();
-        List<CustomsFdaPnSubmitDTO> customsFdaPnSubmitDTOs = new ArrayList<>();
-        for (CustomsFdapnSubmit record : customsFdaPnSubmits) {
-            CustomsFdaPnSubmitDTO dto = new CustomsFdaPnSubmitDTO();
-            dto.setBatchId(record.getBatchId());
-            dto.setTraceId(record.getTraceId());
-            dto.setUserId(record.getUserId());
-            dto.setAccountId(record.getAccountId());
-            dto.setReferenceId(record.getReferenceId());
-            dto.setEnvelopNumber(record.getEnvelopNumber());
-            dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
-            dto.setUpdatedOn(DateUtils.formatDate(record.getUpdatedOn()));
-            dto.setStatus(record.getStatus());
-            dto.setResponseJson(transform(record.getJsonData()));
-            customsFdaPnSubmitDTOs.add(dto);
-        }
-        return customsFdaPnSubmitDTOs;
-    }
-
     private List<CustomsFdaPnSubmitDTO> mapCustomsFdaPnSubmitsToDTOs(List<CustomsFdapnSubmit> customsFdaPnSubmits) {
         List<CustomsFdaPnSubmitDTO> customsFdaPnSubmitDTOs = new ArrayList<>();
         for (CustomsFdapnSubmit record : customsFdaPnSubmits) {
@@ -178,7 +168,8 @@ public class FdaPnRecordSaver {
             dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
             dto.setUpdatedOn(DateUtils.formatDate(record.getUpdatedOn()));
             dto.setStatus(record.getStatus());
-            dto.setResponseJson(transform(record.getJsonData()));
+            dto.setRequestJson(transform(record.getRequestJson()));
+            dto.setResponseJson("successfully Submit to MQ");
             customsFdaPnSubmitDTOs.add(dto);
         }
         return customsFdaPnSubmitDTOs;

@@ -28,7 +28,9 @@ public class CustomsFdapnSubmit {
     private Date updatedOn;
     @Column
     private String status;
-    @Column(name = "json_data_column", columnDefinition = "jsonb")
-    private String jsonData; // Keep jsonData as String
+    @Column(name = "request_json", columnDefinition = "jsonb")
+    private String requestJson; // Keep jsonData as String
+    @Column(name = "response_json", columnDefinition = "jsonb")
+    private String responseJson;
 
 }
