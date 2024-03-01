@@ -1,6 +1,7 @@
 package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
+import com.customs.network.fdapn.dto.ExcelResponse;
 import com.customs.network.fdapn.model.CustomerDetails;
 import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.service.ExcelReaderService;
@@ -34,13 +35,10 @@ public class ConverterController {
         try {
             Workbook workbook = WorkbookFactory.create(file.getInputStream());
             Sheet sheet = workbook.getSheetAt(0);
-            CustomerDetails customerDetails = excelReaderService.mapExcelToCustomerDetails(sheet);
-            List<ValidationError> validationErrors = validationService.validateField(Collections.singletonList(customerDetails));
-            if (!validationErrors.isEmpty()) {
-                return fdaPnRecordSaver.failureRecords(customerDetails, validationErrors);
-            }
-            fdaPnRecordSaver.save(customerDetails);
-            return XmlConverterService.convertToXml(customerDetails);
+            ExcelResponse excelResponse = excelReaderService.mapExcelToCustomerDetails(sheet);
+            //TODO CHECK VALIDATIONS
+            fdaPnRecordSaver.save(excelResponse.getCustomerDetails());
+            return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
         } catch (Exception e) {
             log.error("Error converting Excel to XML: -> {} ", e.getMessage());
             return "Error converting Excel to XML: " + e.getMessage();
@@ -58,6 +56,10 @@ public class ConverterController {
                                                             @RequestParam(name = "status", required = false) String status,
                                                             @RequestParam(name = "referenceId", required = false) String referenceId) {
         return fdaPnRecordSaver.filterByCriteria(createdOn, status, referenceId);
+    }
+    @GetMapping("/get-all")
+    public List<CustomsFdaPnSubmitDTO> getAll(){
+        return fdaPnRecordSaver.getAll();
     }
 
 }

@@ -1,8 +1,11 @@
 package com.customs.network.fdapn.service;
 
+import com.customs.network.fdapn.dto.ExcelResponse;
 import com.customs.network.fdapn.model.CustomerDetails;
 import com.customs.network.fdapn.model.ExcelColumn;
 import com.customs.network.fdapn.model.PartyDetails;
+import com.customs.network.fdapn.model.ValidationError;
+import lombok.AllArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -11,14 +14,18 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Component
+@AllArgsConstructor
 public class ExcelReaderService {
+    private final ValidationService validationService;
     private static final int DATA_ROW_INDEX = 1;
 
-    public CustomerDetails mapExcelToCustomerDetails(Sheet sheet) throws Exception {
+    public ExcelResponse mapExcelToCustomerDetails(Sheet sheet) throws Exception {
+        ExcelResponse excelResponse = new ExcelResponse();
         CustomerDetails customerDetails = new CustomerDetails();
         Row dataRow = sheet.getRow(DATA_ROW_INDEX);
 
@@ -38,7 +45,10 @@ public class ExcelReaderService {
                 .collect(Collectors.toCollection(LinkedList::new));
 
         customerDetails.setPartyDetails(partyDetailsList);
-        return customerDetails;
+        excelResponse.setCustomerDetails(customerDetails);
+        List<ValidationError> validationErrors = validationService.validateField(List.of(customerDetails));
+        excelResponse.setValidationErrors(validationErrors);
+        return excelResponse;
     }
 
     private static void mapFields(Field[] fields, Object object, Row row) throws Exception {

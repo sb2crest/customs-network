@@ -183,4 +183,9 @@ public class FdaPnRecordSaver {
         }
         return customsFdaPnSubmitDTOs;
     }
+
+    public List<CustomsFdaPnSubmitDTO> getAll() {
+        List<CustomsFdapnSubmit> allRecords = customsFdapnSubmitRepository.findAll();
+        return mapCustomsFdaPnSubmitsToDTOs(allRecords);
+    }
 }
