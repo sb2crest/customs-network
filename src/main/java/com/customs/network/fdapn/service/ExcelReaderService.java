@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -34,6 +35,9 @@ public class ExcelReaderService {
         LinkedList<PartyDetails> partyDetailsList = IntStream.range(1, sheet.getLastRowNum())
                 .mapToObj(i -> {
                     Row partyRow = sheet.getRow(i);
+                    if (partyRow == null || isRowEmpty(partyRow)) {
+                        return null;
+                    }
                     PartyDetails partyDetails = new PartyDetails();
                     try {
                         mapFields(PartyDetails.class.getDeclaredFields(), partyDetails, partyRow);
@@ -42,6 +46,7 @@ public class ExcelReaderService {
                     }
                     return partyDetails;
                 })
+                .takeWhile(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedList::new));
 
         customerDetails.setPartyDetails(partyDetailsList);
@@ -84,5 +89,15 @@ public class ExcelReaderService {
         } else {
             return "";
         }
+    }
+    // Method to check if a row is empty
+    private boolean isRowEmpty(Row row) {
+        for (int i = row.getFirstCellNum(); i <= row.getLastCellNum(); i++) {
+            Cell cell = row.getCell(i);
+            if (cell != null && cell.getCellType() != CellType.BLANK) {
+                return false; // Row has at least one non-empty cell
+            }
+        }
+        return true; // All cells are empty
     }
 }

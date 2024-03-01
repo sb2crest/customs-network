@@ -221,7 +221,7 @@ public class ValidationService {
 
     private List<ValidationError> validatePartyDetails(PartyDetails p, List<ValidationError> validationErrorList) {
         String partyType = p.getPartyType();
-        if (partyType == null || partyType.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 1, 3))) {
+        if (partyType == null && !partyType.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 1, 3))) {
             validationErrorList.add(createValidationError("Party Type" + partyType, "Invalid Party Type. The field's length should be in range of 1 and 3",partyType));
         }
 
@@ -231,22 +231,16 @@ public class ValidationService {
         }
 
         String partyIdentifierNumber = p.getPartyIdentifierNumber();
-        if (partyIdentifierNumber != null && partyIdentifierNumber.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 0, 15))) {
+        if (partyIdentifierNumber != null || !partyIdentifierNumber.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 0, 15))) {
             validationErrorList.add(createValidationError(partyType + "Party Type's " + " Party Identifier Number", "Invalid Party Identifier Number. The field's length should be in range of 0 and 15", partyIdentifierNumber));
         }
 
         String partyName = p.getPartyName();
-        if (partyName == null || partyName.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 1, 32))) {
+        if (partyName == null || !partyName.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 1, 32))) {
             validationErrorList.add(createValidationError(partyType + "Party Type's " + " Party Name", "Invalid Party Name. The field's length should be in range of 1 and 32", partyName));
-        }
-
-        String address1 = p.getAddress1();
-        if (address1 == null || address1.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 0, 23))) {
-            validationErrorList.add(createValidationError(partyType + "Party Type's " + " Address1", "Invalid Address1. The field's length should be in range of 1 and 32", address1));
         }
         return validationErrorList;
     }
-
     public boolean isValidDateFormat(String dateStr) {
         Pattern pattern = Pattern.compile(DATE_FORMAT_REGEX);
         Matcher matcher = pattern.matcher(dateStr);
