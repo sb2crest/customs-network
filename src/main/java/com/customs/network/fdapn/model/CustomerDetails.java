@@ -3,7 +3,7 @@ package com.customs.network.fdapn.model;
 import lombok.Data;
 
 import javax.xml.bind.annotation.*;
-import java.util.List;
+import java.util.LinkedList;
 
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.FIELD)
@@ -19,16 +19,16 @@ public class CustomerDetails {
     private String userId;
 
     @ExcelColumn(index = 3)
-    private int modeOfTrasportation;
+    private String modeOfTrasportation;
 
     @ExcelColumn(index = 4)
-    private int entryType;
+    private String entryType;
 
     @ExcelColumn(index = 5)
     private String referenceIdentifier;
 
     @ExcelColumn(index = 6)
-    private int referenceIdentifierNo;
+    private String referenceIdentifierNo;
 
     @ExcelColumn(index = 7)
     private String filer;
@@ -87,7 +87,7 @@ public class CustomerDetails {
     @ExcelColumn(index = 25)
     private String containerNumber;
 
-    private List<PartyDetails> partyDetails;
+    private LinkedList<PartyDetails> partyDetails;
 
     @ExcelColumn(index = 40)
     private int baseQuantity;

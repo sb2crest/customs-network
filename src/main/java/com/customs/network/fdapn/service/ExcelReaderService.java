@@ -3,12 +3,16 @@ package com.customs.network.fdapn.service;
 import com.customs.network.fdapn.model.CustomerDetails;
 import com.customs.network.fdapn.model.ExcelColumn;
 import com.customs.network.fdapn.model.PartyDetails;
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedList;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Component
 public class ExcelReaderService {
@@ -18,32 +22,34 @@ public class ExcelReaderService {
         CustomerDetails customerDetails = new CustomerDetails();
         Row dataRow = sheet.getRow(DATA_ROW_INDEX);
 
-        for (Field field : CustomerDetails.class.getDeclaredFields()) {
+        mapFields(CustomerDetails.class.getDeclaredFields(), customerDetails, dataRow);
+
+        LinkedList<PartyDetails> partyDetailsList = IntStream.range(1, sheet.getLastRowNum())
+                .mapToObj(i -> {
+                    Row partyRow = sheet.getRow(i);
+                    PartyDetails partyDetails = new PartyDetails();
+                    try {
+                        mapFields(PartyDetails.class.getDeclaredFields(), partyDetails, partyRow);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    return partyDetails;
+                })
+                .collect(Collectors.toCollection(LinkedList::new));
+
+        customerDetails.setPartyDetails(partyDetailsList);
+        return customerDetails;
+    }
+
+    private static void mapFields(Field[] fields, Object object, Row row) throws Exception {
+        for (Field field : fields) {
             if (field.isAnnotationPresent(ExcelColumn.class)) {
                 ExcelColumn excelColumn = field.getAnnotation(ExcelColumn.class);
                 int columnIndex = excelColumn.index();
-                Cell cell = dataRow.getCell(columnIndex);
-                setField(customerDetails, field, cell);
+                Cell cell = row.getCell(columnIndex);
+                setField(object, field, cell);
             }
         }
-        List<PartyDetails> partyDetailsList = new ArrayList<>();
-        for (int i = 1; i < sheet.getLastRowNum(); i++) {
-            Row partyRow = sheet.getRow(i);
-            if (partyRow != null) {
-                PartyDetails partyDetails = new PartyDetails();
-                for (Field field : PartyDetails.class.getDeclaredFields()) {
-                    if (field.isAnnotationPresent(ExcelColumn.class)) {
-                        ExcelColumn excelColumn = field.getAnnotation(ExcelColumn.class);
-                        int columnIndex = excelColumn.index();
-                        Cell cell = partyRow.getCell(columnIndex);
-                        setField(partyDetails, field, cell);
-                    }
-                }
-                partyDetailsList.add(partyDetails);
-            }
-        }
-        customerDetails.setPartyDetails(partyDetailsList);
-        return customerDetails;
     }
 
     private static void setField(Object object, Field field, Cell cell) throws Exception {
@@ -51,9 +57,9 @@ public class ExcelReaderService {
             Class<?> fieldType = field.getType();
             field.setAccessible(true);
             if (fieldType == int.class || fieldType == Integer.class) {
-                field.setInt(object, (int) getNumericCellValue(cell));
+                field.setInt(object, (int) cell.getNumericCellValue());
             } else if (fieldType == long.class || fieldType == Long.class) {
-                field.setLong(object, (long) getNumericCellValue(cell));
+                field.setLong(object, (long) cell.getNumericCellValue());
             } else if (fieldType == String.class) {
                 field.set(object, getStringCellValue(cell));
             }
@@ -68,9 +74,5 @@ public class ExcelReaderService {
         } else {
             return "";
         }
-    }
-
-    private static double getNumericCellValue(Cell cell) {
-        return cell == null ? 0 : cell.getNumericCellValue();
     }
 }
