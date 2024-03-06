@@ -1,9 +1,6 @@
 package com.customs.network.fdapn.service;
 
-import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
-import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
-import com.customs.network.fdapn.dto.ExcelResponse;
-import com.customs.network.fdapn.dto.SuccessOrFailureResponse;
+import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.RecordNotFoundException;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.CustomsFdapnSubmitRepository;
@@ -191,14 +188,20 @@ public class FdaPnRecordSaver {
         return customsFdaPnSubmitDTOs;
     }
 
-    public List<CustomsFdaPnSubmitDTO> getAll(int page, int size) {
+    public PageDTO<CustomsFdaPnSubmitDTO> getAll(int page, int size) {
         Sort sort = Sort.by(Sort.Direction.DESC, "createdOn");
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<CustomsFdapnSubmit> pageRecords = customsFdapnSubmitRepository.findAll(pageable);
         if (pageRecords.isEmpty()) {
             throw new RecordNotFoundException("No records found for page " + page);
         }
-        return mapCustomsFdaPnSubmitsToDTOs(pageRecords.getContent());
+        List<CustomsFdaPnSubmitDTO> dtos = mapCustomsFdaPnSubmitsToDTOs(pageRecords.getContent());
+        PageDTO<CustomsFdaPnSubmitDTO> pageDTO = new PageDTO<>();
+        pageDTO.setData(dtos);
+        pageDTO.setTotalRecords(pageRecords.getTotalElements());
+        pageDTO.setPage(page);
+        pageDTO.setPageSize(size);
+        return pageDTO;
     }
 
 }

@@ -2,6 +2,7 @@ package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
 import com.customs.network.fdapn.dto.ExcelResponse;
+import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.model.CustomerDetails;
 import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.service.*;
@@ -70,8 +71,8 @@ public class ConverterController {
         return fdaPnRecordSaver.filterByCriteria(createdOn, status, referenceId);
     }
     @GetMapping("/get-all")
-    public List<CustomsFdaPnSubmitDTO> getAllRecords(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        return fdaPnRecordSaver.getAll(page,size);
+    public PageDTO<CustomsFdaPnSubmitDTO> getAllRecords(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        return fdaPnRecordSaver.getAll(page, size);
     }
 
 
