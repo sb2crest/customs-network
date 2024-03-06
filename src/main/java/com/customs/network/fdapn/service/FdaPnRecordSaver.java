@@ -19,6 +19,10 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -187,8 +191,14 @@ public class FdaPnRecordSaver {
         return customsFdaPnSubmitDTOs;
     }
 
-    public List<CustomsFdaPnSubmitDTO> getAll() {
-        List<CustomsFdapnSubmit> allRecords = customsFdapnSubmitRepository.findAll();
-        return mapCustomsFdaPnSubmitsToDTOs(allRecords);
+    public List<CustomsFdaPnSubmitDTO> getAll(int page, int size) {
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdOn");
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<CustomsFdapnSubmit> pageRecords = customsFdapnSubmitRepository.findAll(pageable);
+        if (pageRecords.isEmpty()) {
+            throw new RecordNotFoundException("No records found for page " + page);
+        }
+        return mapCustomsFdaPnSubmitsToDTOs(pageRecords.getContent());
     }
+
 }
