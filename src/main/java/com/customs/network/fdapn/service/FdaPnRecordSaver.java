@@ -2,11 +2,10 @@ package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
 import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
+import com.customs.network.fdapn.dto.ExcelResponse;
+import com.customs.network.fdapn.dto.SuccessOrFailureResponse;
 import com.customs.network.fdapn.exception.RecordNotFoundException;
-import com.customs.network.fdapn.model.CustomerDetails;
-import com.customs.network.fdapn.model.CustomsFdapnSubmit;
-import com.customs.network.fdapn.model.Status;
-import com.customs.network.fdapn.model.ValidationError;
+import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.CustomsFdapnSubmitRepository;
 import com.customs.network.fdapn.utils.DateUtils;
 import com.customs.network.fdapn.utils.JsonUtils;
@@ -39,7 +38,8 @@ public class FdaPnRecordSaver {
     private final AtomicInteger sequentialNumber = new AtomicInteger(0);
 
     @Transactional
-    public void save(CustomerDetails customerDetails) {
+    public void save(ExcelResponse excelResponse) {
+        CustomerDetails customerDetails = excelResponse.getCustomerDetails();
         if (customerDetails == null) {
             throw new IllegalArgumentException("CustomerDetails cannot be null");
         }
@@ -62,13 +62,13 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setStatus(String.valueOf(Status.SUCCESS));
         JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
         customsFdapnSubmit.setRequestJson(jsonNode);
-        ObjectNode responseJsonNode = objectMapper.createObjectNode();
-        responseJsonNode.put("message", "successfully Submit to MQ..Waiting for the Response");
-        customsFdapnSubmit.setResponseJson(responseJsonNode);
+        JsonNode response = JsonUtils.convertResponseToJson(getResponse(excelResponse,true));
+        customsFdapnSubmit.setResponseJson(response);
         customsFdapnSubmitRepository.save(customsFdapnSubmit);
         log.info("submit saved in Data base : {}", customsFdapnSubmit);
     }
-    public CustomerFdaPnFailure failureRecords(CustomerDetails customerDetails, List<ValidationError> validationErrors) {
+    public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
+        CustomerDetails customerDetails = excelResponse.getCustomerDetails();
         if (customerDetails == null) {
             throw new IllegalArgumentException("CustomerDetails cannot be null");
         }
@@ -90,8 +90,8 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setStatus(String.valueOf(Status.FAILED));
         JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
         customsFdapnSubmit.setRequestJson(jsonNode);
-        JsonNode validationError = convertValidationErrorListToJson(validationErrors);
-        customsFdapnSubmit.setResponseJson(validationError);
+        JsonNode saveResponse = convertResponseToJson(getResponse(excelResponse, false));
+        customsFdapnSubmit.setResponseJson(saveResponse);
         CustomsFdapnSubmit record = customsFdapnSubmitRepository.save(customsFdapnSubmit);
         CustomerFdaPnFailure dto = new CustomerFdaPnFailure();
         dto.setBatchId(record.getBatchId());
@@ -99,9 +99,24 @@ public class FdaPnRecordSaver {
         dto.setReferenceIdentifierNo(record.getReferenceId());
         dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
         dto.setStatus(record.getStatus());
-        dto.setResponseJson(validationErrors);
+        dto.setResponseJson(getResponse(excelResponse, false)); //Success/FailureResponse
         dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
         return dto;
+    }
+    private SuccessOrFailureResponse getResponse(ExcelResponse excelResponse,boolean isSuccess){
+        SuccessOrFailureResponse response = new SuccessOrFailureResponse();
+        if (isSuccess) {
+            response.setMessageCode(MessageCode.SUCCESS_SUBMIT.getCode());
+            response.setStatus(MessageCode.SUCCESS_SUBMIT.getStatus());
+            response.setEnvelopNumber("ENV001");
+        } else {
+            response.setMessageCode(MessageCode.VALIDATION_ERRORS.getCode());
+            response.setStatus(MessageCode.VALIDATION_ERRORS.getStatus());
+            response.setEnvelopNumber("ENV003");
+            JsonNode validationError = convertValidationErrorListToJson(excelResponse.getValidationErrors());
+            response.setMessage(validationError);
+        }
+        return response;
     }
     private String generateSequentialNumber() {
         return String.valueOf(sequentialNumber.getAndIncrement());

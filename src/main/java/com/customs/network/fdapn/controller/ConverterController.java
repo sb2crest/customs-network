@@ -32,9 +32,9 @@ public class ConverterController {
             Sheet sheet = workbook.getSheetAt(0);
             ExcelResponse excelResponse = excelReaderService.mapExcelToCustomerDetails(sheet);
             if(!excelResponse.getValidationErrors().isEmpty()){
-                return fdaPnRecordSaver.failureRecords(excelResponse.getCustomerDetails(),excelResponse.getValidationErrors());
+                return fdaPnRecordSaver.failureRecords(excelResponse);
             }
-            fdaPnRecordSaver.save(excelResponse.getCustomerDetails());
+            fdaPnRecordSaver.save(excelResponse);
             return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
         } catch (Exception e) {
             log.error("Error converting Excel to XML: -> {} ", e.getMessage());

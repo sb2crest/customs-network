@@ -1,5 +1,6 @@
 package com.customs.network.fdapn.utils;
 
+import com.customs.network.fdapn.dto.SuccessOrFailureResponse;
 import com.customs.network.fdapn.model.CustomerDetails;
 import com.customs.network.fdapn.model.ValidationError;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -32,4 +33,12 @@ public class JsonUtils {
             throw new IllegalArgumentException("Error converting List<ValidationError> to JsonNode", e);
         }
     }
+    public static JsonNode convertResponseToJson(SuccessOrFailureResponse response) {
+        try {
+            return objectMapper.valueToTree(response);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error converting SuccessOrFailureResponse to JsonNode", e);
+        }
+    }
+
 }
