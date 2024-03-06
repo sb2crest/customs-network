@@ -6,10 +6,7 @@ import com.customs.network.fdapn.model.ExcelColumn;
 import com.customs.network.fdapn.model.PartyDetails;
 import com.customs.network.fdapn.model.ValidationError;
 import lombok.AllArgsConstructor;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.*;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
@@ -72,9 +69,25 @@ public class ExcelReaderService {
             Class<?> fieldType = field.getType();
             field.setAccessible(true);
             if (fieldType == int.class || fieldType == Integer.class) {
-                field.setInt(object, (int) cell.getNumericCellValue());
+                if (cell.getCellType() == CellType.NUMERIC) {
+                    if (DateUtil.isCellDateFormatted(cell)) {
+                        field.setInt(object, (int) cell.getNumericCellValue());
+                    } else {
+                        field.setInt(object, (int) cell.getNumericCellValue());
+                    }
+                } else if (cell.getCellType() == CellType.STRING) {
+                    field.setInt(object, Integer.parseInt(cell.getStringCellValue()));
+                }
             } else if (fieldType == long.class || fieldType == Long.class) {
-                field.setLong(object, (long) cell.getNumericCellValue());
+                if (cell.getCellType() == CellType.NUMERIC) {
+                    if (DateUtil.isCellDateFormatted(cell)) {
+                        field.setLong(object, (long) cell.getDateCellValue().getTime());
+                    } else {
+                        field.setLong(object, (long) cell.getNumericCellValue());
+                    }
+                } else if (cell.getCellType() == CellType.STRING) {
+                    field.setLong(object, Long.parseLong(cell.getStringCellValue()));
+                }
             } else if (fieldType == String.class) {
                 field.set(object, getStringCellValue(cell));
             }

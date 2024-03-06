@@ -2,11 +2,8 @@ package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
 import com.customs.network.fdapn.dto.ExcelResponse;
-import com.customs.network.fdapn.model.CustomerDetails;
-import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.service.ExcelReaderService;
 import com.customs.network.fdapn.service.FdaPnRecordSaver;
-import com.customs.network.fdapn.service.ValidationService;
 import com.customs.network.fdapn.service.XmlConverterService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +14,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -46,7 +42,7 @@ public class ConverterController {
         }
     }
 
-    @GetMapping("/getFdapn-record")
+    @GetMapping("/getFdaPn-record")
     public List<CustomsFdaPnSubmitDTO> getFdaRecord(@RequestParam("createdOn") @DateTimeFormat(pattern = "dd-MM-yyyy") Date createdOn,
                                                     @RequestParam String referenceId) {
         return fdaPnRecordSaver.getFdaPn(createdOn, referenceId);

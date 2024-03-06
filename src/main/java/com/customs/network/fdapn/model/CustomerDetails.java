@@ -90,7 +90,7 @@ public class CustomerDetails {
     private LinkedList<PartyDetails> partyDetails;
 
     @ExcelColumn(index = 40)
-    private int baseQuantity;
+    private long baseQuantity;
 
     @ExcelColumn(index = 41)
     private String baseUOM;
@@ -99,7 +99,7 @@ public class CustomerDetails {
     private int packagingQualifier;
 
     @ExcelColumn(index = 43)
-    private int quantity;
+    private long quantity;
 
     @ExcelColumn(index = 44)
     private String UOM;

@@ -1,6 +1,7 @@
 package com.customs.network.fdapn.dto;
 
 import com.customs.network.fdapn.model.CustomerDetails;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 @Data
@@ -15,5 +16,5 @@ public class CustomsFdaPnSubmitDTO {
     private String updatedOn;
     private String status;
     private CustomerDetails requestJson;
-    private String responseJson;
+    private JsonNode responseJson;
 }

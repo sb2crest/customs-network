@@ -3,15 +3,17 @@ package com.customs.network.fdapn.service;
 import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
 import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
 import com.customs.network.fdapn.exception.RecordNotFoundException;
-import com.customs.network.fdapn.exception.TransformationException;
 import com.customs.network.fdapn.model.CustomerDetails;
 import com.customs.network.fdapn.model.CustomsFdapnSubmit;
 import com.customs.network.fdapn.model.Status;
 import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.repository.CustomsFdapnSubmitRepository;
 import com.customs.network.fdapn.utils.DateUtils;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.customs.network.fdapn.utils.JsonUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.micrometer.common.util.StringUtils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
@@ -19,10 +21,13 @@ import jakarta.persistence.criteria.Root;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.customs.network.fdapn.utils.JsonUtils.*;
 
 
 @Component
@@ -33,7 +38,8 @@ public class FdaPnRecordSaver {
     private final ObjectMapper objectMapper;
     private final AtomicInteger sequentialNumber = new AtomicInteger(0);
 
-    public void save(CustomerDetails customerDetails) throws JsonProcessingException {
+    @Transactional
+    public void save(CustomerDetails customerDetails) {
         if (customerDetails == null) {
             throw new IllegalArgumentException("CustomerDetails cannot be null");
         }
@@ -54,12 +60,15 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
         customsFdapnSubmit.setStatus(String.valueOf(Status.SUCCESS));
-        customsFdapnSubmit.setRequestJson(convertObjectToJson(customerDetails));
-        customsFdapnSubmit.setResponseJson("successfully Submit to MQ..Waiting for the Response");
+        JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
+        customsFdapnSubmit.setRequestJson(jsonNode);
+        ObjectNode responseJsonNode = objectMapper.createObjectNode();
+        responseJsonNode.put("message", "successfully Submit to MQ..Waiting for the Response");
+        customsFdapnSubmit.setResponseJson(responseJsonNode);
         customsFdapnSubmitRepository.save(customsFdapnSubmit);
+        log.info("submit saved in Data base : {}", customsFdapnSubmit);
     }
-
-    public CustomerFdaPnFailure failureRecords(CustomerDetails customerDetails, List<ValidationError> validationErrors) throws JsonProcessingException {
+    public CustomerFdaPnFailure failureRecords(CustomerDetails customerDetails, List<ValidationError> validationErrors) {
         if (customerDetails == null) {
             throw new IllegalArgumentException("CustomerDetails cannot be null");
         }
@@ -68,7 +77,7 @@ public class FdaPnRecordSaver {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
         String formattedDate = dateFormat.format(date);
 
-        String batchId = customerDetails.getUserId()+formattedDate;
+        String batchId = customerDetails.getUserId() + formattedDate;
         customsFdapnSubmit.setBatchId(batchId);
         String traceId = formattedDate + generateSequentialNumber();
         customsFdapnSubmit.setTraceId(traceId);
@@ -79,8 +88,10 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
         customsFdapnSubmit.setStatus(String.valueOf(Status.FAILED));
-        customsFdapnSubmit.setRequestJson(convertObjectToJson(customerDetails));
-        customsFdapnSubmit.setResponseJson(convertObjectToValidationJson(validationErrors));
+        JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
+        customsFdapnSubmit.setRequestJson(jsonNode);
+        JsonNode validationError = convertValidationErrorListToJson(validationErrors);
+        customsFdapnSubmit.setResponseJson(validationError);
         CustomsFdapnSubmit record = customsFdapnSubmitRepository.save(customsFdapnSubmit);
         CustomerFdaPnFailure dto = new CustomerFdaPnFailure();
         dto.setBatchId(record.getBatchId());
@@ -89,17 +100,9 @@ public class FdaPnRecordSaver {
         dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
         dto.setStatus(record.getStatus());
         dto.setResponseJson(validationErrors);
-        dto.setRequestJson(transform(record.getRequestJson()));
+        dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
         return dto;
     }
-
-    private String convertObjectToJson(CustomerDetails customerDetails) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(customerDetails);
-    }
-    private String convertObjectToValidationJson(List<ValidationError> validationError) throws JsonProcessingException {
-        return Collections.singletonList(objectMapper.writeValueAsString(validationError)).toString();
-    }
-
     private String generateSequentialNumber() {
         return String.valueOf(sequentialNumber.getAndIncrement());
     }
@@ -123,19 +126,13 @@ public class FdaPnRecordSaver {
                     dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
                     dto.setUpdatedOn(DateUtils.formatDate(record.getUpdatedOn()));
                     dto.setStatus(record.getStatus());
-                    dto.setRequestJson(transform(record.getRequestJson()));
-                    dto.setResponseJson("successfully Submit to MQ ");
+                    dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
+                    ObjectNode responseJsonNode = objectMapper.createObjectNode();
+                    responseJsonNode.put("message", "successfully Submit to MQ..Waiting for the Response");
+                    dto.setResponseJson(record.getStatus().equals(Status.SUCCESS) ? responseJsonNode : record.getResponseJson());
                     customsFdaPnSubmitDTOList.add(dto);
                 });
         return customsFdaPnSubmitDTOList;
-    }
-
-    private CustomerDetails transform(String jsonData) {
-        try {
-            return objectMapper.readValue(jsonData, CustomerDetails.class);
-        } catch (Exception e) {
-            throw new TransformationException("Error occurred while transforming JSON data to CustomerDetails object");
-        }
     }
     public List<CustomsFdaPnSubmitDTO> filterByCriteria(Date createdOn, String status, String referenceId) {
         List<CustomsFdapnSubmit> results = customsFdapnSubmitRepository.findAll((Root<CustomsFdapnSubmit> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) -> {
@@ -143,10 +140,10 @@ public class FdaPnRecordSaver {
             if (createdOn != null) {
                 predicates.add(criteriaBuilder.equal(root.get("createdOn"), createdOn));
             }
-            if (status != null) {
+            if (StringUtils.isNotBlank(status)) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status));
             }
-            if (referenceId != null) {
+            if (StringUtils.isNotBlank(referenceId)) {
                 predicates.add(criteriaBuilder.equal(root.get("referenceId"), referenceId));
             }
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
@@ -155,7 +152,7 @@ public class FdaPnRecordSaver {
     }
 
 
-    private List<CustomsFdaPnSubmitDTO> mapCustomsFdaPnSubmitsToDTOs(List<CustomsFdapnSubmit> customsFdaPnSubmits) {
+    private List<CustomsFdaPnSubmitDTO> mapCustomsFdaPnSubmitsToDTOs(List<CustomsFdapnSubmit> customsFdaPnSubmits){
         List<CustomsFdaPnSubmitDTO> customsFdaPnSubmitDTOs = new ArrayList<>();
         for (CustomsFdapnSubmit record : customsFdaPnSubmits) {
             CustomsFdaPnSubmitDTO dto = new CustomsFdaPnSubmitDTO();
@@ -168,8 +165,8 @@ public class FdaPnRecordSaver {
             dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
             dto.setUpdatedOn(DateUtils.formatDate(record.getUpdatedOn()));
             dto.setStatus(record.getStatus());
-            dto.setRequestJson(transform(record.getRequestJson()));
-            dto.setResponseJson("successfully Submit to MQ");
+            dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
+            dto.setResponseJson((record.getResponseJson()));
             customsFdaPnSubmitDTOs.add(dto);
         }
         return customsFdaPnSubmitDTOs;

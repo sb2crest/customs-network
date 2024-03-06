@@ -1,7 +1,11 @@
 package com.customs.network.fdapn.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.util.Date;
 
 @Data
@@ -28,9 +32,11 @@ public class CustomsFdapnSubmit {
     private Date updatedOn;
     @Column
     private String status;
-    @Column(name = "request_json", columnDefinition = "jsonb")
-    private String requestJson; // Keep jsonData as String
-    @Column(name = "response_json", columnDefinition = "jsonb")
-    private String responseJson;
+    @Column(name = "request_json")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private JsonNode requestJson;
 
+    @Column(name = "response_json")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private JsonNode responseJson;
 }
