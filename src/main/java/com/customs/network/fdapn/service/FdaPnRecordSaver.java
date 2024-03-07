@@ -188,12 +188,12 @@ public class FdaPnRecordSaver {
         return customsFdaPnSubmitDTOs;
     }
 
-    public PageDTO<CustomsFdaPnSubmitDTO> getAll(int page, int size) {
+    public PageDTO<CustomsFdaPnSubmitDTO> getAllByUserId(String userId, int page, int size) {
         Sort sort = Sort.by(Sort.Direction.DESC, "createdOn");
         Pageable pageable = PageRequest.of(page, size, sort);
-        Page<CustomsFdapnSubmit> pageRecords = customsFdapnSubmitRepository.findAll(pageable);
+        Page<CustomsFdapnSubmit> pageRecords = customsFdapnSubmitRepository.findByUserId(userId, pageable);
         if (pageRecords.isEmpty()) {
-            throw new RecordNotFoundException("No records found for page " + page);
+            throw new RecordNotFoundException("No records found for userId " + userId + " on page " + page);
         }
         List<CustomsFdaPnSubmitDTO> dtos = mapCustomsFdaPnSubmitsToDTOs(pageRecords.getContent());
         PageDTO<CustomsFdaPnSubmitDTO> pageDTO = new PageDTO<>();

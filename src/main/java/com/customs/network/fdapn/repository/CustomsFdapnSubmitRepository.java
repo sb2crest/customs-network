@@ -1,6 +1,8 @@
 package com.customs.network.fdapn.repository;
 
 import com.customs.network.fdapn.model.CustomsFdapnSubmit;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +16,7 @@ public interface CustomsFdapnSubmitRepository extends JpaRepository<CustomsFdapn
     List<CustomsFdapnSubmit> findByCreatedOnAndReferenceId(@Param("createdOn") Date createdOn, @Param("referenceId") String referenceId);
 
     List<CustomsFdapnSubmit> findAll(Specification<CustomsFdapnSubmit> specification);
+    Page<CustomsFdapnSubmit> findByUserId(String userId, Pageable pageable);
 
 
 }

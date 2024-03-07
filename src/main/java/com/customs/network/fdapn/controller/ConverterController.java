@@ -20,12 +20,12 @@ import javax.xml.bind.JAXBException;
 import java.util.Date;
 import java.util.List;
 
-import static org.springframework.boot.context.properties.ConfigurationPropertiesBean.getAll;
 
 @RestController
 @RequestMapping("/convert")
 @Slf4j
 @AllArgsConstructor
+@CrossOrigin("http://localhost:5173")
 public class ConverterController {
     private final ExcelReaderService excelReaderService;
     private final FdaPnRecordSaver fdaPnRecordSaver;
@@ -71,8 +71,8 @@ public class ConverterController {
         return fdaPnRecordSaver.filterByCriteria(createdOn, status, referenceId);
     }
     @GetMapping("/get-all")
-    public PageDTO<CustomsFdaPnSubmitDTO> getAllRecords(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-        return fdaPnRecordSaver.getAll(page, size);
+    public PageDTO<CustomsFdaPnSubmitDTO> getAllRecords(@RequestParam String userId, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        return fdaPnRecordSaver.getAllByUserId(userId,page, size);
     }
 
 

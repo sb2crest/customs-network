@@ -102,7 +102,7 @@ public class ValidationService {
             validationErrorList.add(createValidationError("Prior Notice S No", "Invalid Prior Notice S No. The field should have a integer type value which is greater than 1"));
         }
 
-        String productNumber = customerDetails.getBillingOfLading();
+        String productNumber = customerDetails.getProductNumber();
         if (productNumber == null || !productNumber.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,1,19))) {
             validationErrorList.add(createValidationError("Product Number", "Invalid Product Number. The field should have a length between 1 to 19"));
         }

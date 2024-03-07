@@ -7,6 +7,7 @@ import lombok.Data;
 public class SuccessOrFailureResponse {
     private String messageCode;
     private String status;
-    private JsonNode message;
     private String envelopNumber;
+    private JsonNode message;
+
 }
