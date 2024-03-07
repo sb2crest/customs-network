@@ -1,6 +1,7 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.*;
+import com.customs.network.fdapn.exception.NotFoundException;
 import com.customs.network.fdapn.exception.RecordNotFoundException;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.CustomsFdapnSubmitRepository;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,7 +44,7 @@ public class FdaPnRecordSaver {
     public void save(ExcelResponse excelResponse) {
         CustomerDetails customerDetails = excelResponse.getCustomerDetails();
         if (customerDetails == null) {
-            throw new IllegalArgumentException("CustomerDetails cannot be null");
+            throw new NotFoundException("CustomerDetails cannot be null");
         }
         CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
         Date date = new Date();
@@ -70,8 +72,8 @@ public class FdaPnRecordSaver {
     }
     public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
         CustomerDetails customerDetails = excelResponse.getCustomerDetails();
-        if (customerDetails == null) {
-            throw new IllegalArgumentException("CustomerDetails cannot be null");
+        if (customerDetails == null || customerDetails.getUserId() == null || customerDetails.getUserId().isEmpty()) {
+            throw new NotFoundException(customerDetails == null ? "CustomerDetails cannot be null" : "User ID cannot be null or empty");
         }
         CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
         Date date = new Date();

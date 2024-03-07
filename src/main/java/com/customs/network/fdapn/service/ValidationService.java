@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 @Slf4j
 public class ValidationService {
 
-    private static final String REGEX_PATTERN_FOR_ALPHANUMERIC = "^[a-zA-Z0-9]{%d}$";
+    private static final String REGEX_PATTERN_FOR_ALPHANUMERIC = "^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9]{%d}$";
 
     private static final String REGEX_PATTERN_FOR_ALPHANUMERIC_WITH_RANGE = "^[a-zA-Z0-9]{%d,%d}$";
 
@@ -43,8 +43,12 @@ public class ValidationService {
         }
 
         String userId = customerDetails.getUserId();
-        if (userId != null && !userId.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,10))) {
-            validationErrorList.add(createValidationError("User ID", "Invalid User ID. The field should contain 10 alphanumeric character"));
+        if (userId == null || userId.isEmpty()) {
+            validationErrorList.add(createValidationError("User ID", "User ID is required."));
+        } else {
+            if (!userId.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC, 10))) {
+                validationErrorList.add(createValidationError("User ID", "Invalid User ID. The field should contain 10 alphanumeric characters."));
+            }
         }
 
         String modeOfTransportation = customerDetails.getModeOfTrasportation();
