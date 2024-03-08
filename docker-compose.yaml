@@ -2,8 +2,11 @@ version: '2'
 
 services:
   app:
-    image: 'docker-spring-boot-postgres:latest'
-    build: .
+    build:
+      context: .
+      args:
+        - TAG_NAME=${TAG_NAME:-latest}
+    image: 'sb2crest/fdapn-service:${TAG_NAME:-latest}'
     container_name: app
     depends_on:
       - db
