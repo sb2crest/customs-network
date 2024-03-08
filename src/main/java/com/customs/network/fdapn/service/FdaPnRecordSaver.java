@@ -152,7 +152,7 @@ public class FdaPnRecordSaver {
                 });
         return customsFdaPnSubmitDTOList;
     }
-    public PageDTO<CustomsFdaPnSubmitDTO> filterByCriteria(Date createdOn, String status, String referenceId, Pageable pageable) {
+    public PageDTO<CustomsFdaPnSubmitDTO> filterByCriteria(Date createdOn, String status, String referenceId,String userId, Pageable pageable) {
         Page<CustomsFdapnSubmit> page = customsFdapnSubmitRepository.findAll((Root<CustomsFdapnSubmit> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (createdOn != null) {
@@ -163,6 +163,9 @@ public class FdaPnRecordSaver {
             }
             if (StringUtils.isNotBlank(referenceId)) {
                 predicates.add(criteriaBuilder.equal(root.get("referenceId"), referenceId));
+            }
+            if (StringUtils.isNotBlank(userId)) {
+                predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
             }
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         }, pageable);

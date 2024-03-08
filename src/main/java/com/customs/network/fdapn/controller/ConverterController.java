@@ -74,10 +74,11 @@ public class ConverterController {
     public PageDTO<CustomsFdaPnSubmitDTO> filterByFdaPnRecords(@RequestParam(name = "createdOn", required = false) @DateTimeFormat(pattern = "dd-MM-yyyy") Date createdOn,
                                                             @RequestParam(name = "status", required = false) String status,
                                                             @RequestParam(name = "referenceId", required = false) String referenceId,
+                                                            @RequestParam(name = "userId") String userId,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return fdaPnRecordSaver.filterByCriteria(createdOn, status, referenceId, pageable);
+        return fdaPnRecordSaver.filterByCriteria(createdOn, status, referenceId,userId,pageable);
     }
 
     @GetMapping("/get-all")
