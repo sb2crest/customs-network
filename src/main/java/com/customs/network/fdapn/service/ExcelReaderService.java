@@ -102,7 +102,7 @@ public class ExcelReaderService {
         } else if (cell.getCellType() == CellType.NUMERIC) {
             if (DateUtil.isCellDateFormatted(cell)) {
                 LocalDate date = cell.getLocalDateTimeCellValue().toLocalDate();
-                return date.format(DateTimeFormatter.ofPattern("dd[-/]MM[-/]yyyy"));
+                return date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
             } else {
                 return String.valueOf((long) cell.getNumericCellValue());
             }
