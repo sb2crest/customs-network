@@ -4,6 +4,7 @@ import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
 import com.customs.network.fdapn.dto.ExcelResponse;
 import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.model.CustomerDetails;
+import com.customs.network.fdapn.model.FilterCriteriaDTO;
 import com.customs.network.fdapn.service.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -14,6 +15,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -77,7 +79,8 @@ public class ConverterController {
                                                             @RequestParam(name = "userId") String userId,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdOn");
+        Pageable pageable = PageRequest.of(page, size, sort);
         return fdaPnRecordSaver.filterByCriteria(createdOn, status, referenceId,userId,pageable);
     }
 
