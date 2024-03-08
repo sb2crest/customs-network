@@ -16,17 +16,21 @@ public class JsonToXmlService {
     private final ValidationService validationService;
     private final FdaPnRecordSaver fdaPnRecordSaver;
 
-    public Object convertJsonToXml(CustomerDetails customerDetails) throws JAXBException {
-        ExcelResponse excelResponse = new ExcelResponse();
-        excelResponse.setCustomerDetails(customerDetails);
+    public Object convertJsonToXml(CustomerDetails customerDetails) {
+        try {
+            ExcelResponse excelResponse = new ExcelResponse();
+            excelResponse.setCustomerDetails(customerDetails);
 
-        List<ValidationError> validationErrors = validationService.validateField(List.of(customerDetails));
-        excelResponse.setValidationErrors(validationErrors);
+            List<ValidationError> validationErrors = validationService.validateField(List.of(customerDetails));
+            excelResponse.setValidationErrors(validationErrors);
 
-        if (!excelResponse.getValidationErrors().isEmpty()) {
-            return fdaPnRecordSaver.failureRecords(excelResponse);
+            if (!excelResponse.getValidationErrors().isEmpty()) {
+                return fdaPnRecordSaver.failureRecords(excelResponse);
+            }
+            fdaPnRecordSaver.save(excelResponse);
+            return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
+        } catch (Exception e) {
+            throw new RuntimeException("Error converting JSON to XML: " + e.getMessage(), e);
         }
-        fdaPnRecordSaver.save(excelResponse);
-        return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
     }
 }

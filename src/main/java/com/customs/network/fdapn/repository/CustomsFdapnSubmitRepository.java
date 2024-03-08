@@ -15,7 +15,7 @@ public interface CustomsFdapnSubmitRepository extends JpaRepository<CustomsFdapn
     @Query("SELECT c FROM CustomsFdapnSubmit c WHERE c.createdOn = :createdOn AND c.referenceId = :referenceId")
     List<CustomsFdapnSubmit> findByCreatedOnAndReferenceId(@Param("createdOn") Date createdOn, @Param("referenceId") String referenceId);
 
-    List<CustomsFdapnSubmit> findAll(Specification<CustomsFdapnSubmit> specification);
+    Page<CustomsFdapnSubmit> findAll(Specification<CustomsFdapnSubmit> specification, Pageable pageable);
     Page<CustomsFdapnSubmit> findByUserId(String userId, Pageable pageable);
 
 

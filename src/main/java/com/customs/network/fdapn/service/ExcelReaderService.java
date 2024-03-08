@@ -10,6 +10,8 @@ import org.apache.poi.ss.usermodel.*;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -98,9 +100,24 @@ public class ExcelReaderService {
         if (cell.getCellType() == CellType.STRING) {
             return cell.getStringCellValue();
         } else if (cell.getCellType() == CellType.NUMERIC) {
-            return String.valueOf((long) cell.getNumericCellValue());
+            if (DateUtil.isCellDateFormatted(cell)) {
+                LocalDate date = cell.getLocalDateTimeCellValue().toLocalDate();
+                return date.format(DateTimeFormatter.ofPattern("dd[-/]MM[-/]yyyy"));
+            } else {
+                return String.valueOf((long) cell.getNumericCellValue());
+            }
         } else {
-            return "";
+            return ""; // For other types, return an empty string
+        }
+    }
+
+    // Method to check if a string represents a valid date
+    private static boolean isDate(String value) {
+        try {
+            LocalDate.parse(value, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
     // Method to check if a row is empty

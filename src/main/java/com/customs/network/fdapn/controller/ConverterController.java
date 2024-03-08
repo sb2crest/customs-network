@@ -4,19 +4,22 @@ import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
 import com.customs.network.fdapn.dto.ExcelResponse;
 import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.model.CustomerDetails;
-import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.service.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.xml.bind.JAXBException;
+import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 
@@ -50,12 +53,15 @@ public class ConverterController {
     }
     @PostMapping("/json-to-xml")
     public ResponseEntity<?> convertXmlFromJson(@RequestBody CustomerDetails customerDetails) {
-        try {
-            Object xml = jsonToXmlService.convertJsonToXml(customerDetails);
-            return ResponseEntity.ok(xml);
-        } catch (JAXBException e) {
-            return ResponseEntity.internalServerError().body("Error converting JSON to XML: " + e.getMessage());
-        }
+        Object xml = jsonToXmlService.convertJsonToXml(customerDetails);
+        return ResponseEntity.ok(xml);
+    }
+
+    @PostMapping("/json-file-to-xml")
+    public  ResponseEntity<?> convertJsonToXml(@RequestParam("file") MultipartFile file) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        CustomerDetails customerDetails = objectMapper.readValue(file.getInputStream(), CustomerDetails.class);
+        return ResponseEntity.ok(jsonToXmlService.convertJsonToXml(customerDetails));
     }
 
     @GetMapping("/getFdaPn-record")
@@ -65,11 +71,15 @@ public class ConverterController {
     }
 
     @GetMapping("/getFdaPn-records")
-    public List<CustomsFdaPnSubmitDTO> filterByFdaPnRecords(@RequestParam(name = "createdOn", required = false) @DateTimeFormat(pattern = "dd-MM-yyyy") Date createdOn,
+    public PageDTO<CustomsFdaPnSubmitDTO> filterByFdaPnRecords(@RequestParam(name = "createdOn", required = false) @DateTimeFormat(pattern = "dd-MM-yyyy") Date createdOn,
                                                             @RequestParam(name = "status", required = false) String status,
-                                                            @RequestParam(name = "referenceId", required = false) String referenceId) {
-        return fdaPnRecordSaver.filterByCriteria(createdOn, status, referenceId);
+                                                            @RequestParam(name = "referenceId", required = false) String referenceId,
+                                                            @RequestParam(defaultValue = "0") int page,
+                                                            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return fdaPnRecordSaver.filterByCriteria(createdOn, status, referenceId, pageable);
     }
+
     @GetMapping("/get-all")
     public PageDTO<CustomsFdaPnSubmitDTO> getAllRecords(@RequestParam String userId, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
         return fdaPnRecordSaver.getAllByUserId(userId,page, size);

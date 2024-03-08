@@ -152,8 +152,8 @@ public class FdaPnRecordSaver {
                 });
         return customsFdaPnSubmitDTOList;
     }
-    public List<CustomsFdaPnSubmitDTO> filterByCriteria(Date createdOn, String status, String referenceId) {
-        List<CustomsFdapnSubmit> results = customsFdapnSubmitRepository.findAll((Root<CustomsFdapnSubmit> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) -> {
+    public PageDTO<CustomsFdaPnSubmitDTO> filterByCriteria(Date createdOn, String status, String referenceId, Pageable pageable) {
+        Page<CustomsFdapnSubmit> page = customsFdapnSubmitRepository.findAll((Root<CustomsFdapnSubmit> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (createdOn != null) {
                 predicates.add(criteriaBuilder.equal(root.get("createdOn"), createdOn));
@@ -165,8 +165,18 @@ public class FdaPnRecordSaver {
                 predicates.add(criteriaBuilder.equal(root.get("referenceId"), referenceId));
             }
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        });
-        return mapCustomsFdaPnSubmitsToDTOs(results);
+        }, pageable);
+
+        List<CustomsFdapnSubmit> results = page.getContent();
+        List<CustomsFdaPnSubmitDTO> data = mapCustomsFdaPnSubmitsToDTOs(results);
+
+        PageDTO<CustomsFdaPnSubmitDTO> pageDTO = new PageDTO<>();
+        pageDTO.setPage(page.getNumber());
+        pageDTO.setPageSize(page.getSize());
+        pageDTO.setTotalRecords(page.getTotalElements());
+        pageDTO.setData(data);
+
+        return pageDTO;
     }
 
 
