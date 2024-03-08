@@ -4,8 +4,11 @@ FROM openjdk:17-jdk-slim
 # Set the working directory inside the container
 WORKDIR /app
 
+# Specify a build argument for the JAR file name (default to fdapn-0.0.1-SNAPSHOT.jar)
+ARG JAR_FILE=target/fdapn-0.0.1-SNAPSHOT.jar
+
 # Copy the JAR file into the container
-COPY target/fdapn-0.0.1-SNAPSHOT.jar fdapn_service.jar
+COPY ${JAR_FILE} fdapn_service.jar
 
 # Expose the port your application will listen on
 EXPOSE 8080
