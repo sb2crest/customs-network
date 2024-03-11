@@ -76,7 +76,7 @@ public class FdaPnRecordSaver {
         }
         CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
         Date date = new Date();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
         String formattedDate = dateFormat.format(date);
 
         String batchId = customerDetails.getUserId() + formattedDate;
