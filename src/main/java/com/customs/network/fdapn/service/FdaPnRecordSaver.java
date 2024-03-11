@@ -24,7 +24,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,12 +45,12 @@ public class FdaPnRecordSaver {
         if (customerDetails == null) {
             throw new NotFoundException("CustomerDetails cannot be null");
         }
-        CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
         Date date = new Date();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
         String formattedDate = dateFormat.format(date);
+        CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
 
-        String batchId = customerDetails.getUserId()+formattedDate;
+        String batchId = customerDetails.getUserId() + formattedDate;
         customsFdapnSubmit.setBatchId(batchId);
 
         String traceId = formattedDate + generateSequentialNumber();

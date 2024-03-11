@@ -25,10 +25,10 @@ public class CustomsFdapnSubmit {
     @Column
     private String envelopNumber;
     @Column
-    @Temporal(TemporalType.DATE)
+    @Temporal(TemporalType.TIMESTAMP)
     private Date createdOn;
     @Column
-    @Temporal(TemporalType.DATE)
+    @Temporal(TemporalType.TIMESTAMP)
     private Date updatedOn;
     @Column
     private String status;
