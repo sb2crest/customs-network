@@ -144,9 +144,7 @@ public class FdaPnRecordSaver {
                     dto.setUpdatedOn(DateUtils.formatDate(record.getUpdatedOn()));
                     dto.setStatus(record.getStatus());
                     dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
-                    ObjectNode responseJsonNode = objectMapper.createObjectNode();
-                    responseJsonNode.put("message", "successfully Submit to MQ..Waiting for the Response");
-                    dto.setResponseJson(record.getStatus().equals(Status.SUCCESS) ? responseJsonNode : record.getResponseJson());
+                    dto.setResponseJson(record.getResponseJson());
                     customsFdaPnSubmitDTOList.add(dto);
                 });
         return customsFdaPnSubmitDTOList;
@@ -155,7 +153,18 @@ public class FdaPnRecordSaver {
         Page<CustomsFdapnSubmit> page = customsFdapnSubmitRepository.findAll((Root<CustomsFdapnSubmit> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (createdOn != null) {
-                predicates.add(criteriaBuilder.equal(root.get("createdOn"), createdOn));
+                Calendar startDate = new GregorianCalendar();
+                startDate.setTime(createdOn);
+                startDate.set(Calendar.HOUR_OF_DAY, 0);
+                startDate.set(Calendar.MINUTE, 0);
+                startDate.set(Calendar.SECOND, 0);
+                Calendar endDate = new GregorianCalendar();
+                endDate.setTime(createdOn);
+                endDate.set(Calendar.HOUR_OF_DAY, 23);
+                endDate.set(Calendar.MINUTE, 59);
+                endDate.set(Calendar.SECOND, 59);
+
+                predicates.add(criteriaBuilder.between(root.get("createdOn"), startDate.getTime(), endDate.getTime()));
             }
             if (StringUtils.isNotBlank(status)) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status));
