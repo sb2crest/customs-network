@@ -1,18 +1,12 @@
 package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
-import com.customs.network.fdapn.dto.ExcelResponse;
 import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.model.CustomerDetails;
-import com.customs.network.fdapn.model.FilterCriteriaDTO;
 import com.customs.network.fdapn.service.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -38,20 +32,7 @@ public class ConverterController {
 
     @PostMapping("/excel-to-xml")
     public Object convertExcelToXml(@RequestParam("file") MultipartFile file) {
-        try {
-            Workbook workbook = WorkbookFactory.create(file.getInputStream());
-            Sheet sheet = workbook.getSheetAt(0);
-            log.info("sheet ->  {}", sheet);
-            ExcelResponse excelResponse = excelReaderService.mapExcelToCustomerDetails(sheet);
-            if(!excelResponse.getValidationErrors().isEmpty()){
-                return fdaPnRecordSaver.failureRecords(excelResponse);
-            }
-            fdaPnRecordSaver.save(excelResponse);
-            return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
-        } catch (Exception e) {
-            log.error("Error converting Excel to XML: -> {} ", e.getMessage());
-            return "Error converting Excel to XML: " + e.getMessage();
-        }
+       return excelReaderService.processExcelFile(file);
     }
     @PostMapping("/json-to-xml")
     public ResponseEntity<?> convertXmlFromJson(@RequestBody CustomerDetails customerDetails) {

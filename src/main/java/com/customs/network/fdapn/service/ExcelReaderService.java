@@ -6,8 +6,10 @@ import com.customs.network.fdapn.model.ExcelColumn;
 import com.customs.network.fdapn.model.PartyDetails;
 import com.customs.network.fdapn.model.ValidationError;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
@@ -18,13 +20,32 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static com.customs.network.fdapn.service.ValidationService.convertToAMPMFormat;
+
 @Component
 @AllArgsConstructor
+@Slf4j
 public class ExcelReaderService {
     private final ValidationService validationService;
+    private final FdaPnRecordSaver fdaPnRecordSaver;
     private static final int DATA_ROW_INDEX = 1;
 
-    public ExcelResponse mapExcelToCustomerDetails(Sheet sheet) throws Exception {
+    public Object processExcelFile(MultipartFile file) {
+        try {
+            Workbook workbook = WorkbookFactory.create(file.getInputStream());
+            Sheet sheet = workbook.getSheetAt(0);
+            ExcelResponse excelResponse = mapExcelToCustomerDetails(sheet);
+            if (!excelResponse.getValidationErrors().isEmpty()) {
+                return fdaPnRecordSaver.failureRecords(excelResponse);
+            }
+            fdaPnRecordSaver.save(excelResponse);
+            return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
+        } catch (Exception e) {
+            log.error("Error converting Excel to XML: -> {} ", e.getMessage());
+            return "Error converting Excel to XML: " + e.getMessage();
+        }
+    }
+    private ExcelResponse mapExcelToCustomerDetails(Sheet sheet) throws Exception {
         ExcelResponse excelResponse = new ExcelResponse();
         CustomerDetails customerDetails = new CustomerDetails();
         Row dataRow = sheet.getRow(DATA_ROW_INDEX);
@@ -52,6 +73,13 @@ public class ExcelReaderService {
         excelResponse.setCustomerDetails(customerDetails);
         List<ValidationError> validationErrors = validationService.validateField(List.of(customerDetails));
         excelResponse.setValidationErrors(validationErrors);
+        boolean arrivalTimeError = validationErrors.stream()
+                .anyMatch(error -> "arrivalTime".equals(error.getFieldName()));
+        if (!arrivalTimeError) {
+            String arrivalTime = excelResponse.getCustomerDetails().getArrivalTime();
+            String toAMPMFormat = convertToAMPMFormat(arrivalTime);
+            excelResponse.getCustomerDetails().setArrivalTime(toAMPMFormat);
+        }
         return excelResponse;
     }
 

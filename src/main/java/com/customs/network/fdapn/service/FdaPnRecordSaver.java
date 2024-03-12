@@ -8,8 +8,6 @@ import com.customs.network.fdapn.repository.CustomsFdapnSubmitRepository;
 import com.customs.network.fdapn.utils.DateUtils;
 import com.customs.network.fdapn.utils.JsonUtils;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.micrometer.common.util.StringUtils;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -29,6 +27,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.customs.network.fdapn.utils.JsonUtils.*;
+import static java.util.Objects.isNull;
 
 
 @Component
@@ -36,7 +35,6 @@ import static com.customs.network.fdapn.utils.JsonUtils.*;
 @Slf4j
 public class FdaPnRecordSaver {
     private final CustomsFdapnSubmitRepository customsFdapnSubmitRepository;
-    private final ObjectMapper objectMapper;
     private final AtomicInteger sequentialNumber = new AtomicInteger(0);
 
     @Transactional
@@ -71,8 +69,8 @@ public class FdaPnRecordSaver {
     }
     public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
         CustomerDetails customerDetails = excelResponse.getCustomerDetails();
-        if (customerDetails == null || customerDetails.getUserId() == null || customerDetails.getUserId().isEmpty()) {
-            throw new NotFoundException(customerDetails == null ? "CustomerDetails cannot be null" : "User ID cannot be null or empty");
+        if (isNull(customerDetails) || StringUtils.isBlank(customerDetails.getUserId())) {
+            throw new NotFoundException(isNull(customerDetails) ? "CustomerDetails cannot be null" : "User ID cannot be null or empty");
         }
         CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
         Date date = new Date();
@@ -101,20 +99,19 @@ public class FdaPnRecordSaver {
         dto.setReferenceIdentifierNo(record.getReferenceId());
         dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
         dto.setStatus(record.getStatus());
-        dto.setResponseJson(getResponse(excelResponse, false)); //Success/FailureResponse
+        dto.setResponseJson(getResponse(excelResponse, false));
         dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
         return dto;
     }
     private SuccessOrFailureResponse getResponse(ExcelResponse excelResponse,boolean isSuccess){
         SuccessOrFailureResponse response = new SuccessOrFailureResponse();
-        if (isSuccess) {
-            response.setMessageCode(MessageCode.SUCCESS_SUBMIT.getCode());
-            response.setStatus(MessageCode.SUCCESS_SUBMIT.getStatus());
-            response.setEnvelopNumber("ENV001");
-        } else {
-            response.setMessageCode(MessageCode.VALIDATION_ERRORS.getCode());
-            response.setStatus(MessageCode.VALIDATION_ERRORS.getStatus());
-            response.setEnvelopNumber("ENV003");
+        String messageCode = isSuccess ? MessageCode.SUCCESS_SUBMIT.getCode() : MessageCode.VALIDATION_ERRORS.getCode();
+        String status = isSuccess ? MessageCode.SUCCESS_SUBMIT.getStatus() : MessageCode.VALIDATION_ERRORS.getStatus();
+        String envelopNumber = isSuccess ? "ENV001" : "ENV003";
+        response.setMessageCode(messageCode);
+        response.setStatus(status);
+        response.setEnvelopNumber(envelopNumber);
+        if (!isSuccess) {
             JsonNode validationError = convertValidationErrorListToJson(excelResponse.getValidationErrors());
             response.setMessage(validationError);
         }
@@ -127,7 +124,7 @@ public class FdaPnRecordSaver {
     public List<CustomsFdaPnSubmitDTO> getFdaPn(Date createdOn, String referenceId) {
         List<CustomsFdaPnSubmitDTO> customsFdaPnSubmitDTOList = new ArrayList<>();
         List<CustomsFdapnSubmit> records = customsFdapnSubmitRepository.findByCreatedOnAndReferenceId(createdOn, referenceId);
-        if (Objects.isNull(records)) {
+        if (isNull(records)) {
             throw new RecordNotFoundException("Record not found for createdOn=" + createdOn + " and referenceId=" + referenceId);
         }
         records.stream()
@@ -149,45 +146,50 @@ public class FdaPnRecordSaver {
                 });
         return customsFdaPnSubmitDTOList;
     }
-    public PageDTO<CustomsFdaPnSubmitDTO> filterByCriteria(Date createdOn, String status, String referenceId,String userId, Pageable pageable) {
-        Page<CustomsFdapnSubmit> page = customsFdapnSubmitRepository.findAll((Root<CustomsFdapnSubmit> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (createdOn != null) {
-                Calendar startDate = new GregorianCalendar();
-                startDate.setTime(createdOn);
-                startDate.set(Calendar.HOUR_OF_DAY, 0);
-                startDate.set(Calendar.MINUTE, 0);
-                startDate.set(Calendar.SECOND, 0);
-                Calendar endDate = new GregorianCalendar();
-                endDate.setTime(createdOn);
-                endDate.set(Calendar.HOUR_OF_DAY, 23);
-                endDate.set(Calendar.MINUTE, 59);
-                endDate.set(Calendar.SECOND, 59);
+    public PageDTO<CustomsFdaPnSubmitDTO> filterByCriteria(Date createdOn, String status, String referenceId, String userId, Pageable pageable) {
+        try {
+            Page<CustomsFdapnSubmit> page = customsFdapnSubmitRepository.findAll((Root<CustomsFdapnSubmit> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) -> {
+                List<Predicate> predicates = new ArrayList<>();
+                if (createdOn != null) {
+                    Calendar startDate = new GregorianCalendar();
+                    startDate.setTime(createdOn);
+                    startDate.set(Calendar.HOUR_OF_DAY, 0);
+                    startDate.set(Calendar.MINUTE, 0);
+                    startDate.set(Calendar.SECOND, 0);
+                    Calendar endDate = new GregorianCalendar();
+                    endDate.setTime(createdOn);
+                    endDate.set(Calendar.HOUR_OF_DAY, 23);
+                    endDate.set(Calendar.MINUTE, 59);
+                    endDate.set(Calendar.SECOND, 59);
 
-                predicates.add(criteriaBuilder.between(root.get("createdOn"), startDate.getTime(), endDate.getTime()));
-            }
-            if (StringUtils.isNotBlank(status)) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), status));
-            }
-            if (StringUtils.isNotBlank(referenceId)) {
-                predicates.add(criteriaBuilder.equal(root.get("referenceId"), referenceId));
-            }
-            if (StringUtils.isNotBlank(userId)) {
-                predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
-            }
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        }, pageable);
+                    predicates.add(criteriaBuilder.between(root.get("createdOn"), startDate.getTime(), endDate.getTime()));
+                }
+                if (StringUtils.isNotBlank(status)) {
+                    predicates.add(criteriaBuilder.equal(root.get("status"), status));
+                }
+                if (StringUtils.isNotBlank(referenceId)) {
+                    predicates.add(criteriaBuilder.equal(root.get("referenceId"), referenceId));
+                }
+                if (StringUtils.isNotBlank(userId)) {
+                    predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
+                }
+                return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+            }, pageable);
 
-        List<CustomsFdapnSubmit> results = page.getContent();
-        List<CustomsFdaPnSubmitDTO> data = mapCustomsFdaPnSubmitsToDTOs(results);
+            List<CustomsFdapnSubmit> results = page.getContent();
+            List<CustomsFdaPnSubmitDTO> data = mapCustomsFdaPnSubmitsToDTOs(results);
 
-        PageDTO<CustomsFdaPnSubmitDTO> pageDTO = new PageDTO<>();
-        pageDTO.setPage(page.getNumber());
-        pageDTO.setPageSize(page.getSize());
-        pageDTO.setTotalRecords(page.getTotalElements());
-        pageDTO.setData(data);
+            PageDTO<CustomsFdaPnSubmitDTO> pageDTO = new PageDTO<>();
+            pageDTO.setPage(page.getNumber());
+            pageDTO.setPageSize(page.getSize());
+            pageDTO.setTotalRecords(page.getTotalElements());
+            pageDTO.setData(data);
 
-        return pageDTO;
+            return pageDTO;
+        } catch (Exception e) {
+            log.error("Error occurred while filtering records");
+            throw new RuntimeException("Error occurred while filtering records: " + e.getMessage(), e);
+        }
     }
 
 
@@ -220,10 +222,10 @@ public class FdaPnRecordSaver {
         }
         List<CustomsFdaPnSubmitDTO> dtos = mapCustomsFdaPnSubmitsToDTOs(pageRecords.getContent());
         PageDTO<CustomsFdaPnSubmitDTO> pageDTO = new PageDTO<>();
-        pageDTO.setData(dtos);
-        pageDTO.setTotalRecords(pageRecords.getTotalElements());
         pageDTO.setPage(page);
         pageDTO.setPageSize(size);
+        pageDTO.setTotalRecords(pageRecords.getTotalElements());
+        pageDTO.setData(dtos);
         return pageDTO;
     }
 

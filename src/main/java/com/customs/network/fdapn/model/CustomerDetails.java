@@ -76,7 +76,7 @@ public class CustomerDetails {
     private String arrivalDate;
 
     @ExcelColumn(index = 22)
-    private int arrivalTime;
+    private String arrivalTime;
 
     @ExcelColumn(index = 23)
     private String packageTrackingCode;
