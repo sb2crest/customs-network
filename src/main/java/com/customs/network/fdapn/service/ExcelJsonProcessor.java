@@ -28,8 +28,16 @@ public class ExcelJsonProcessor {
                     throw new RuntimeException(e);
                 }
             } else {
-                CustomerFdaPnFailure customerFdaPnFailure = fdaPnRecordSaver.failureRecords(excelResponse);
-                result.get(REJECT.getStatus()).add(customerFdaPnFailure);
+                boolean userIdExists = excelResponse.getValidationErrors().stream()
+                        .anyMatch(error -> "User ID".equals(error.getFieldName()));
+                CustomerFdaPnFailure customerFdaPnFailure = null;
+                if (!userIdExists) {
+                    customerFdaPnFailure = fdaPnRecordSaver.failureRecords(excelResponse);
+                    result.get(REJECT.getStatus()).add(customerFdaPnFailure);
+                }else {
+                    result.get(REJECT.getStatus()).add(excelResponse);
+                }
+
             }
         });
         return result;

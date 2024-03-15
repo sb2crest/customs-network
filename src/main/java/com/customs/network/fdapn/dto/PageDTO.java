@@ -7,8 +7,6 @@ import java.util.List;
 public class PageDTO<T> {
     private int page;
     private int pageSize;
-    private long totalRecords;
+    private Long totalRecords;
     private List<T> data;
-
-
 }

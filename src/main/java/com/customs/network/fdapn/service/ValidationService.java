@@ -2,6 +2,7 @@ package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
 import com.customs.network.fdapn.dto.ExcelResponse;
+import com.customs.network.fdapn.exception.NotFoundException;
 import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.model.PartyDetails;
 import com.customs.network.fdapn.model.ValidationError;
@@ -52,7 +53,7 @@ public class ValidationService {
             }
         }
 
-        String modeOfTransportation = trackingDetails.getModeOfTrasportation();
+        String modeOfTransportation = trackingDetails.getModeOfTransportation();
         if (modeOfTransportation == null || !modeOfTransportation.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,2))) {
             validationErrorList.add(createValidationError("Mode of Transportation", "Invalid Mode of Transportation. The field should contain 2 alphanumeric character", modeOfTransportation));
         }

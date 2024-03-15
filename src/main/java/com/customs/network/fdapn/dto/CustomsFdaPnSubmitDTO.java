@@ -6,6 +6,7 @@ import lombok.Data;
 
 @Data
 public class CustomsFdaPnSubmitDTO {
+    private Long sNo;
     private String batchId;
     private String traceId;
     private String userId;

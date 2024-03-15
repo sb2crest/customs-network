@@ -19,7 +19,7 @@ public class TrackingDetails {
     private String userId;
 
     @ExcelColumn(index = 3)
-    private String modeOfTrasportation;
+    private String modeOfTransportation;
 
     @ExcelColumn(index = 4)
     private String entryType;
