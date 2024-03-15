@@ -1,7 +1,8 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
-import com.customs.network.fdapn.model.CustomerDetails;
+import com.customs.network.fdapn.dto.ExcelResponse;
+import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.model.PartyDetails;
 import com.customs.network.fdapn.model.ValidationError;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -28,21 +30,20 @@ public class ValidationService {
 
     private static final String REGEX_PATTERN_FOR_ALL_WITH_RANGE = "^.{%d,%d}$";
 
-    public List<ValidationError> validateField(List<CustomerDetails> customerDetailsList) {
-        List<ValidationError> validationErrors = new ArrayList<>();
-        customerDetailsList.parallelStream().forEach(customerDetails -> validationErrors.addAll(validateObject(customerDetails)));
-        return validationErrors;
+    public List<ExcelResponse> validateField(List<ExcelResponse> excelResponseList) {
+        return excelResponseList.parallelStream().map(this::validateObject).collect(Collectors.toList());
     }
 
-    private List<ValidationError> validateObject(CustomerDetails customerDetails) {
+    private ExcelResponse validateObject(ExcelResponse excelResponse) {
+        TrackingDetails trackingDetails = excelResponse.getTrackingDetails();
         List<ValidationError> validationErrorList = new ArrayList<>();
 
-        String accountId = customerDetails.getAccountId();
+        String accountId = trackingDetails.getAccountId();
         if (accountId != null && !accountId.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,6))) {
             validationErrorList.add(createValidationError("Acct ID", "Invalid Acct ID. The field should contain 6 alphanumeric character", accountId));
         }
 
-        String userId = customerDetails.getUserId();
+        String userId = trackingDetails.getUserId();
         if (userId == null || userId.isEmpty()) {
             validationErrorList.add(createValidationError("User ID", "User ID is required.", userId));
         } else {
@@ -51,163 +52,163 @@ public class ValidationService {
             }
         }
 
-        String modeOfTransportation = customerDetails.getModeOfTrasportation();
+        String modeOfTransportation = trackingDetails.getModeOfTrasportation();
         if (modeOfTransportation == null || !modeOfTransportation.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,2))) {
             validationErrorList.add(createValidationError("Mode of Transportation", "Invalid Mode of Transportation. The field should contain 2 alphanumeric character", modeOfTransportation));
         }
 
-        String entryType = customerDetails.getEntryType();
+        String entryType = trackingDetails.getEntryType();
         if (entryType == null || !entryType.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,2))) {
             validationErrorList.add(createValidationError("Entry Type", "Invalid Entry Type. The field should contain 2 alphanumeric character", entryType));
         }
 
-        String refId = customerDetails.getReferenceIdentifier();
+        String refId = trackingDetails.getReferenceIdentifier();
         if (refId == null || !refId.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,3))) {
             validationErrorList.add(createValidationError("Reference Identifier", "Invalid Reference Identifier. The field should contain 3 alphanumeric character", refId));
         }
 
-        String refIdNo = customerDetails.getReferenceIdentifierNo();
+        String refIdNo = trackingDetails.getReferenceIdentifierNo();
         if (refIdNo == null || !refIdNo.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,1,46))) {
             validationErrorList.add(createValidationError("Reference Identifier No", "Invalid Reference Identifier No. The field should have a length between 1 to 46", refIdNo));
         }
 
-        String filer = customerDetails.getFiler();
+        String filer = trackingDetails.getFiler();
         if (filer == null || !filer.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,4))) {
             validationErrorList.add(createValidationError("Filer", "Invalid Filer. The field should contain 4 alphanumeric character.", filer));
         }
 
-        String billType = customerDetails.getBillType();
+        String billType = trackingDetails.getBillType();
         if (billType == null || !billType.matches(String.format(REGEX_PATTERN_FOR_ALL,1))) {
             validationErrorList.add(createValidationError("Bill Type", "Invalid Bill Type. The field should have exactly 1 character length", billType));
         }
 
-        String carrier = customerDetails.getCarrier();
+        String carrier = trackingDetails.getCarrier();
         if (carrier == null || !carrier.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,4))) {
             validationErrorList.add(createValidationError("Carrier", "Invalid Carrier. The field should contain 4 alphanumeric character.", carrier));
         }
 
-        String billTypeIndicator = customerDetails.getBillTypeIndicator();
+        String billTypeIndicator = trackingDetails.getBillTypeIndicator();
         if (billTypeIndicator == null || !billTypeIndicator.matches(String.format(REGEX_PATTERN_FOR_ALL,1))) {
             validationErrorList.add(createValidationError("Bill Type Indicator", "Invalid Bill Type Indicator. The field should have exactly 1 character length", billTypeIndicator));
         }
 
-        String issuerCode = customerDetails.getIssuerCode();
+        String issuerCode = trackingDetails.getIssuerCode();
         if (issuerCode == null || !issuerCode.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,4))) {
             validationErrorList.add(createValidationError("Issuer Code", "Invalid Issuer Code. The field should contain 4 alphanumeric character", issuerCode));
         }
 
-        String billOfLandingNumber = customerDetails.getBillingOfLading();
+        String billOfLandingNumber = trackingDetails.getBillingOfLading();
         if (billOfLandingNumber == null || !billOfLandingNumber.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,0,50))) {
             validationErrorList.add(createValidationError("Bill Of Landing No", "Invalid Bill Of Landing No. The field should have a length between 0 to 50", billOfLandingNumber));
         }
 
-        int priorNoticeNumber = customerDetails.getPriorNoticeNumber();
+        int priorNoticeNumber = trackingDetails.getPriorNoticeNumber();
         if (priorNoticeNumber > 1) {
             validationErrorList.add(createValidationError("Prior Notice S No", "Invalid Prior Notice S No. The field should have an integer type value which is greater than 1", priorNoticeNumber));
         }
 
-        String productNumber = customerDetails.getProductNumber();
+        String productNumber = trackingDetails.getProductNumber();
         if (productNumber == null || !productNumber.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,1,19))) {
             validationErrorList.add(createValidationError("Product Number", "Invalid Product Number. The field should have a length between 1 to 19", productNumber));
         }
 
-        String commercialDesc = customerDetails.getCommercialDesc();
+        String commercialDesc = trackingDetails.getCommercialDesc();
         if (commercialDesc == null || !commercialDesc.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,1,70))) {
             validationErrorList.add(createValidationError("Commercial Desc", "Invalid Commercial Desc. The field should have a length between 1 to 70", commercialDesc));
         }
 
-        String governmentAgencyProcessingCode = customerDetails.getGovernmentAgencyProcessingCode();
+        String governmentAgencyProcessingCode = trackingDetails.getGovernmentAgencyProcessingCode();
         if (governmentAgencyProcessingCode == null || !governmentAgencyProcessingCode.matches(String.format(REGEX_PATTERN_FOR_ALL,3))) {
             validationErrorList.add(createValidationError("Government Agency Processing Code", "Invalid Government Agency Processing Code. The field should have exactly 3 character length", governmentAgencyProcessingCode));
         }
 
-        String commodityDesc = customerDetails.getCommodityDesc();
+        String commodityDesc = trackingDetails.getCommodityDesc();
         if (commodityDesc == null || !commodityDesc.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,1,57))) {
             validationErrorList.add(createValidationError("Commodity Desc", "Invalid Commodity Desc. The field should have a length between 1 to 57", commodityDesc));
         }
 
-        String countryOfProduction = customerDetails.getCountryOfProduction();
+        String countryOfProduction = trackingDetails.getCountryOfProduction();
         if (countryOfProduction == null || !countryOfProduction.matches(String.format(REGEX_PATTERN_FOR_ALL,2))) {
             validationErrorList.add(createValidationError("Country Of Production", "Invalid Country Of Production. The field should have exactly 2 character length", countryOfProduction));
         }
 
-        String countryOfShipment = customerDetails.getCountryOfShipment();
+        String countryOfShipment = trackingDetails.getCountryOfShipment();
         if (countryOfShipment == null || !countryOfShipment.matches(String.format(REGEX_PATTERN_FOR_ALL,2))) {
             validationErrorList.add(createValidationError("Country Of Shipment", "Invalid Country Of Shipment. The field should have exactly 2 character length", countryOfShipment));
         }
 
-        String arrivalLocation = customerDetails.getArrivalLocation();
+        String arrivalLocation = trackingDetails.getArrivalLocation();
         if (arrivalLocation != null && !arrivalLocation.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,0,50))) {
             validationErrorList.add(createValidationError("Arrival Location", "Invalid Arrival Location. The field should have a length between 0 to 50", arrivalLocation));
         }
 
-        String arrivalDate = customerDetails.getArrivalDate();
+        String arrivalDate = trackingDetails.getArrivalDate();
         if (arrivalDate == null || !isValidDateFormat(arrivalDate)) {
             validationErrorList.add(createValidationError("Arrival Date", "Invalid Arrival Date. Must be in DD-MM-YYYY format", arrivalDate));
         }
 
-        String arrivalTime = customerDetails.getArrivalTime();
+        String arrivalTime = trackingDetails.getArrivalTime();
         if (!isValidMilitaryTime(arrivalTime)) {
             validationErrorList.add(createValidationError("Arrival Time", "Invalid arrival time, Must be in HHMM format.", arrivalTime));
         }
 
-        String packageTrackingCode = customerDetails.getPackageTrackingCode();
+        String packageTrackingCode = trackingDetails.getPackageTrackingCode();
         if (packageTrackingCode != null && !packageTrackingCode.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC,4))) {
             validationErrorList.add(createValidationError("Package Tracking Code", "Invalid Package Tracking Code. The field should contain 4 alphanumeric character", packageTrackingCode));
         }
 
-        String packageTrackingNumber = customerDetails.getPackageTrackingNumber();
+        String packageTrackingNumber = trackingDetails.getPackageTrackingNumber();
         if (packageTrackingNumber != null && !packageTrackingNumber.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC_WITH_RANGE,0,50))) {
             validationErrorList.add(createValidationError("Package Tracking Number", "Invalid Package Tracking Number. The field should be an alphanumeric value with a range of 0 to 50", packageTrackingNumber));
         }
 
-        String containerNumber = customerDetails.getContainerNumber();
+        String containerNumber = trackingDetails.getContainerNumber();
         if (containerNumber == null || !containerNumber.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC_WITH_RANGE,0,20))) {
             validationErrorList.add(createValidationError("Container Number", "Invalid Container number. The field should be an alphanumeric value with a length between 1 to 20", containerNumber));
         }
 
         // For Party Details
-        if( customerDetails.getPartyDetails()!=null && !customerDetails.getPartyDetails().isEmpty()) {
-            customerDetails.getPartyDetails().parallelStream()
+        if( trackingDetails.getPartyDetails()!=null && !trackingDetails.getPartyDetails().isEmpty()) {
+            trackingDetails.getPartyDetails().parallelStream()
                     .forEach(p -> validatePartyDetails(p, validationErrorList));
         }
 
-        Long baseQuantity = customerDetails.getBaseQuantity();
+        Long baseQuantity = trackingDetails.getBaseQuantity();
         if (baseQuantity == null || baseQuantity < 1L || baseQuantity > 999999999999L) {
             validationErrorList.add(createValidationError("Base Quantity", "Invalid Base Quantity. The field should be a numeric value with a range of 1L to 999999999999L", baseQuantity));
         }
 
-        String baseUOM = customerDetails.getBaseUOM();
+        String baseUOM = trackingDetails.getBaseUOM();
         if (baseUOM == null || !baseUOM.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,1,5))) {
             validationErrorList.add(createValidationError("Base UOM", "Invalid Base UOM. The field should have a length between 1 and 5", baseUOM));
         }
 
-        int packagingQualifier = customerDetails.getPackagingQualifier();
+        int packagingQualifier = trackingDetails.getPackagingQualifier();
         if (packagingQualifier < 1 || packagingQualifier > 9) {
             validationErrorList.add(createValidationError("Packaging Qualifier", "Invalid Packaging Qualifier. The field should be a single digit numeric value greater than 0 ( ex: 1 to 9)", packagingQualifier));
         }
 
-        Long quantity = customerDetails.getQuantity();
+        Long quantity = trackingDetails.getQuantity();
         if (quantity == null || quantity < 1L || quantity > 999999999999L) {
             validationErrorList.add(createValidationError("Quantity", "Invalid Quantity. The field should be a numeric value with a range of 1L to 999999999999L", quantity));
         }
 
-        String umo = customerDetails.getUOM();
+        String umo = trackingDetails.getUOM();
         if (umo == null || !umo.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE,1,5))) {
             validationErrorList.add(createValidationError("UMO", "Invalid UMO. The field should have a length between 1 and 5", umo));
         }
 
-        String affirmationComplianceCode = customerDetails.getAffirmationComplianceCode();
+        String affirmationComplianceCode = trackingDetails.getAffirmationComplianceCode();
         if (affirmationComplianceCode != null && !affirmationComplianceCode.matches(String.format(REGEX_PATTERN_FOR_ALPHA,3))) {
             validationErrorList.add(createValidationError("Affirmation Compliance Code", "Invalid Affirmation Compliance Code. The field should be an alphabetic character with exactly 3 character length", affirmationComplianceCode));
         }
 
-        String affirmationComplianceQualifier = customerDetails.getAffirmationComplianceQualifier();
+        String affirmationComplianceQualifier = trackingDetails.getAffirmationComplianceQualifier();
         if (affirmationComplianceQualifier == null || !affirmationComplianceQualifier.matches(String.format(REGEX_PATTERN_FOR_ALPHANUMERIC_WITH_RANGE,1,30))) {
             validationErrorList.add(createValidationError("Affirmation Compliance Qualifier", "Invalid Affirmation Compliance Qualifier. The field should be an alphanumeric value with a length between 1 and 30", affirmationComplianceQualifier));
         }
 
-        String end = customerDetails.getEnd();
+        String end = trackingDetails.getEnd();
         if (end == null || !end.equalsIgnoreCase("End")) {
             validationErrorList.add(createValidationError("End", "The field should be End", end));
         }
@@ -220,8 +221,8 @@ public class ValidationService {
             CustomerFdaPnFailure customerFdpaFailure = new CustomerFdaPnFailure();
             customerFdpaFailure.setBatchId("");
         }
-
-        return validationErrorList;
+        excelResponse.setValidationErrors(validationErrorList);
+        return excelResponse;
     }
 
     private void validatePartyDetails(PartyDetails p, List<ValidationError> validationErrorList) {

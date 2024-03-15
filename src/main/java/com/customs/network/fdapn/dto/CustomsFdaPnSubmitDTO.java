@@ -1,6 +1,6 @@
 package com.customs.network.fdapn.dto;
 
-import com.customs.network.fdapn.model.CustomerDetails;
+import com.customs.network.fdapn.model.TrackingDetails;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
@@ -15,6 +15,6 @@ public class CustomsFdaPnSubmitDTO {
     private String createdOn;
     private String updatedOn;
     private String status;
-    private CustomerDetails requestJson;
+    private TrackingDetails requestJson;
     private JsonNode responseJson;
 }

@@ -8,7 +8,7 @@ import java.util.LinkedList;
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.FIELD)
 @Data
-public class CustomerDetails {
+public class TrackingDetails {
     @ExcelColumn(index = 0)
     private int sNo;
 

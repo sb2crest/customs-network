@@ -39,7 +39,7 @@ public class FdaPnRecordSaver {
 
     @Transactional
     public void save(ExcelResponse excelResponse) {
-        CustomerDetails customerDetails = excelResponse.getCustomerDetails();
+        TrackingDetails customerDetails = excelResponse.getTrackingDetails();
         if (customerDetails == null) {
             throw new NotFoundException("CustomerDetails cannot be null");
         }
@@ -68,7 +68,7 @@ public class FdaPnRecordSaver {
         log.info("submit saved in Data base : {}", customsFdapnSubmit);
     }
     public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
-        CustomerDetails customerDetails = excelResponse.getCustomerDetails();
+        TrackingDetails customerDetails = excelResponse.getTrackingDetails();
         if (isNull(customerDetails) || StringUtils.isBlank(customerDetails.getUserId())) {
             throw new NotFoundException(isNull(customerDetails) ? "CustomerDetails cannot be null" : "User ID cannot be null or empty");
         }

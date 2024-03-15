@@ -2,8 +2,9 @@ package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.CustomsFdaPnSubmitDTO;
 import com.customs.network.fdapn.dto.PageDTO;
-import com.customs.network.fdapn.model.CustomerDetails;
+import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.service.*;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 
 @RestController
@@ -31,22 +33,21 @@ public class ConverterController {
     private final JsonToXmlService jsonToXmlService;
 
     @PostMapping("/excel-to-xml")
-    public Object convertExcelToXml(@RequestParam("file") MultipartFile file) {
+    public Map<String, List<Object>> convertExcelToXml(@RequestParam("file") MultipartFile file) {
        return excelReaderService.processExcelFile(file);
     }
     @PostMapping("/json-to-xml")
-    public ResponseEntity<?> convertXmlFromJson(@RequestBody CustomerDetails customerDetails) {
-        Object xml = jsonToXmlService.convertJsonToXml(customerDetails);
-        return ResponseEntity.ok(xml);
+    public Map<String, List<Object>> convertXmlFromJson(@RequestBody List<TrackingDetails> trackingDetails) {
+        return jsonToXmlService.convertJsonToXml(trackingDetails);
     }
 
     @PostMapping("/json-file-to-xml")
-    public  ResponseEntity<?> convertJsonToXml(@RequestParam("file") MultipartFile file) throws IOException {
+    public Map<String, List<Object>> convertJsonToXml(@RequestParam("file") MultipartFile file) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        CustomerDetails customerDetails = objectMapper.readValue(file.getInputStream(), CustomerDetails.class);
-        return ResponseEntity.ok(jsonToXmlService.convertJsonToXml(customerDetails));
+        TypeReference<List<TrackingDetails>> typeReference = new TypeReference<List<TrackingDetails>>() {};
+        List<TrackingDetails> trackingDetailsList = objectMapper.readValue(file.getInputStream(), typeReference);
+        return jsonToXmlService.convertJsonToXml(trackingDetailsList);
     }
-
     @GetMapping("/getFdaPn-record")
     public List<CustomsFdaPnSubmitDTO> getFdaRecord(@RequestParam("createdOn") @DateTimeFormat(pattern = "dd-MM-yyyy") Date createdOn,
                                                     @RequestParam String referenceId) {
