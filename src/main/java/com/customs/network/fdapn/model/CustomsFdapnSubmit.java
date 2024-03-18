@@ -9,10 +9,8 @@ import org.hibernate.type.SqlTypes;
 import java.util.Date;
 
 @Data
-@Entity
-@Table(name = "customs_fdapn_submit")
-public class CustomsFdapnSubmit {
-    @Id
+public class  CustomsFdapnSubmit {
+    private Long slNo;
     private String batchId;
     @Column
     private String traceId;

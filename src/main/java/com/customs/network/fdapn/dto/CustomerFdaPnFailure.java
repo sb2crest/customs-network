@@ -1,6 +1,6 @@
 package com.customs.network.fdapn.dto;
 
-import com.customs.network.fdapn.model.CustomerDetails;
+import com.customs.network.fdapn.model.TrackingDetails;
 import lombok.Data;
 
 
@@ -12,6 +12,6 @@ public class CustomerFdaPnFailure {
     private String createdOn;
     private String status;
     private SuccessOrFailureResponse responseJson;
-    private CustomerDetails requestJson;
+    private TrackingDetails requestJson;
 
 }

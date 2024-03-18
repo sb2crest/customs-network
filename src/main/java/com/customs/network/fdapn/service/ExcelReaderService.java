@@ -1,86 +1,92 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.ExcelResponse;
-import com.customs.network.fdapn.model.CustomerDetails;
+import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.model.ExcelColumn;
 import com.customs.network.fdapn.model.PartyDetails;
-import com.customs.network.fdapn.model.ValidationError;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.*;
 
-import static com.customs.network.fdapn.service.ValidationService.convertToAMPMFormat;
 
 @Component
 @AllArgsConstructor
 @Slf4j
 public class ExcelReaderService {
     private final ValidationService validationService;
-    private final FdaPnRecordSaver fdaPnRecordSaver;
-    private static final int DATA_ROW_INDEX = 1;
+    private final ExcelJsonProcessor excelJsonProcessor;
 
-    public Object processExcelFile(MultipartFile file) {
+    public Map<String, List<Object>> processExcelFile(MultipartFile file) {
         try {
-            Workbook workbook = WorkbookFactory.create(file.getInputStream());
-            Sheet sheet = workbook.getSheetAt(0);
-            ExcelResponse excelResponse = mapExcelToCustomerDetails(sheet);
-            if (!excelResponse.getValidationErrors().isEmpty()) {
-                return fdaPnRecordSaver.failureRecords(excelResponse);
-            }
-            fdaPnRecordSaver.save(excelResponse);
-            return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
+            List<ExcelResponse> excelResponses = readExcelFile(file);
+            return excelJsonProcessor.processResponses(excelResponses);
         } catch (Exception e) {
             log.error("Error converting Excel to XML: -> {} ", e.getMessage());
-            return "Error converting Excel to XML: " + e.getMessage();
+            throw new RuntimeException();
         }
     }
-    private ExcelResponse mapExcelToCustomerDetails(Sheet sheet) throws Exception {
-        ExcelResponse excelResponse = new ExcelResponse();
-        CustomerDetails customerDetails = new CustomerDetails();
-        Row dataRow = sheet.getRow(DATA_ROW_INDEX);
-
-        mapFields(CustomerDetails.class.getDeclaredFields(), customerDetails, dataRow);
-
-        LinkedList<PartyDetails> partyDetailsList = IntStream.range(1, sheet.getLastRowNum())
-                .mapToObj(i -> {
-                    Row partyRow = sheet.getRow(i);
-                    if (partyRow == null || isRowEmpty(partyRow)) {
-                        return null;
+    public List<ExcelResponse> readExcelFile(MultipartFile file) throws Exception {
+        List<ExcelResponse> excelResponseList = new ArrayList<>();
+        Workbook workbook = new XSSFWorkbook(file.getInputStream());
+        Sheet sheet = workbook.getSheetAt(0);
+        TrackingDetails currentTrackingDetails = null;
+        LinkedList<PartyDetails> partyDetailsList = new LinkedList<>();
+        ExcelResponse excelResponse = null;
+        for (Row currentRow : sheet) {
+            if (currentRow.getRowNum() == 0) {
+                continue;
+            }
+            Cell firstCell = currentRow.getCell(0);
+            if (firstCell == null || firstCell.getCellType() == CellType.BLANK) {
+                if (currentTrackingDetails != null) {
+                    PartyDetails partyDetails = readPartyDetails(currentRow);
+                    if (isRowEmpty(currentRow) && partyDetails == null) {
+                        break;
                     }
-                    PartyDetails partyDetails = new PartyDetails();
-                    try {
-                        mapFields(PartyDetails.class.getDeclaredFields(), partyDetails, partyRow);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
+                    if (partyDetails != null) {
+                        partyDetailsList.add(partyDetails);
                     }
-                    return partyDetails;
-                })
-                .takeWhile(Objects::nonNull)
-                .collect(Collectors.toCollection(LinkedList::new));
-
-        customerDetails.setPartyDetails(partyDetailsList);
-        excelResponse.setCustomerDetails(customerDetails);
-        List<ValidationError> validationErrors = validationService.validateField(List.of(customerDetails));
-        excelResponse.setValidationErrors(validationErrors);
-        boolean arrivalTimeError = validationErrors.stream()
-                .anyMatch(error -> "arrivalTime".equals(error.getFieldName()));
-        if (!arrivalTimeError) {
-            String arrivalTime = excelResponse.getCustomerDetails().getArrivalTime();
-            String toAMPMFormat = convertToAMPMFormat(arrivalTime);
-            excelResponse.getCustomerDetails().setArrivalTime(toAMPMFormat);
+                }
+            } else {
+                currentTrackingDetails = new TrackingDetails();
+                mapFields(TrackingDetails.class.getDeclaredFields(), currentTrackingDetails, currentRow);
+                PartyDetails partyDetails = readPartyDetails(currentRow);
+                partyDetailsList = new LinkedList<>();
+                partyDetailsList.add(partyDetails);
+                currentTrackingDetails.setPartyDetails(partyDetailsList);
+                excelResponse = new ExcelResponse();
+                excelResponse.setTrackingDetails(currentTrackingDetails);
+                excelResponseList.add(excelResponse);
+            }
         }
-        return excelResponse;
+        workbook.close();
+        return validationService.validateField(excelResponseList);
+    }
+
+    private boolean isRowEmpty(Row row) {
+        for (Cell cell : row) {
+            if (cell != null && cell.getCellType() != CellType.BLANK) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private PartyDetails readPartyDetails(Row row) throws Exception {
+        if (isRowEmpty(row)) {
+            return null;
+        }
+        PartyDetails partyDetails = new PartyDetails();
+        mapFields(PartyDetails.class.getDeclaredFields(), partyDetails, row);
+        return partyDetails;
     }
 
     private static void mapFields(Field[] fields, Object object, Row row) throws Exception {
@@ -135,27 +141,8 @@ public class ExcelReaderService {
                 return String.valueOf((long) cell.getNumericCellValue());
             }
         } else {
-            return ""; // For other types, return an empty string
+            return "";
         }
     }
 
-    // Method to check if a string represents a valid date
-    private static boolean isDate(String value) {
-        try {
-            LocalDate.parse(value, DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-    // Method to check if a row is empty
-    private boolean isRowEmpty(Row row) {
-        for (int i = row.getFirstCellNum(); i <= row.getLastCellNum(); i++) {
-            Cell cell = row.getCell(i);
-            if (cell != null && cell.getCellType() != CellType.BLANK) {
-                return false; // Row has at least one non-empty cell
-            }
-        }
-        return true; // All cells are empty
-    }
 }

@@ -1,34 +1,31 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.ExcelResponse;
-import com.customs.network.fdapn.model.CustomerDetails;
-import com.customs.network.fdapn.model.ValidationError;
+import com.customs.network.fdapn.model.TrackingDetails;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import javax.xml.bind.JAXBException;
-import java.util.List;
+import java.util.*;
+
 
 @Service
 @AllArgsConstructor
 public class JsonToXmlService {
 
     private final ValidationService validationService;
-    private final FdaPnRecordSaver fdaPnRecordSaver;
+    private final ExcelJsonProcessor excelJsonProcessor;
 
-    public Object convertJsonToXml(CustomerDetails customerDetails) {
+    public Map<String, List<Object>> convertJsonToXml(List<TrackingDetails> trackingDetails) {
         try {
-            ExcelResponse excelResponse = new ExcelResponse();
-            excelResponse.setCustomerDetails(customerDetails);
-
-            List<ValidationError> validationErrors = validationService.validateField(List.of(customerDetails));
-            excelResponse.setValidationErrors(validationErrors);
-
-            if (!excelResponse.getValidationErrors().isEmpty()) {
-                return fdaPnRecordSaver.failureRecords(excelResponse);
+            List<ExcelResponse> excelResponseList = new ArrayList<>();
+            for (TrackingDetails details : trackingDetails) {
+                ExcelResponse excelResponse = new ExcelResponse();
+                excelResponse.setTrackingDetails(details);
+                excelResponseList.add(excelResponse);
             }
-            fdaPnRecordSaver.save(excelResponse);
-            return XmlConverterService.convertToXml(excelResponse.getCustomerDetails());
+
+            List<ExcelResponse> excelResponses = validationService.validateField(excelResponseList);
+            return excelJsonProcessor.processResponses(excelResponses);
         } catch (Exception e) {
             throw new RuntimeException("Error converting JSON to XML: " + e.getMessage(), e);
         }
