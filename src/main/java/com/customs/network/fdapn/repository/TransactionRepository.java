@@ -16,5 +16,5 @@ public interface TransactionRepository {
 
     PageDTO<CustomsFdapnSubmit> fetchByFilter(FilterCriteriaDTO filterRequest);
 
-    List<CustomsFdapnSubmit> scanSchemaByColValue(String value, String date, String fieldName);
+    List<CustomsFdapnSubmit> scanSchemaByColValue(String fieldName,String value,String startDate,String endDate,String userId);
 }

@@ -2,7 +2,6 @@ package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.FilterCriteriaDTO;
 import com.customs.network.fdapn.dto.PageDTO;
-import com.customs.network.fdapn.exception.RecordNotFoundException;
 import com.customs.network.fdapn.initializers.PostgresFunctionInit;
 import com.customs.network.fdapn.model.CustomsFdapnSubmit;
 import com.customs.network.fdapn.repository.TransactionRepository;
@@ -14,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.common.util.StringUtils;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,8 @@ public class TableGenerationService implements TransactionRepository {
     ObjectMapper objectMapper;
     @Autowired
     private PostgresFunctionInit postgresFunctionInit;
-    private final Integer MAX=5;
+    @Value("${partitionSize}")
+    private Integer max;
 
     @PostConstruct
     public void init(){
@@ -45,7 +46,7 @@ public class TableGenerationService implements TransactionRepository {
         String tableName ="fdapn_"+request.getUserId();
         if (isTableExist(schema, tableName)) {
             Long numberOfRecords= utilMethods.getNumberOfRecords(schema,tableName);
-            int newMax = (int) Math.ceil((double) numberOfRecords / MAX) * MAX;
+            int newMax = (int) Math.ceil((double) numberOfRecords / max) * max;
             Long lastId= utilMethods.getLastIdInTheTable(schema,tableName);
             String refId=idGenerator.generator(request.getUserId(),lastId);
             request.setReferenceId(refId);
@@ -94,7 +95,7 @@ public class TableGenerationService implements TransactionRepository {
         String firstPartitionTable = "CREATE TABLE " +
                 schemaName+"."+tableName + "_1 PARTITION OF " +
                 schemaName + "." +
-                tableName + " FOR VALUES FROM (1) TO (" + (MAX+1 )+ ")";
+                tableName + " FOR VALUES FROM (1) TO (" + (max+1 )+ ")";
         jdbcTemplate.execute(firstPartitionTable);
     }
 
@@ -107,7 +108,7 @@ public class TableGenerationService implements TransactionRepository {
         }
        String sql = "CREATE TABLE " +
                 schemaName + "." + tableName + "_" + (partitions + 1) + " PARTITION OF " +
-                schemaName + "." + tableName + " FOR VALUES FROM (" + (numberOfRecords + 1) + ") TO (" + (numberOfRecords + 6) + ")";
+                schemaName + "." + tableName + " FOR VALUES FROM (" + (numberOfRecords + 1) + ") TO (" + (numberOfRecords + max+1) + ")";
         jdbcTemplate.execute(sql);
 
     }
@@ -145,21 +146,29 @@ public class TableGenerationService implements TransactionRepository {
     }
     @Override
     public CustomsFdapnSubmit fetchTransaction(String refId) {
-        List<String> location=utilMethods.validateRefId(refId);
-        String schemaName= location.get(0);
-        String tableName= location.get(1);
-        Long slNumber=idGenerator.parseIdFromRefId(refId);
+        List<String> location = utilMethods.validateRefId(refId);
+        String schemaName = location.get(0);
+        String tableName = location.get(1);
+        Long slNumber = idGenerator.parseIdFromRefId(refId);
         Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
-        for (int i = 1; i <= partitions; i++) {
-            Long minId = utilMethods.getMinIdForPartition(schemaName, tableName, i);
-            Long maxId = utilMethods.getMaxIdForPartition(schemaName, tableName, i);
+        int left = 1;
+        int right = partitions;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            Long minId = utilMethods.getMinIdForPartition(schemaName, tableName, mid);
+            Long maxId = utilMethods.getMaxIdForPartition(schemaName, tableName, mid);
             if (slNumber >= minId && slNumber <= maxId) {
-                String position=schemaName+"."+tableName + "_" + i;
-                return fetchTask(position,slNumber);
+                String position = schemaName + "." + tableName + "_" + mid;
+                return fetchTask(position, slNumber);
+            } else if (slNumber < minId) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
             }
         }
         return null;
     }
+
     private CustomsFdapnSubmit fetchTask(String position, Long slNumber) {
         String sql = "SELECT * FROM " + position + " WHERE serial = ?";
         Object[] args = { slNumber };
@@ -174,7 +183,7 @@ public class TableGenerationService implements TransactionRepository {
     public PageDTO<CustomsFdapnSubmit> fetchTransactionPages(FilterCriteriaDTO filterRequest) {
         String schemaName = utilMethods.getSchemaNameFromDate(DateUtils.formatterDate(filterRequest.getCreatedOn()));
         String tableName = "fdapn_" + filterRequest.getUserId();
-        int partitionSize = MAX;
+        int partitionSize = max;
         Long totalRecords = utilMethods.getNumberOfRecords(schemaName, tableName);
         Long lastId=utilMethods.getLastIdInTheTable(schemaName,tableName);
         long missingRecords=lastId-totalRecords;
@@ -240,10 +249,10 @@ public class TableGenerationService implements TransactionRepository {
         return pageDTO;
     }
     @Override
-    public List<CustomsFdapnSubmit> scanSchemaByColValue(String value, String date, String fieldName) {
-        String query = "SELECT * FROM fetch_data_by_col_value(?,?,?)";
-        String schemaName=utilMethods.getSchemaNameFromDate(date);
-        Object [] args={fieldName,value,schemaName};
+    public List<CustomsFdapnSubmit> scanSchemaByColValue(String fieldName, String value, String startDate, String endDate, String userId) {
+        String query = "SELECT * FROM fetch_data_by_status_and_date(?,?,?,?,?,?)";
+        String schemaPrefix="fdapn";
+        Object [] args={fieldName,value,schemaPrefix,startDate,endDate,userId};
         return jdbcTemplate.query(query,new TransactionExtractor(objectMapper),args);
     }
 
