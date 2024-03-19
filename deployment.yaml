@@ -13,13 +13,13 @@ spec:
         app: fdapn-service
     spec:
       containers:
-        - image: 581676286817.dkr.ecr.ap-south-1.amazonaws.com/fdapn-service:6
+        - image: 581676286817.dkr.ecr.ap-south-1.amazonaws.com/fdapn-service:8
           imagePullPolicy: Always
           name: fdapn-service
           ports:
             - containerPort: 8080
       imagePullSecrets:
-        - name: ecr-registry-secret
+        - name: regcred
 ---
 apiVersion: v1
 kind: Service
