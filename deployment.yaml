@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-fdapn
+spec:
+  selector:
+    matchLabels:
+      app: fdapn-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: fdapn-service
+    spec:
+      containers:
+        - image: 581676286817.dkr.ecr.ap-south-1.amazonaws.com/fdapn-service:8
+          imagePullPolicy: Always
+          name: fdapn-service
+          ports:
+            - containerPort: 8080
+      imagePullSecrets:
+        - name: regcred
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: custom-network-service
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  type: NodePort
+  selector:
+    app: fdapn-service
