@@ -13,6 +13,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/audit")
+@CrossOrigin("http://localhost:5173")
 public class AuditController {
 
     private final AuditService auditService;
