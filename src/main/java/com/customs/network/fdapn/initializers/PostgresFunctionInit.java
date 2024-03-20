@@ -88,4 +88,64 @@ public class PostgresFunctionInit {
 
         jdbcTemplate.execute(functionSql);
     }
+    public void createWriteDailyAuditDataFunction() {
+        String sqlFunction = "CREATE OR REPLACE FUNCTION write_daily_audit_data(date_param VARCHAR) " +
+                "RETURNS VOID " +
+                "AS $$ " +
+                "DECLARE " +
+                "    schema_name_var TEXT; " +
+                "    table_name_var TEXT; " +
+                "    user_id_var VARCHAR; " +
+                "    audit_date DATE := date_param::DATE; " +
+                "    total_success_var BIGINT := 0; " +
+                "    total_failed_var BIGINT := 0; " +
+                "    total_pending_var BIGINT := 0; " +
+                "    total_cbp_down_var BIGINT := 0; " +
+                "    total_transactions_var BIGINT := 0; " +
+                "    dynamic_query TEXT; " +
+                "BEGIN " +
+                "    FOR table_name_var IN " +
+                "        SELECT table_name " +
+                "        FROM information_schema.tables " +
+                "        WHERE table_schema = 'fdapn_' || to_char(audit_date, 'YYYYMMDD') " +
+                "        AND table_name !~ '.*_[0-9]+$' " +
+                "    LOOP " +
+                "        EXECUTE 'SELECT substring($1 from ''fdapn_(.*)'')' INTO user_id_var USING table_name_var; " +
+                "        dynamic_query := 'SELECT " +
+                "                            COALESCE(SUM(CASE WHEN status = ''SUCCESS'' THEN 1 ELSE 0 END), 0), " +
+                "                            COALESCE(SUM(CASE WHEN status = ''FAILED'' THEN 1 ELSE 0 END), 0), " +
+                "                            COALESCE(SUM(CASE WHEN status = ''PENDING'' THEN 1 ELSE 0 END), 0), " +
+                "                            COALESCE(SUM(CASE WHEN status = ''CBP DOWN'' THEN 1 ELSE 0 END), 0), " +
+                "                            COUNT(*) " +
+                "                          FROM fdapn_' || to_char(audit_date, 'YYYYMMDD') || '.' || table_name_var || " +
+                "                          ' WHERE created_on::DATE = $1'; " +
+                "        EXECUTE dynamic_query " +
+                "        INTO total_success_var, total_failed_var, total_pending_var, total_cbp_down_var, total_transactions_var " +
+                "        USING audit_date; " +
+                "        BEGIN " +
+                "            UPDATE public.daily_audit " +
+                "            SET " +
+                "                date = audit_date, " +
+                "                failed = total_failed_var, " +
+                "                pending = total_pending_var, " +
+                "                success = total_success_var, " +
+                "                cbp_down = total_cbp_down_var, " +
+                "                total_transactions = total_transactions_var " +
+                "            WHERE " +
+                "                date = audit_date " +
+                "                AND user_id = user_id_var; " +
+                "            IF NOT FOUND THEN " +
+                "                INSERT INTO public.daily_audit (date, failed, pending, success, cbp_down, total_transactions, user_id) " +
+                "                VALUES (audit_date, total_failed_var, total_pending_var, total_success_var, total_cbp_down_var, total_transactions_var, user_id_var); " +
+                "            END IF; " +
+                "        EXCEPTION " +
+                "            WHEN unique_violation THEN " +
+                "                CONTINUE; " +
+                "        END; " +
+                "    END LOOP; " +
+                "END; " +
+                "$$ LANGUAGE plpgsql;";
+
+        jdbcTemplate.execute(sqlFunction);
+    }
 }

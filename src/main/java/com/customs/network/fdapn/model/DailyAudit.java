@@ -4,8 +4,11 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
+@Entity
+@Table(name="daily_audit")
 public class DailyAudit {
-
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     @Column(name="userId")
