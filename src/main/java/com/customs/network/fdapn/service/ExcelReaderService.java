@@ -11,6 +11,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -34,6 +35,9 @@ public class ExcelReaderService {
         }
     }
     public List<ExcelResponse> readExcelFile(MultipartFile file) throws Exception {
+        if (file.isEmpty()) {
+            throw new FileNotFoundException("The uploaded file is empty.");
+        }
         List<ExcelResponse> excelResponseList = new ArrayList<>();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
         Sheet sheet = workbook.getSheetAt(0);

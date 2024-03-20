@@ -249,11 +249,23 @@ public class TableGenerationService implements TransactionRepository {
         return pageDTO;
     }
     @Override
-    public List<CustomsFdapnSubmit> scanSchemaByColValue(String fieldName, String value, String startDate, String endDate, String userId) {
-        String query = "SELECT * FROM fetch_data_by_status_and_date(?,?,?,?,?,?)";
+    public  PageDTO<CustomsFdapnSubmit> scanSchemaByColValue(String fieldName, String value, String startDate, String endDate, String userId,int page, int size) {
+        String query = "SELECT * FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?) " +
+                "ORDER BY created_on DESC " +
+                "LIMIT ? OFFSET ?";
+        String countQuery = "SELECT COUNT(*) FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?)";
         String schemaPrefix="fdapn";
-        Object [] args={fieldName,value,schemaPrefix,startDate,endDate,userId};
-        return jdbcTemplate.query(query,new TransactionExtractor(objectMapper),args);
+        int offSet = (page - 1) * size;
+        Object[] args = {fieldName, value, schemaPrefix, startDate, endDate, userId, size, offSet};
+        Object[] argsForCount = {fieldName, value, schemaPrefix, startDate, endDate, userId};
+        List<CustomsFdapnSubmit> customsFdaPnSubmitListSubmit = jdbcTemplate.query(query,new TransactionExtractor(objectMapper),args);
+        Long totalRecords = jdbcTemplate.queryForObject(countQuery, Long.class,argsForCount);
+        PageDTO<CustomsFdapnSubmit> pageDTO = new PageDTO<>();
+        pageDTO.setPageSize(customsFdaPnSubmitListSubmit != null ? customsFdaPnSubmitListSubmit.size() : 0);
+        pageDTO.setPage(page);
+        pageDTO.setTotalRecords(totalRecords);
+        pageDTO.setData(customsFdaPnSubmitListSubmit);
+        return pageDTO;
     }
 
 

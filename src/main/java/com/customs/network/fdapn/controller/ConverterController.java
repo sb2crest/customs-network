@@ -56,8 +56,8 @@ public class ConverterController {
         return service.fetchByFilter(criteriaDTO);
     }
     @PostMapping("/fetchDataByColValue")
-    public List<CustomsFdapnSubmit> fetchDataByCustomized(@RequestBody ScanSchema scan) {
-        return service.scanSchemaByColValue(scan.getFieldName(), scan.getValue(), scan.getStartDate(), scan.getEndDate(), scan.getUserId());
+    public PageDTO<CustomsFdapnSubmit> fetchDataByCustomized(@RequestBody ScanSchema scan) {
+        return service.scanSchemaByColValue(scan.getFieldName(), scan.getValue(), scan.getStartDate(), scan.getEndDate(), scan.getUserId(),scan.getPage(),scan.getSize());
     }
 
 }
