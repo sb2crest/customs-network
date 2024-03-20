@@ -9,4 +9,6 @@ public class ScanSchema {
     private String startDate;
     private String endDate;
     private String userId;
+    private int page;
+    private int size;
 }
