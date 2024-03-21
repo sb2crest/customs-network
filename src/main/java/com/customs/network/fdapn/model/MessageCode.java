@@ -1,9 +1,9 @@
 package com.customs.network.fdapn.model;
 
 public enum MessageCode {
-    SUCCESS_SUBMIT("001", "Success"),
+    SUCCESS_SUBMIT("001", "Accepted"),
     VALIDATION_ERRORS("002", "Validation Errors"),
-    REJECT("003","Failed"),
+    REJECT("003","Rejected"),
     PENDING("004","Pending"),
     CBP_DOWN("005","CBP Down"),
     INVALID_USER("006","Invalid User")
