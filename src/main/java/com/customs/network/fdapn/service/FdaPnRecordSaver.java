@@ -60,6 +60,7 @@ public class FdaPnRecordSaver {
         log.info("submit saved in Data base : {}", customsFdapnSubmit);
 
     }
+    @Transactional
     public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
         TrackingDetails customerDetails = excelResponse.getTrackingDetails();
         if (isNull(customerDetails) || StringUtils.isBlank(customerDetails.getUserId())) {

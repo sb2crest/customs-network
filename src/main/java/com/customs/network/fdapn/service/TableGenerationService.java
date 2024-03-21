@@ -43,16 +43,17 @@ public class TableGenerationService implements TransactionRepository {
     @Override
     public CustomsFdapnSubmit saveTransaction(CustomsFdapnSubmit request) {
         String schema ="fdapn_"+utilMethods.getFormattedDate();
-        String tableName ="fdapn_"+request.getUserId();
+        String tableName ="fdapn_"+request.getUserId().toLowerCase();
         if (isTableExist(schema, tableName)) {
             Long numberOfRecords= utilMethods.getNumberOfRecords(schema,tableName);
-            int newMax = (int) Math.ceil((double) numberOfRecords / max) * max;
             Long lastId= utilMethods.getLastIdInTheTable(schema,tableName);
+
+            int newMax = (lastId>numberOfRecords)?(int) Math.ceil((double) lastId / max) * max:(int) Math.ceil((double) numberOfRecords / max) * max;
             String refId=idGenerator.generator(request.getUserId(),lastId);
             request.setReferenceId(refId);
             request.setSlNo(idGenerator.parseIdFromRefId(refId));
             if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
-                Long missingRecords = (lastId == newMax) ? lastId - numberOfRecords : 0;
+                Long missingRecords = (lastId == newMax ) ? lastId - numberOfRecords : 0;
                 createPartitionTable(schema, tableName, numberOfRecords + missingRecords);
             }
         } else {

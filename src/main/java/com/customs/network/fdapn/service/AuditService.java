@@ -7,9 +7,7 @@ import com.customs.network.fdapn.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class AuditService {
@@ -39,8 +37,8 @@ public class AuditService {
         dto.setId(dailyAudit.getId());
         dto.setUserId(dailyAudit.getUserId());
         dto.setDate(DateUtils.formatterDate(dailyAudit.getDate()));
-        dto.setSuccessCount(dailyAudit.getSuccessCount());
-        dto.setFailedCount(dailyAudit.getFailedCount());
+        dto.setSuccessCount(dailyAudit.getAcceptedCount());
+        dto.setFailedCount(dailyAudit.getRejectedCount());
         dto.setPendingCount(dailyAudit.getPendingCount());
         dto.setCbpDownCount(dailyAudit.getCbpDownCount());
         dto.setTotalTransactions(dailyAudit.getTotalTransactions());
