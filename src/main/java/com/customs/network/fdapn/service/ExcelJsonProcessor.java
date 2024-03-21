@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 import javax.xml.bind.JAXBException;
 import java.util.*;
 
-import static com.customs.network.fdapn.model.MessageCode.REJECT;
-import static com.customs.network.fdapn.model.MessageCode.SUCCESS_SUBMIT;
+import static com.customs.network.fdapn.model.MessageCode.*;
+
 @Component
 @AllArgsConstructor
 public class ExcelJsonProcessor {
@@ -18,6 +18,8 @@ public class ExcelJsonProcessor {
         Map<String, List<Object>> result = new HashMap<>();
         result.put(SUCCESS_SUBMIT.getStatus(), new ArrayList<>());
         result.put(REJECT.getStatus(), new ArrayList<>());
+        result.put(INVALID_USER.getStatus(), new ArrayList<>());
+        result.put(PENDING.getStatus(), new ArrayList<>());
 
         excelResponses.stream().filter(Objects::nonNull).forEach(excelResponse -> {
             if (excelResponse.getValidationErrors().isEmpty()) {
@@ -35,7 +37,7 @@ public class ExcelJsonProcessor {
                     customerFdaPnFailure = fdaPnRecordSaver.failureRecords(excelResponse);
                     result.get(REJECT.getStatus()).add(customerFdaPnFailure);
                 }else {
-                    result.get(REJECT.getStatus()).add(excelResponse);
+                    result.get(INVALID_USER.getStatus()).add(excelResponse);
                 }
 
             }

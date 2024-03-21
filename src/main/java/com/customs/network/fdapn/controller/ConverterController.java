@@ -2,6 +2,7 @@ package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.FilterCriteriaDTO;
 import com.customs.network.fdapn.dto.PageDTO;
+import com.customs.network.fdapn.dto.ScanSchema;
 import com.customs.network.fdapn.model.CustomsFdapnSubmit;
 import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.repository.TransactionRepository;
@@ -54,9 +55,9 @@ public class ConverterController {
     public PageDTO<CustomsFdapnSubmit> filterByFdaPnRecords(@RequestBody FilterCriteriaDTO criteriaDTO) {
         return service.fetchByFilter(criteriaDTO);
     }
-    @GetMapping("/fetchDataByStatus")
-    public List<CustomsFdapnSubmit> fetchDataByCustomized(@RequestParam String value, @RequestParam String date, @RequestParam String fieldName) {
-        return service.scanSchemaByColValue(value, date, fieldName);
+    @PostMapping("/fetchDataByColValue")
+    public PageDTO<CustomsFdapnSubmit> fetchDataByCustomized(@RequestBody ScanSchema scan) {
+        return service.scanSchemaByColValue(scan.getFieldName(), scan.getValue(), scan.getStartDate(), scan.getEndDate(), scan.getUserId(),scan.getPage(),scan.getSize());
     }
 
 }
