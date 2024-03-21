@@ -37,8 +37,8 @@ public class AuditService {
         dto.setId(dailyAudit.getId());
         dto.setUserId(dailyAudit.getUserId());
         dto.setDate(DateUtils.formatterDate(dailyAudit.getDate()));
-        dto.setSuccessCount(dailyAudit.getAcceptedCount());
-        dto.setFailedCount(dailyAudit.getRejectedCount());
+        dto.setAcceptedCount(dailyAudit.getAcceptedCount());
+        dto.setRejectedCount(dailyAudit.getRejectedCount());
         dto.setPendingCount(dailyAudit.getPendingCount());
         dto.setCbpDownCount(dailyAudit.getCbpDownCount());
         dto.setTotalTransactions(dailyAudit.getTotalTransactions());
