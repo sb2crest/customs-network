@@ -30,7 +30,7 @@ public class AuditService {
     }
     public DailyAuditDTO getDailyAuditByUserIdAndDate(String userId, Date date) {
         DailyAudit dailyAudit = dailyAuditRepository.findByUserIdAndDate(userId, date)
-                .orElseThrow(() -> new NoSuchElementException("No audit record found for userId " + userId + " and date " + date));
+                .orElseThrow(() -> new NoSuchElementException("No audit record found for userId " + userId));
         return convertToDto(dailyAudit);
     }
 

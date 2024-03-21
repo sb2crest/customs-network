@@ -5,7 +5,6 @@ import com.customs.network.fdapn.exception.NotFoundException;
 import com.customs.network.fdapn.exception.RecordNotFoundException;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.TransactionRepository;
-import com.customs.network.fdapn.utils.CustomIdGenerator;
 import com.customs.network.fdapn.utils.DateUtils;
 import com.customs.network.fdapn.utils.JsonUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -51,7 +50,7 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setEnvelopNumber("ENV001");
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
-        customsFdapnSubmit.setStatus(String.valueOf(Status.SUCCESS));
+        customsFdapnSubmit.setStatus(String.valueOf(Status.ACCEPTED));
         JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
         customsFdapnSubmit.setRequestJson(jsonNode);
         JsonNode response = JsonUtils.convertResponseToJson(getResponse(excelResponse,true));
@@ -80,7 +79,7 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setEnvelopNumber("ENV003");
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
-        customsFdapnSubmit.setStatus(String.valueOf(Status.FAILED));
+        customsFdapnSubmit.setStatus(String.valueOf(Status.REJECTED));
         JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
         customsFdapnSubmit.setRequestJson(jsonNode);
         JsonNode saveResponse = convertResponseToJson(getResponse(excelResponse, false));
