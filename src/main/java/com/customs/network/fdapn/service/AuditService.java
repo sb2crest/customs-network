@@ -62,12 +62,14 @@ public class AuditService {
         TotalTransactionCountDto transactions;
         List<DailyAudit> dailyAudits;
 
-        if (StringUtils.isBlank(userId) && StringUtils.isBlank(period) || StringUtils.isNotBlank(userId) && StringUtils.isBlank(period)) {
+        if (StringUtils.isBlank(userId) && StringUtils.isBlank(period)) {
             dailyAudits = dailyAuditRepository.findByDateBetween(endDate,endDate);
+        } else if (StringUtils.isNotBlank(userId) && StringUtils.isBlank(period)) {
+            dailyAudits = Collections.singletonList(dailyAuditRepository.findByUserIdAndDate(userId, endDate).orElseThrow());
         } else {
             dailyAudits = switch (period) {
                 case "today" ->
-                    Collections.singletonList(dailyAuditRepository.findByUserIdAndDate(userId, endDate).orElseThrow());
+                      dailyAuditRepository.findByUserIdAndDateRange(userId,endDate,endDate);
                 case "week" -> dailyAuditRepository.findByUserIdAndDateRange(userId, startDate, endDate);
                 default -> throw new RuntimeException("invalid period");
             };
