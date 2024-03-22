@@ -31,7 +31,7 @@ public class AuditController {
         return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
     @GetMapping("/get-all-transaction")
-    public TotalTransactionCountDto getAllTransactionsCount(@RequestParam(required = false) String userId,
+    public List<TotalTransactionCountDto> getAllTransactionsCount(@RequestParam(required = false) String userId,
                                                             @RequestParam(required = false) String period){
         return auditService.getAllTransactionsCounts(userId,period);
     }

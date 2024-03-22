@@ -97,36 +97,39 @@ public class AuditServiceImpl implements AuditService{
         return dto;
     }
     @Override
-    public TotalTransactionCountDto getAllTransactionsCounts(String userId, String period) {
+    public List<TotalTransactionCountDto> getAllTransactionsCounts(String userId, String period) {
+        List<TotalTransactionCountDto> totalTransactionCountDtos = new ArrayList<>();
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
         Date endDate = calendar.getTime();
         TotalTransactionCountDto transactions;
-        List<DailyAudit> dailyAudits;
+        List<DailyAudit> dailyAudits = null;
         if (StringUtils.isBlank(userId) && StringUtils.isBlank(period)) {
-            dailyAudits = dailyAuditRepository.findByDateBetween(endDate,endDate);
+            iterateOverDates(calendar, 4, userId, totalTransactionCountDtos);
         } else if (StringUtils.isNotBlank(userId) && StringUtils.isBlank(period)) {
-            calendar.add(Calendar.DATE, -3);
-            Date startDateToday = calendar.getTime();
-            dailyAudits = dailyAuditRepository.findByUserIdAndDateRange(userId, startDateToday, endDate);
+            iterateOverDates(calendar, 4, userId, totalTransactionCountDtos);
         } else {
             switch (period) {
-                case "today" -> {
-                    calendar.add(Calendar.DATE, -3);
-                    Date startDateToday = calendar.getTime();
-                    dailyAudits = dailyAuditRepository.findByUserIdAndDateRange(userId, startDateToday, endDate);
-                }
-                case "week" -> {
-                    calendar.add(Calendar.DATE, -7);
-                    Date startDateWeek = calendar.getTime();
-                    dailyAudits = dailyAuditRepository.findByUserIdAndDateRange(userId, startDateWeek, endDate);
-                }
+                case "today" -> iterateOverDates(calendar, 4, userId, totalTransactionCountDtos);
+                case "week" -> iterateOverDates(calendar, 7, userId, totalTransactionCountDtos);
                 default -> throw new RuntimeException("invalid period");
-            };
+            }
         }
-        transactions = getAllTransactionsWithCount(dailyAudits);
-        return transactions;
+        return totalTransactionCountDtos;
     }
+
+    private void iterateOverDates(Calendar calendar, int daysToIterate, String userId, List<TotalTransactionCountDto> totalTransactionCountDtos) {
+        for (int i = 0; i < daysToIterate; i++) {
+            calendar.setTime(new Date());
+            calendar.add(Calendar.DATE, -i);
+            Date startDate = calendar.getTime();
+            Date endDate = startDate;
+            List<DailyAudit> dailyAudits = dailyAuditRepository.findByUserIdAndDateRange(userId, startDate, endDate);
+            TotalTransactionCountDto transactions = getAllTransactionsWithCount(dailyAudits);
+            totalTransactionCountDtos.add(transactions);
+        }
+    }
+
 
 
     private TotalTransactionCountDto getAllTransactionsWithCount(List<DailyAudit> dailyAudits) {
@@ -171,6 +174,57 @@ public class AuditServiceImpl implements AuditService{
         totalTransactionCountDto.setDailyAuditDTOS(dailyAuditDTOS);
 
         return totalTransactionCountDto;
+    }
+    private TotalTransactionCountDto getAllTransactionsGroupByDate(List<DailyAudit> dailyAudits) {
+        Map<Date, List<DailyAudit>> auditsByDate = dailyAudits.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(DailyAudit::getDate));
+
+        TotalTransactionCountDto totalTransactionCountDto = new TotalTransactionCountDto();
+        List<DailyAuditDTO> dailyAuditDTOS = new ArrayList<>();
+        long acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
+
+        for (Map.Entry<Date, List<DailyAudit>> entry : auditsByDate.entrySet()) {
+            Date date = entry.getKey();
+            List<DailyAudit> auditsForDate = entry.getValue();
+
+            long acceptedCount = 0, rejectedCount = 0, pendingCount = 0, cbpDownCount = 0, totalTransactions = 0;
+            long id = 0;
+
+            for (DailyAudit audit : auditsForDate) {
+                id = audit.getId();
+                acceptedCount += audit.getAcceptedCount();
+                rejectedCount += audit.getRejectedCount();
+                pendingCount += audit.getPendingCount();
+                cbpDownCount += audit.getCbpDownCount();
+                totalTransactions += audit.getTotalTransactions();
+            }
+
+            acceptedTotal += acceptedCount;
+            rejectedTotal += rejectedCount;
+            pendingTotal += pendingCount;
+            cbpDownTotal += cbpDownCount;
+            overallTotal += totalTransactions;
+
+            DailyAuditDTO dailyAuditDTO = new DailyAuditDTO();
+            dailyAuditDTO.setId(id);
+            dailyAuditDTO.setDate(DateUtils.formatterDate(date));
+            dailyAuditDTO.setAcceptedCount(acceptedCount);
+            dailyAuditDTO.setRejectedCount(rejectedCount);
+            dailyAuditDTO.setPendingCount(pendingCount);
+            dailyAuditDTO.setCbpDownCount(cbpDownCount);
+            dailyAuditDTO.setTotalTransactions(totalTransactions);
+            dailyAuditDTOS.add(dailyAuditDTO);
+        }
+
+        totalTransactionCountDto.setAcceptedCount(acceptedTotal);
+        totalTransactionCountDto.setRejectedCount(rejectedTotal);
+        totalTransactionCountDto.setPendingCount(pendingTotal);
+        totalTransactionCountDto.setCbpDownCount(cbpDownTotal);
+        totalTransactionCountDto.setTotalTransactions(overallTotal);
+        totalTransactionCountDto.setDailyAuditDTOS(dailyAuditDTOS);
+        return totalTransactionCountDto;
+
     }
 
 }

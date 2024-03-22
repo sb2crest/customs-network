@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface AuditService {
     List<DailyAuditDTO> getUserTransactionsForWeek(String userId, String period);
-    TotalTransactionCountDto getAllTransactionsCounts(String userId, String period);
+    List<TotalTransactionCountDto> getAllTransactionsCounts(String userId, String period);
 
 }
