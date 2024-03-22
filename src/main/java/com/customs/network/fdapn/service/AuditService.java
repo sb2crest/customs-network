@@ -27,10 +27,17 @@ public class AuditService {
                 .toList();
     }
     public DailyAuditDTO getDailyAuditByUserIdAndDate(String userId, Date date) {
-        DailyAudit dailyAudit = dailyAuditRepository.findByUserIdAndDate(userId, date)
-                .orElseThrow(() -> new NoSuchElementException("No audit record found for userId " + userId));
-        return convertToDto(dailyAudit);
+        Optional<DailyAudit> userDailyAudit = dailyAuditRepository.findByUserIdAndDate(userId, date);
+        if (userDailyAudit.isPresent()) {
+            return convertToDto(userDailyAudit.get());
+        } else {
+            DailyAuditDTO auditDTO = new DailyAuditDTO();
+            auditDTO.setUserId(userId);
+            auditDTO.setDate(DateUtils.formatterDate(date));
+            return auditDTO;
+        }
     }
+
 
     private DailyAuditDTO convertToDto(DailyAudit dailyAudit) {
         DailyAuditDTO dto = new DailyAuditDTO();

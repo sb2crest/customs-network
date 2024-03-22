@@ -174,6 +174,7 @@ public class TableGenerationService implements TransactionRepository {
         String sql = "SELECT * FROM " + position + " WHERE serial = ?";
         Object[] args = { slNumber };
         List<CustomsFdapnSubmit> results = jdbcTemplate.query(sql, new TransactionExtractor(objectMapper), args);
+        assert results != null;
         if (results.isEmpty()) {
             return null;
         }
@@ -182,52 +183,57 @@ public class TableGenerationService implements TransactionRepository {
 
     @Override
     public PageDTO<CustomsFdapnSubmit> fetchTransactionPages(FilterCriteriaDTO filterRequest) {
-        String schemaName = utilMethods.getSchemaNameFromDate(DateUtils.formatterDate(filterRequest.getCreatedOn()));
-        String tableName = "fdapn_" + filterRequest.getUserId();
-        int partitionSize = max;
-        Long totalRecords = utilMethods.getNumberOfRecords(schemaName, tableName);
-        Long lastId=utilMethods.getLastIdInTheTable(schemaName,tableName);
-        long missingRecords=lastId-totalRecords;
-        if (missingRecords!=0){
-            totalRecords+=missingRecords;
-        }
-        int startRecord = (filterRequest.getPage() - 1) * filterRequest.getSize() + 1;
-        int endRecord = startRecord + filterRequest.getSize() - 1;
-        int totalPartitions = (int) ((totalRecords - 1) / partitionSize + 1);
-        int startPartition = (startRecord - 1) / partitionSize + 1;
-        int endPartition = Math.min((endRecord - 1) / partitionSize + 1, totalPartitions);
-
-        List<CustomsFdapnSubmit> results = new LinkedList<>();
-        for (int partition = endPartition; partition >= startPartition; partition--) {
-            int partitionStartRecord = (partition - 1) * partitionSize + 1;
-            int partitionEndRecord = partition * partitionSize;
-            int offSet = 0;
-            int recordsToFetch = 0;
-
-            if (partitionStartRecord <= endRecord && partitionEndRecord >= startRecord) {
-                offSet = Math.max(startRecord - partitionStartRecord, 0);
-                recordsToFetch = Math.min(partitionEndRecord, endRecord) - Math.max(partitionStartRecord, startRecord) + 1;
+        try{
+            String schemaName = utilMethods.getSchemaNameFromDate(DateUtils.formatterDate(filterRequest.getCreatedOn()));
+            String tableName = "fdapn_" + filterRequest.getUserId();
+            int partitionSize = max;
+            Long totalRecords = utilMethods.getNumberOfRecords(schemaName, tableName);
+            Long lastId=utilMethods.getLastIdInTheTable(schemaName,tableName);
+            long missingRecords=lastId-totalRecords;
+            if (missingRecords!=0){
+                totalRecords+=missingRecords;
             }
+            int startRecord = (filterRequest.getPage() - 1) * filterRequest.getSize() + 1;
+            int endRecord = startRecord + filterRequest.getSize() - 1;
+            int totalPartitions = (int) ((totalRecords - 1) / partitionSize + 1);
+            int startPartition = (startRecord - 1) / partitionSize + 1;
+            int endPartition = Math.min((endRecord - 1) / partitionSize + 1, totalPartitions);
 
-            if (recordsToFetch > 0) {
-                String partitionTableName = tableName + "_" + partition;
-                String sql = "SELECT * FROM " + schemaName + "." + partitionTableName + " ORDER BY serial desc LIMIT ? OFFSET ?";
-                Object [] args={recordsToFetch, offSet};
-                List<CustomsFdapnSubmit> partitionResults = jdbcTemplate.query(sql,new TransactionExtractor(objectMapper),args);
-                assert partitionResults != null;
-                results.addAll(partitionResults);
-                if (results.size() >= filterRequest.getSize()) {
-                    break;
+            List<CustomsFdapnSubmit> results = new LinkedList<>();
+            for (int partition = endPartition; partition >= startPartition; partition--) {
+                int partitionStartRecord = (partition - 1) * partitionSize + 1;
+                int partitionEndRecord = partition * partitionSize;
+                int offSet = 0;
+                int recordsToFetch = 0;
+
+                if (partitionStartRecord <= endRecord && partitionEndRecord >= startRecord) {
+                    offSet = Math.max(startRecord - partitionStartRecord, 0);
+                    recordsToFetch = Math.min(partitionEndRecord, endRecord) - Math.max(partitionStartRecord, startRecord) + 1;
+                }
+
+                if (recordsToFetch > 0) {
+                    String partitionTableName = tableName + "_" + partition;
+                    String sql = "SELECT * FROM " + schemaName + "." + partitionTableName + " ORDER BY serial desc LIMIT ? OFFSET ?";
+                    Object [] args={recordsToFetch, offSet};
+                    List<CustomsFdapnSubmit> partitionResults = jdbcTemplate.query(sql,new TransactionExtractor(objectMapper),args);
+                    assert partitionResults != null;
+                    results.addAll(partitionResults);
+                    if (results.size() >= filterRequest.getSize()) {
+                        break;
+                    }
                 }
             }
+            PageDTO<CustomsFdapnSubmit> pageDTO = new PageDTO<>();
+            pageDTO.setPageSize(results.size());
+            pageDTO.setPage(filterRequest.getPage());
+            pageDTO.setTotalRecords(totalRecords-missingRecords);
+            pageDTO.setData(results);
+            return pageDTO;
+        }catch(Exception e){
+            throw new RuntimeException("Error in fetching pages");
         }
-        PageDTO<CustomsFdapnSubmit> pageDTO = new PageDTO<>();
-        pageDTO.setPageSize(results.size());
-        pageDTO.setPage(filterRequest.getPage());
-        pageDTO.setTotalRecords(totalRecords-missingRecords);
-        pageDTO.setData(results);
-        return pageDTO;
     }
+
 
     @Override
     public PageDTO<CustomsFdapnSubmit> fetchByFilter(FilterCriteriaDTO filterRequest) {
