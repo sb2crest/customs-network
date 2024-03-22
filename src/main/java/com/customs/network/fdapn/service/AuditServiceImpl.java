@@ -1,6 +1,7 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.DailyAuditDTO;
+import com.customs.network.fdapn.dto.FinalCount;
 import com.customs.network.fdapn.dto.TotalTransactionCountDto;
 import com.customs.network.fdapn.exception.NotFoundException;
 import com.customs.network.fdapn.model.DailyAudit;
@@ -97,13 +98,14 @@ public class AuditServiceImpl implements AuditService{
         return dto;
     }
     @Override
-    public List<TotalTransactionCountDto> getAllTransactionsCounts(String userId, String period) {
+    public FinalCount getAllTransactionsCounts(String userId, String period) {
+        FinalCount finalCount = new FinalCount();
         List<TotalTransactionCountDto> totalTransactionCountDtos = new ArrayList<>();
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
         Date endDate = calendar.getTime();
-        TotalTransactionCountDto transactions;
         List<DailyAudit> dailyAudits = null;
+
         if (StringUtils.isBlank(userId) && StringUtils.isBlank(period)) {
             iterateOverDates(calendar, 4, userId, totalTransactionCountDtos);
         } else if (StringUtils.isNotBlank(userId) && StringUtils.isBlank(period)) {
@@ -115,7 +117,23 @@ public class AuditServiceImpl implements AuditService{
                 default -> throw new RuntimeException("invalid period");
             }
         }
-        return totalTransactionCountDtos;
+
+        long acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
+        for (TotalTransactionCountDto dto : totalTransactionCountDtos) {
+            acceptedTotal += dto.getAcceptedCount();
+            rejectedTotal += dto.getRejectedCount();
+            pendingTotal += dto.getPendingCount();
+            cbpDownTotal += dto.getCbpDownCount();
+            overallTotal += dto.getTotalTransactions();
+        }
+
+        finalCount.setTotalAcceptedCount(acceptedTotal);
+        finalCount.setTotalRejectedCount(rejectedTotal);
+        finalCount.setTotalPendingCount(pendingTotal);
+        finalCount.setTotalCbpDownCount(cbpDownTotal);
+        finalCount.setAllTransactions(overallTotal);
+        finalCount.setTotalTransactionCountDtos(totalTransactionCountDtos);
+        return finalCount;
     }
 
     private void iterateOverDates(Calendar calendar, int daysToIterate, String userId, List<TotalTransactionCountDto> totalTransactionCountDtos) {
