@@ -144,6 +144,7 @@ public class AuditServiceImpl implements AuditService{
             Date endDate = startDate;
             List<DailyAudit> dailyAudits = dailyAuditRepository.findByUserIdAndDateRange(userId, startDate, endDate);
             TotalTransactionCountDto transactions = getAllTransactionsWithCount(dailyAudits);
+            transactions.setDate(DateUtils.formatterDate(startDate));
             totalTransactionCountDtos.add(transactions);
         }
     }

@@ -11,5 +11,6 @@ public class TotalTransactionCountDto {
     private long pendingCount;
     private long cbpDownCount;
     private long totalTransactions;
+    private String date;
     List<DailyAuditDTO> dailyAuditDTOS;
 }
