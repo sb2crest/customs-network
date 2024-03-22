@@ -62,7 +62,12 @@ public class PostgresFunctionInit {
                 "RAISE NOTICE 'Querying table: %', table_name_var; " +
                 "RETURN QUERY EXECUTE " +
                 "'SELECT DISTINCT * FROM ' || schema_name_var || '.' || table_name_var || " +
+                "CASE " +
+                "WHEN fieldName IS NOT NULL AND p_value IS NOT NULL THEN " +
                 "' WHERE ' || quote_ident(fieldName) || ' = $1' " +
+                "ELSE " +
+                "'' " +
+                "END " +
                 "USING p_value; " +
                 "END IF; " +
                 "ELSE " +
@@ -77,7 +82,12 @@ public class PostgresFunctionInit {
                 "RAISE NOTICE 'Querying table: %', table_name_var; " +
                 "RETURN QUERY EXECUTE " +
                 "'SELECT DISTINCT * FROM ' || schema_name_var || '.' || table_name_var || " +
+                "CASE " +
+                "WHEN fieldName IS NOT NULL AND p_value IS NOT NULL THEN " +
                 "' WHERE ' || quote_ident(fieldName) || ' = $1' " +
+                "ELSE " +
+                "'' " +
+                "END " +
                 "USING p_value; " +
                 "END LOOP; " +
                 "END IF; " +

@@ -38,7 +38,6 @@ public class AuditService {
         }
     }
 
-
     private DailyAuditDTO convertToDto(DailyAudit dailyAudit) {
         DailyAuditDTO dto = new DailyAuditDTO();
         dto.setId(dailyAudit.getId());
