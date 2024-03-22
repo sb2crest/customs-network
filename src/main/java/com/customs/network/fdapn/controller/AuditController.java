@@ -1,6 +1,7 @@
 package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.DailyAuditDTO;
+import com.customs.network.fdapn.dto.TotalTransactionCountDto;
 import com.customs.network.fdapn.service.AuditService;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,7 @@ public class AuditController {
         this.auditService = auditService;
     }
 
-    @GetMapping("/transactions")
+    @GetMapping("/user-transaction")
     public ResponseEntity<List<DailyAuditDTO>> getUserTransactionsForWeek(@RequestParam String userId,
                                                                           @RequestParam(required = false) String period) {
 
@@ -46,5 +47,9 @@ public class AuditController {
 
         return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
-
+    @GetMapping("/get-all-transaction")
+    public TotalTransactionCountDto getAllTransactionsCount(@RequestParam(required = false) String userId,
+                                                            @RequestParam(required = false) String period){
+        return auditService.getAllTransactionsCounts(userId,period);
+    }
 }

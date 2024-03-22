@@ -122,24 +122,4 @@ public class FdaPnRecordSaver {
         return customsFdapnSubmit;
     }
 
-    private List<CustomsFdaPnSubmitDTO> mapCustomsFdaPnSubmitsToDTOs(List<CustomsFdapnSubmit> customsFdaPnSubmits){
-        List<CustomsFdaPnSubmitDTO> customsFdaPnSubmitDTOs = new ArrayList<>();
-        for (CustomsFdapnSubmit record : customsFdaPnSubmits) {
-            CustomsFdaPnSubmitDTO dto = new CustomsFdaPnSubmitDTO();
-            dto.setBatchId(record.getBatchId());
-            dto.setTraceId(record.getTraceId());
-            dto.setUserId(record.getUserId());
-            dto.setAccountId(record.getAccountId());
-            dto.setReferenceId(record.getReferenceId());
-            dto.setEnvelopNumber(record.getEnvelopNumber());
-            dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
-            dto.setUpdatedOn(DateUtils.formatDate(record.getUpdatedOn()));
-            dto.setStatus(record.getStatus());
-            dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
-            dto.setResponseJson((record.getResponseJson()));
-            customsFdaPnSubmitDTOs.add(dto);
-        }
-        return customsFdaPnSubmitDTOs;
-    }
-
 }

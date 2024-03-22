@@ -236,25 +236,35 @@ public class TableGenerationService implements TransactionRepository {
 
 
     @Override
-    public PageDTO<CustomsFdapnSubmit> fetchByFilter(FilterCriteriaDTO filterRequest) {
-        if(StringUtils.isBlank(filterRequest.getStatus())){
-            return fetchTransactionPages(filterRequest);
+    public PageDTO<CustomsFdapnSubmit> fetchByFilter(FilterCriteriaDTO filterRequest)  {
+        try {
+            if (StringUtils.isBlank(filterRequest.getStatus())) {
+                return fetchTransactionPages(filterRequest);
+            }
+
+            String schemaName = utilMethods.getSchemaNameFromDate(DateUtils.formatterDate(filterRequest.getCreatedOn()));
+            String tableName = "fdapn_" + filterRequest.getUserId();
+            int offSet = (filterRequest.getPage() - 1) * filterRequest.getSize();
+
+            String numberOfRecordsSql = "SELECT COUNT(*) FROM " + schemaName + "." + tableName + " WHERE status = ?;";
+            String sql = "SELECT * FROM " + schemaName + "." + tableName + " WHERE status = ? ORDER BY serial DESC LIMIT ? OFFSET ?;";
+            Object[] args = {filterRequest.getStatus(), filterRequest.getSize(), offSet};
+
+            Long totalRecords = jdbcTemplate.queryForObject(numberOfRecordsSql, Long.class, filterRequest.getStatus());
+            List<CustomsFdapnSubmit> records = jdbcTemplate.query(sql, new TransactionExtractor(objectMapper), args);
+
+            PageDTO<CustomsFdapnSubmit> pageDTO = new PageDTO<>();
+            pageDTO.setPageSize(records != null ? records.size() : 0);
+            pageDTO.setPage(filterRequest.getPage());
+            pageDTO.setTotalRecords(totalRecords);
+            pageDTO.setData(records);
+
+            return pageDTO;
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching records by filter", e);
         }
-        String schemaName = utilMethods.getSchemaNameFromDate(DateUtils.formatterDate(filterRequest.getCreatedOn()));
-        String tableName = "fdapn_" + filterRequest.getUserId();
-        int offSet = (filterRequest.getPage() - 1) * filterRequest.getSize();
-        String numberOfRecordsSql = "select count(*) from " + schemaName + "." + tableName + " where status = ?;";
-        String sql = "select * from " + schemaName + "." + tableName + " where status = ? order by serial desc limit ? offset ? ;";
-        Object[] args = { filterRequest.getStatus(), filterRequest.getSize(), offSet };
-        List<CustomsFdapnSubmit> records = jdbcTemplate.query(sql, new TransactionExtractor(objectMapper), args);
-        Long totalRecords = jdbcTemplate.queryForObject(numberOfRecordsSql, Long.class, filterRequest.getStatus());
-        PageDTO<CustomsFdapnSubmit> pageDTO = new PageDTO<>();
-        pageDTO.setPageSize(records.size());
-        pageDTO.setPage(filterRequest.getPage());
-        pageDTO.setTotalRecords(totalRecords);
-        pageDTO.setData(records);
-        return pageDTO;
     }
+
     @Override
     public  PageDTO<CustomsFdapnSubmit> scanSchemaByColValue(String fieldName, String value, String startDate, String endDate, String userId,int page, int size) {
         String query = "SELECT * FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?) " +
