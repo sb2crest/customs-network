@@ -2,6 +2,8 @@ package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
 import com.customs.network.fdapn.dto.ExcelResponse;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,9 +19,8 @@ public class ExcelJsonProcessor {
     public Map<String, List<Object>> processResponses(List<ExcelResponse> excelResponses) {
         Map<String, List<Object>> result = new HashMap<>();
         result.put(SUCCESS_SUBMIT.getStatus(), new ArrayList<>());
-        result.put(REJECT.getStatus(), new ArrayList<>());
+        result.put(VALIDATION_ERRORS.getStatus(), new ArrayList<>());
         result.put(INVALID_USER.getStatus(), new ArrayList<>());
-        result.put(PENDING.getStatus(), new ArrayList<>());
 
         excelResponses.stream().filter(Objects::nonNull).forEach(excelResponse -> {
             if (excelResponse.getValidationErrors().isEmpty()) {
@@ -27,7 +28,7 @@ public class ExcelJsonProcessor {
                 try {
                     result.get(SUCCESS_SUBMIT.getStatus()).add(XmlConverterService.convertToXml(excelResponse.getTrackingDetails()));
                 } catch (JAXBException e) {
-                    throw new RuntimeException(e);
+                    throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error while converting to xml , "+e);
                 }
             } else {
                 boolean userIdExists = excelResponse.getValidationErrors().stream()
@@ -35,7 +36,7 @@ public class ExcelJsonProcessor {
                 CustomerFdaPnFailure customerFdaPnFailure = null;
                 if (!userIdExists) {
                     customerFdaPnFailure = fdaPnRecordSaver.failureRecords(excelResponse);
-                    result.get(REJECT.getStatus()).add(customerFdaPnFailure);
+                    result.get(VALIDATION_ERRORS.getStatus()).add(customerFdaPnFailure);
                 }else {
                     result.get(INVALID_USER.getStatus()).add(excelResponse);
                 }

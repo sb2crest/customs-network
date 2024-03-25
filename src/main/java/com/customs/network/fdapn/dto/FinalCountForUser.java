@@ -5,12 +5,12 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class FinalCount {
+public class FinalCountForUser {
     private long totalValidationErrorCount;
     private long totalAcceptedCount;
     private long totalRejectedCount;
     private long totalPendingCount;
     private long totalCbpDownCount;
     private long allTransactions;
-    List<TotalTransactionCountDto> totalTransactionCountDtos;
+    private List<DailyAuditDTO> dailyAuditDTOS;
 }

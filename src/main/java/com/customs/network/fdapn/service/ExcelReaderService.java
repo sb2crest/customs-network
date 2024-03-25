@@ -1,6 +1,8 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.ExcelResponse;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.model.ExcelColumn;
 import com.customs.network.fdapn.model.PartyDetails;
@@ -31,12 +33,13 @@ public class ExcelReaderService {
             return excelJsonProcessor.processResponses(excelResponses);
         } catch (Exception e) {
             log.error("Error converting Excel to XML: -> {} ", e.getMessage());
-            throw new RuntimeException();
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Error converting Excel to XML , " + e.getMessage());
         }
     }
+
     public List<ExcelResponse> readExcelFile(MultipartFile file) throws Exception {
         if (file.isEmpty()) {
-            throw new FileNotFoundException("The uploaded file is empty.");
+            throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS, "The uploaded file is empty.");
         }
         List<ExcelResponse> excelResponseList = new ArrayList<>();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());

@@ -1,6 +1,8 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.ExcelResponse;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.TrackingDetails;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,7 +29,7 @@ public class JsonToXmlService {
             List<ExcelResponse> excelResponses = validationService.validateField(excelResponseList);
             return excelJsonProcessor.processResponses(excelResponses);
         } catch (Exception e) {
-            throw new RuntimeException("Error converting JSON to XML: " + e.getMessage(), e);
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting Json to XML , "+e.getMessage());
         }
     }
 }

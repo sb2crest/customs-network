@@ -1,6 +1,8 @@
 package com.customs.network.fdapn.utils;
 
 import com.customs.network.fdapn.dto.SuccessOrFailureResponse;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.model.ValidationError;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -16,28 +18,28 @@ public class JsonUtils {
         try {
             return objectMapper.valueToTree(trackingDetails);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Error converting CustomerDetails to JsonNode", e);
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting CustomerDetails to JsonNode, "+e);
         }
     }
     public static TrackingDetails convertJsonNodeToCustomerDetails(JsonNode jsonNode) {
         try {
             return objectMapper.treeToValue(jsonNode, TrackingDetails.class);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Error converting JsonNode to CustomerDetails", e);
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting JsonNode to CustomerDetails , "+e);
         }
     }
     public static JsonNode convertValidationErrorListToJson(List<ValidationError> validationErrors) {
         try {
             return objectMapper.valueToTree(validationErrors);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Error converting List<ValidationError> to JsonNode", e);
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting List<ValidationError> to JsonNode "+e);
         }
     }
     public static JsonNode convertResponseToJson(SuccessOrFailureResponse response) {
         try {
             return objectMapper.valueToTree(response);
         } catch (Exception e) {
-            throw new IllegalArgumentException("Error converting SuccessOrFailureResponse to JsonNode", e);
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting SuccessOrFailureResponse to JsonNode ,"+e);
         }
     }
 

@@ -27,4 +27,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleNoSuchRecordException(NoSuchElementException ex) {
         return ResponseEntity.status(HttpStatus.OK).body(ex.getMessage());
     }
+    @ExceptionHandler(FdapnCustomExceptions.class)
+    public ResponseEntity<ErrorDetails> handleFdapnCustomExceptions(FdapnCustomExceptions ex) {
+        ErrorDetails details= new ErrorDetails();
+        ErrorResCodes resCodes=ex.getResCodes();
+        details.setErrorCode(resCodes.getErrorCode());
+        details.setErrorCause(ex.getMessage());
+        details.setErrorDesc(resCodes.getErrorMsg());
+        return ResponseEntity.status(HttpStatus.OK).body(details);
+    }
+
+
 }
