@@ -52,8 +52,9 @@ public class AuditServiceImpl implements AuditService{
                 default -> throw new RuntimeException("invalid period");
             }
         }
-        long acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
+        long validationErrorCount = 0, acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
         for (DailyAuditDTO dto : transactions) {
+            validationErrorCount += dto.getValidationErrorCount();
             acceptedTotal += dto.getAcceptedCount();
             rejectedTotal += dto.getRejectedCount();
             pendingTotal += dto.getPendingCount();
@@ -61,6 +62,7 @@ public class AuditServiceImpl implements AuditService{
             overallTotal += dto.getTotalTransactions();
         }
 
+        finalCount.setTotalValidationErrorCount(validationErrorCount);
         finalCount.setTotalAcceptedCount(acceptedTotal);
         finalCount.setTotalRejectedCount(rejectedTotal);
         finalCount.setTotalPendingCount(pendingTotal);
@@ -109,6 +111,7 @@ public class AuditServiceImpl implements AuditService{
         dto.setId(dailyAudit.getId());
         dto.setUserId(dailyAudit.getUserId());
         dto.setDate(DateUtils.formatterDate(dailyAudit.getDate()));
+        dto.setValidationErrorCount(dailyAudit.getValidationErrorCount());
         dto.setAcceptedCount(dailyAudit.getAcceptedCount());
         dto.setRejectedCount(dailyAudit.getRejectedCount());
         dto.setPendingCount(dailyAudit.getPendingCount());
@@ -137,8 +140,9 @@ public class AuditServiceImpl implements AuditService{
             }
         }
 
-        long acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
-        for (TotalTransactionCountDto dto : totalTransactionCountDtos) {
+        long validationErrorCount = 0, acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
+        for (TotalTransactionCountDto  dto : totalTransactionCountDtos) {
+            validationErrorCount += dto.getValidationErrorCount();
             acceptedTotal += dto.getAcceptedCount();
             rejectedTotal += dto.getRejectedCount();
             pendingTotal += dto.getPendingCount();
@@ -146,6 +150,7 @@ public class AuditServiceImpl implements AuditService{
             overallTotal += dto.getTotalTransactions();
         }
 
+        finalCount.setTotalValidationErrorCount(validationErrorCount);
         finalCount.setTotalAcceptedCount(acceptedTotal);
         finalCount.setTotalRejectedCount(rejectedTotal);
         finalCount.setTotalPendingCount(pendingTotal);
@@ -173,17 +178,19 @@ public class AuditServiceImpl implements AuditService{
     private TotalTransactionCountDto getAllTransactionsWithCount(List<DailyAudit> dailyAudits) {
         TotalTransactionCountDto totalTransactionCountDto = new TotalTransactionCountDto();
         List<DailyAuditDTO> dailyAuditDTOS = new ArrayList<>();
-        long acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
+        long validationErrorTotal=0, acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
 
         for (DailyAudit audit : dailyAudits) {
             if (audit != null) {
                 Date createdOn = audit.getDate();
+                long validationErrorCount = audit.getValidationErrorCount();
                 long acceptedCount = audit.getAcceptedCount();
                 long rejectedCount = audit.getRejectedCount();
                 long pendingCount = audit.getPendingCount();
                 long cbpDownCount = audit.getCbpDownCount();
                 long totalTransactions = audit.getTotalTransactions();
 
+                validationErrorTotal += validationErrorCount;
                 acceptedTotal += acceptedCount;
                 rejectedTotal += rejectedCount;
                 pendingTotal += pendingCount;
@@ -194,6 +201,7 @@ public class AuditServiceImpl implements AuditService{
                 dailyAuditDTO.setId(audit.getId());
                 dailyAuditDTO.setUserId(audit.getUserId());
                 dailyAuditDTO.setDate(DateUtils.formatterDate(createdOn));
+                dailyAuditDTO.setValidationErrorCount(validationErrorCount);
                 dailyAuditDTO.setAcceptedCount(acceptedCount);
                 dailyAuditDTO.setRejectedCount(rejectedCount);
                 dailyAuditDTO.setPendingCount(pendingCount);
@@ -204,6 +212,7 @@ public class AuditServiceImpl implements AuditService{
             }
         }
 
+        totalTransactionCountDto.setValidationErrorCount(validationErrorTotal);
         totalTransactionCountDto.setAcceptedCount(acceptedTotal);
         totalTransactionCountDto.setRejectedCount(rejectedTotal);
         totalTransactionCountDto.setPendingCount(pendingTotal);

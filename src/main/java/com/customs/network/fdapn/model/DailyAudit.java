@@ -26,6 +26,8 @@ public class DailyAudit {
 
     @Column(name="pending")
     private long pendingCount;
+    @Column(name = "validation_error")
+    private long validationErrorCount;
 
     @Column(name="cbpDown")
     private long cbpDownCount;

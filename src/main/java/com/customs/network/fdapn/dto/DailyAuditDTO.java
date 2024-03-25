@@ -9,6 +9,7 @@ public class DailyAuditDTO {
     private long id;
     private String userId;
     private String date;
+    private long validationErrorCount;
     private long acceptedCount;
     private long rejectedCount;
     private long pendingCount;

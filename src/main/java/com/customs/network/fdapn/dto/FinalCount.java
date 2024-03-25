@@ -6,6 +6,7 @@ import java.util.List;
 
 @Data
 public class FinalCount {
+    private long totalValidationErrorCount;
     private long totalAcceptedCount;
     private long totalRejectedCount;
     private long totalPendingCount;

@@ -6,6 +6,7 @@ import java.util.List;
 
 @Data
 public class TotalTransactionCountDto {
+    private long validationErrorCount;
     private long acceptedCount;
     private long rejectedCount;
     private long pendingCount;
