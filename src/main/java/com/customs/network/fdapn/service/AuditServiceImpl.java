@@ -2,6 +2,7 @@ package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.DailyAuditDTO;
 import com.customs.network.fdapn.dto.FinalCount;
+import com.customs.network.fdapn.dto.FinalCountForUser;
 import com.customs.network.fdapn.dto.TotalTransactionCountDto;
 import com.customs.network.fdapn.exception.NotFoundException;
 import com.customs.network.fdapn.model.DailyAudit;
@@ -25,7 +26,8 @@ public class AuditServiceImpl implements AuditService{
     }
 
     @Override
-    public List<DailyAuditDTO> getUserTransactionsForWeek(String userId, String period) {
+    public FinalCountForUser getUserTransactionsForWeek(String userId, String period) {
+        FinalCountForUser finalCount = new FinalCountForUser();
         if(StringUtils.isEmpty(userId)){
             throw new NotFoundException("userId is not provided");
         }
@@ -50,13 +52,29 @@ public class AuditServiceImpl implements AuditService{
                 default -> throw new RuntimeException("invalid period");
             }
         }
-        return transactions;
+        long acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
+        for (DailyAuditDTO dto : transactions) {
+            acceptedTotal += dto.getAcceptedCount();
+            rejectedTotal += dto.getRejectedCount();
+            pendingTotal += dto.getPendingCount();
+            cbpDownTotal += dto.getCbpDownCount();
+            overallTotal += dto.getTotalTransactions();
+        }
+
+        finalCount.setTotalAcceptedCount(acceptedTotal);
+        finalCount.setTotalRejectedCount(rejectedTotal);
+        finalCount.setTotalPendingCount(pendingTotal);
+        finalCount.setTotalCbpDownCount(cbpDownTotal);
+        finalCount.setAllTransactions(overallTotal);
+        finalCount.setDailyAuditDTOS(transactions);
+        return finalCount;
     }
     private List<DailyAuditDTO> getAuditDataForUser(String userId, Date startDate, Date endDate) {
         List<DailyAudit> auditLists = dailyAuditRepository.findByUserIdAndDateBetween(userId, startDate, endDate);
         return auditLists.stream()
                 .filter(Objects::nonNull)
                 .map(this::convertToDto)
+                .sorted(Comparator.comparing(DailyAuditDTO::getDate).reversed()) // S
                 .toList();
     }
     private DailyAuditDTO getDailyAuditByUserIdAndDate(String userId, Date date) {
@@ -76,6 +94,7 @@ public class AuditServiceImpl implements AuditService{
            return userDailyAudit.stream()
                     .filter(Objects::nonNull)
                     .map(this::convertToDto)
+                    .sorted(Comparator.comparing(DailyAuditDTO::getDate).reversed())
                     .collect(Collectors.toList());
         }
         else {

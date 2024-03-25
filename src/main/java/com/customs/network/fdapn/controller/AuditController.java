@@ -2,6 +2,7 @@ package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.DailyAuditDTO;
 import com.customs.network.fdapn.dto.FinalCount;
+import com.customs.network.fdapn.dto.FinalCountForUser;
 import com.customs.network.fdapn.dto.TotalTransactionCountDto;
 import com.customs.network.fdapn.service.AuditService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,10 +26,10 @@ public class AuditController {
     }
 
     @GetMapping("/user-transaction")
-    public ResponseEntity<List<DailyAuditDTO>> getUserTransactionsForWeek(@RequestParam String userId,
-                                                                          @RequestParam(required = false) String period) {
+    public ResponseEntity<FinalCountForUser> getUserTransactionsForWeek(@RequestParam String userId,
+                                                                         @RequestParam(required = false) String period) {
 
-        List<DailyAuditDTO> transactions = auditService.getUserTransactionsForWeek(userId, period);
+        FinalCountForUser transactions = auditService.getUserTransactionsForWeek(userId, period);
         return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
     @GetMapping("/get-all-transaction")
