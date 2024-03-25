@@ -15,13 +15,14 @@ public class DailyAudit {
     private String userId;
 
     @Column(name="date")
+    @Temporal(TemporalType.DATE)
     private Date date;
 
-    @Column(name="Success")
-    private long successCount;
+    @Column(name="accepted")
+    private long acceptedCount;
 
-    @Column(name="Failed")
-    private long failedCount;
+    @Column(name="rejected")
+    private long rejectedCount;
 
     @Column(name="pending")
     private long pendingCount;

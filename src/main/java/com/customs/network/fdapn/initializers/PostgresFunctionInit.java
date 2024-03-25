@@ -62,7 +62,12 @@ public class PostgresFunctionInit {
                 "RAISE NOTICE 'Querying table: %', table_name_var; " +
                 "RETURN QUERY EXECUTE " +
                 "'SELECT DISTINCT * FROM ' || schema_name_var || '.' || table_name_var || " +
+                "CASE " +
+                "WHEN fieldName IS NOT NULL AND p_value IS NOT NULL THEN " +
                 "' WHERE ' || quote_ident(fieldName) || ' = $1' " +
+                "ELSE " +
+                "'' " +
+                "END " +
                 "USING p_value; " +
                 "END IF; " +
                 "ELSE " +
@@ -77,7 +82,12 @@ public class PostgresFunctionInit {
                 "RAISE NOTICE 'Querying table: %', table_name_var; " +
                 "RETURN QUERY EXECUTE " +
                 "'SELECT DISTINCT * FROM ' || schema_name_var || '.' || table_name_var || " +
+                "CASE " +
+                "WHEN fieldName IS NOT NULL AND p_value IS NOT NULL THEN " +
                 "' WHERE ' || quote_ident(fieldName) || ' = $1' " +
+                "ELSE " +
+                "'' " +
+                "END " +
                 "USING p_value; " +
                 "END LOOP; " +
                 "END IF; " +
@@ -89,61 +99,54 @@ public class PostgresFunctionInit {
         jdbcTemplate.execute(functionSql);
     }
     public void createWriteDailyAuditDataFunction() {
-        String sqlFunction = "CREATE OR REPLACE FUNCTION write_daily_audit_data(date_param VARCHAR) " +
-                "RETURNS VOID " +
-                "AS $$ " +
-                "DECLARE " +
-                "    schema_name_var TEXT; " +
-                "    table_name_var TEXT; " +
-                "    user_id_var VARCHAR; " +
-                "    audit_date DATE := date_param::DATE; " +
-                "    total_success_var BIGINT := 0; " +
-                "    total_failed_var BIGINT := 0; " +
-                "    total_pending_var BIGINT := 0; " +
-                "    total_cbp_down_var BIGINT := 0; " +
-                "    total_transactions_var BIGINT := 0; " +
-                "    dynamic_query TEXT; " +
-                "BEGIN " +
-                "    FOR table_name_var IN " +
-                "        SELECT table_name " +
-                "        FROM information_schema.tables " +
-                "        WHERE table_schema = 'fdapn_' || to_char(audit_date, 'YYYYMMDD') " +
-                "        AND table_name !~ '.*_[0-9]+$' " +
-                "    LOOP " +
-                "        EXECUTE 'SELECT substring($1 from ''fdapn_(.*)'')' INTO user_id_var USING table_name_var; " +
-                "        dynamic_query := 'SELECT " +
-                "                            COALESCE(SUM(CASE WHEN status = ''SUCCESS'' THEN 1 ELSE 0 END), 0), " +
-                "                            COALESCE(SUM(CASE WHEN status = ''FAILED'' THEN 1 ELSE 0 END), 0), " +
-                "                            COALESCE(SUM(CASE WHEN status = ''PENDING'' THEN 1 ELSE 0 END), 0), " +
-                "                            COALESCE(SUM(CASE WHEN status = ''CBP DOWN'' THEN 1 ELSE 0 END), 0), " +
-                "                            COUNT(*) " +
-                "                          FROM fdapn_' || to_char(audit_date, 'YYYYMMDD') || '.' || table_name_var || " +
-                "                          ' WHERE created_on::DATE = $1'; " +
-                "        EXECUTE dynamic_query " +
-                "        INTO total_success_var, total_failed_var, total_pending_var, total_cbp_down_var, total_transactions_var " +
-                "        USING audit_date; " +
-                "        BEGIN " +
-                "            UPDATE public.daily_audit " +
-                "            SET " +
-                "                date = audit_date, " +
-                "                failed = total_failed_var, " +
-                "                pending = total_pending_var, " +
-                "                success = total_success_var, " +
-                "                cbp_down = total_cbp_down_var, " +
-                "                total_transactions = total_transactions_var " +
-                "            WHERE " +
-                "                date = audit_date " +
-                "                AND user_id = user_id_var; " +
-                "            IF NOT FOUND THEN " +
-                "                INSERT INTO public.daily_audit (date, failed, pending, success, cbp_down, total_transactions, user_id) " +
-                "                VALUES (audit_date, total_failed_var, total_pending_var, total_success_var, total_cbp_down_var, total_transactions_var, user_id_var); " +
-                "            END IF; " +
-                "        EXCEPTION " +
-                "            WHEN unique_violation THEN " +
-                "                CONTINUE; " +
-                "        END; " +
-                "    END LOOP; " +
-                "END; " +
+        String sqlFunction =  "CREATE OR REPLACE FUNCTION write_daily_audit_data(date_param VARCHAR)\n" +
+                "RETURNS VOID AS $$\n" +
+                "DECLARE\n" +
+                "    schema_name_var TEXT;\n" +
+                "    table_name_var TEXT;\n" +
+                "    user_id_var VARCHAR;\n" +
+                "    audit_date DATE := date_param::DATE;\n" +
+                "    total_accepted_var BIGINT := 0;\n" +
+                "    total_rejected_var BIGINT := 0;\n" +
+                "    total_pending_var BIGINT := 0;\n" +
+                "    total_cbp_down_var BIGINT := 0;\n" +
+                "    total_transactions_var BIGINT := 0;\n" +
+                "    dynamic_query TEXT;\n" +
+                "BEGIN\n" +
+                "    FOR table_name_var IN\n" +
+                "        SELECT table_name\n" +
+                "        FROM information_schema.tables\n" +
+                "        WHERE table_schema = 'fdapn_' || to_char(audit_date, 'YYYYMMDD')\n" +
+                "        AND table_name !~ '.*_[0-9]+$'\n" +
+                "    LOOP\n" +
+                "        EXECUTE 'SELECT user_id,\n" +
+                "                        COALESCE(SUM(CASE WHEN status = ''ACCEPTED'' THEN 1 ELSE 0 END), 0),\n" +
+                "                        COALESCE(SUM(CASE WHEN status = ''REJECTED'' THEN 1 ELSE 0 END), 0),\n" +
+                "                        COALESCE(SUM(CASE WHEN status = ''PENDING'' THEN 1 ELSE 0 END), 0),\n" +
+                "                        COALESCE(SUM(CASE WHEN status = ''CBP DOWN'' THEN 1 ELSE 0 END), 0),\n" +
+                "                        COUNT(*)\n" +
+                "                  FROM fdapn_' || to_char(audit_date, 'YYYYMMDD') || '.' || table_name_var ||\n" +
+                "                  ' WHERE created_on::DATE = $1\n" +
+                "                  GROUP BY user_id'\n" +
+                "        INTO user_id_var, total_accepted_var, total_rejected_var, total_pending_var, total_cbp_down_var, total_transactions_var\n" +
+                "        USING audit_date;\n" +
+                "        UPDATE public.daily_audit\n" +
+                "        SET\n" +
+                "            date = audit_date,\n" +
+                "            rejected = total_rejected_var,\n" +
+                "            pending = total_pending_var,\n" +
+                "            accepted = total_accepted_var,\n" +
+                "            cbp_down = total_cbp_down_var,\n" +
+                "            total_transactions = total_transactions_var\n" +
+                "        WHERE\n" +
+                "            date = audit_date\n" +
+                "            AND user_id = user_id_var;\n" +
+                "        IF NOT FOUND THEN\n" +
+                "            INSERT INTO public.daily_audit (date, rejected, pending, accepted, cbp_down, total_transactions, user_id)\n" +
+                "            VALUES (audit_date, total_rejected_var, total_pending_var, total_accepted_var, total_cbp_down_var, total_transactions_var, user_id_var);\n" +
+                "        END IF;\n" +
+                "    END LOOP;\n" +
+                "END;\n" +
                 "$$ LANGUAGE plpgsql;";
 
         jdbcTemplate.execute(sqlFunction);

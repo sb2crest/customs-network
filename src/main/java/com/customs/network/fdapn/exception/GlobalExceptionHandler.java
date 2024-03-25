@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.NoSuchElementException;
+
 @ControllerAdvice
 @RestController
 public class GlobalExceptionHandler {
@@ -20,5 +22,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidReferenceIdException.class)
     public ResponseEntity<String> handleInvalidReferenceIdException(InvalidReferenceIdException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<String> handleNoSuchRecordException(NoSuchElementException ex) {
+        return ResponseEntity.status(HttpStatus.OK).body(ex.getMessage());
     }
 }

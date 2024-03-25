@@ -5,7 +5,6 @@ import com.customs.network.fdapn.exception.NotFoundException;
 import com.customs.network.fdapn.exception.RecordNotFoundException;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.TransactionRepository;
-import com.customs.network.fdapn.utils.CustomIdGenerator;
 import com.customs.network.fdapn.utils.DateUtils;
 import com.customs.network.fdapn.utils.JsonUtils;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -51,7 +50,7 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setEnvelopNumber("ENV001");
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
-        customsFdapnSubmit.setStatus(String.valueOf(Status.SUCCESS));
+        customsFdapnSubmit.setStatus(String.valueOf(Status.ACCEPTED));
         JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
         customsFdapnSubmit.setRequestJson(jsonNode);
         JsonNode response = JsonUtils.convertResponseToJson(getResponse(excelResponse,true));
@@ -61,6 +60,7 @@ public class FdaPnRecordSaver {
         log.info("submit saved in Data base : {}", customsFdapnSubmit);
 
     }
+    @Transactional
     public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
         TrackingDetails customerDetails = excelResponse.getTrackingDetails();
         if (isNull(customerDetails) || StringUtils.isBlank(customerDetails.getUserId())) {
@@ -80,7 +80,7 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setEnvelopNumber("ENV003");
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
-        customsFdapnSubmit.setStatus(String.valueOf(Status.FAILED));
+        customsFdapnSubmit.setStatus(String.valueOf(Status.REJECTED));
         JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
         customsFdapnSubmit.setRequestJson(jsonNode);
         JsonNode saveResponse = convertResponseToJson(getResponse(excelResponse, false));
@@ -120,26 +120,6 @@ public class FdaPnRecordSaver {
             throw new RecordNotFoundException("Record not found for referenceId = " + referenceId);
         }
         return customsFdapnSubmit;
-    }
-
-    private List<CustomsFdaPnSubmitDTO> mapCustomsFdaPnSubmitsToDTOs(List<CustomsFdapnSubmit> customsFdaPnSubmits){
-        List<CustomsFdaPnSubmitDTO> customsFdaPnSubmitDTOs = new ArrayList<>();
-        for (CustomsFdapnSubmit record : customsFdaPnSubmits) {
-            CustomsFdaPnSubmitDTO dto = new CustomsFdaPnSubmitDTO();
-            dto.setBatchId(record.getBatchId());
-            dto.setTraceId(record.getTraceId());
-            dto.setUserId(record.getUserId());
-            dto.setAccountId(record.getAccountId());
-            dto.setReferenceId(record.getReferenceId());
-            dto.setEnvelopNumber(record.getEnvelopNumber());
-            dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
-            dto.setUpdatedOn(DateUtils.formatDate(record.getUpdatedOn()));
-            dto.setStatus(record.getStatus());
-            dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
-            dto.setResponseJson((record.getResponseJson()));
-            customsFdaPnSubmitDTOs.add(dto);
-        }
-        return customsFdaPnSubmitDTOs;
     }
 
 }

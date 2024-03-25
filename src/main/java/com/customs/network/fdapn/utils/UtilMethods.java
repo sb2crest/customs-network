@@ -96,7 +96,7 @@ public class UtilMethods {
             throw new InvalidReferenceIdException("Invalid Reference id");
         }
         String schemaName=getSchemaName(refId);
-        String tableName=getTableName(refId);
+        String tableName=getTableName(refId).toLowerCase();
         if(!isSchemaExist(schemaName) && !isTableExist(schemaName,tableName))
             throw new InvalidReferenceIdException("Invalid Reference id");
         return List.of(schemaName,tableName);
