@@ -13,9 +13,9 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.FileNotFoundException;
 import java.lang.reflect.Field;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -142,8 +142,14 @@ public class ExcelReaderService {
             return cell.getStringCellValue();
         } else if (cell.getCellType() == CellType.NUMERIC) {
             if (DateUtil.isCellDateFormatted(cell)) {
-                LocalDate date = cell.getLocalDateTimeCellValue().toLocalDate();
-                return date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+                double numericValue = cell.getNumericCellValue();
+                if (numericValue < 1) {
+                    LocalTime time = cell.getLocalDateTimeCellValue().toLocalTime();
+                    return time.format(DateTimeFormatter.ofPattern("HHmm"));
+                } else {
+                    LocalDate date = cell.getLocalDateTimeCellValue().toLocalDate();
+                    return date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+                }
             } else {
                 return String.valueOf((long) cell.getNumericCellValue());
             }
