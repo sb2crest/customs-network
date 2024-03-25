@@ -4,7 +4,8 @@ import com.customs.network.fdapn.dto.DailyAuditDTO;
 import com.customs.network.fdapn.dto.FinalCount;
 import com.customs.network.fdapn.dto.FinalCountForUser;
 import com.customs.network.fdapn.dto.TotalTransactionCountDto;
-import com.customs.network.fdapn.exception.NotFoundException;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.DailyAudit;
 import com.customs.network.fdapn.repository.DailyAuditRepository;
 import com.customs.network.fdapn.utils.DateUtils;
@@ -29,7 +30,7 @@ public class AuditServiceImpl implements AuditService{
     public FinalCountForUser getUserTransactionsForPeriod(String userId, String period) {
         FinalCountForUser finalCount = new FinalCountForUser();
         if(StringUtils.isEmpty(userId)){
-            throw new NotFoundException("userId is not provided");
+            throw new FdapnCustomExceptions(ErrorResCodes.NOT_FOUND,"userId is not provided");
         }
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -49,7 +50,7 @@ public class AuditServiceImpl implements AuditService{
                     Date startDateWeek = calendar.getTime();
                     transactions = getAuditDataForUser(userId, startDateWeek, endDate);
                 }
-                default -> throw new RuntimeException("invalid period");
+                default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid Option "+period);
             }
         }
         long validationErrorCount = 0, acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
@@ -136,7 +137,7 @@ public class AuditServiceImpl implements AuditService{
             switch (period) {
                 case "today" -> iterateOverDates(calendar, 4, userId, totalTransactionCountDtos);
                 case "week" -> iterateOverDates(calendar, 7, userId, totalTransactionCountDtos);
-                default -> throw new RuntimeException("invalid period");
+                default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid Option "+period);
             }
         }
 

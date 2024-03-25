@@ -99,7 +99,7 @@ public class PostgresFunctionInit {
         jdbcTemplate.execute(functionSql);
     }
     public void createWriteDailyAuditDataFunction() {
-        String sqlFunction =  "CREATE OR REPLACE FUNCTION write_daily_audit_data(date_param VARCHAR)\n" +
+        String sqlFunction = "CREATE OR REPLACE FUNCTION write_daily_audit_data(date_param VARCHAR)\n" +
                 "RETURNS VOID AS $$\n" +
                 "DECLARE\n" +
                 "    schema_name_var TEXT;\n" +
@@ -110,6 +110,7 @@ public class PostgresFunctionInit {
                 "    total_rejected_var BIGINT := 0;\n" +
                 "    total_pending_var BIGINT := 0;\n" +
                 "    total_cbp_down_var BIGINT := 0;\n" +
+                "    total_validation_error_var BIGINT := 0;\n" +
                 "    total_transactions_var BIGINT := 0;\n" +
                 "    dynamic_query TEXT;\n" +
                 "BEGIN\n" +
@@ -124,11 +125,12 @@ public class PostgresFunctionInit {
                 "                        COALESCE(SUM(CASE WHEN status = ''REJECTED'' THEN 1 ELSE 0 END), 0),\n" +
                 "                        COALESCE(SUM(CASE WHEN status = ''PENDING'' THEN 1 ELSE 0 END), 0),\n" +
                 "                        COALESCE(SUM(CASE WHEN status = ''CBP DOWN'' THEN 1 ELSE 0 END), 0),\n" +
+                "                        COALESCE(SUM(CASE WHEN status = ''VALIDATION ERROR'' THEN 1 ELSE 0 END), 0),\n" +
                 "                        COUNT(*)\n" +
                 "                  FROM fdapn_' || to_char(audit_date, 'YYYYMMDD') || '.' || table_name_var ||\n" +
                 "                  ' WHERE created_on::DATE = $1\n" +
                 "                  GROUP BY user_id'\n" +
-                "        INTO user_id_var, total_accepted_var, total_rejected_var, total_pending_var, total_cbp_down_var, total_transactions_var\n" +
+                "        INTO user_id_var, total_accepted_var, total_rejected_var, total_pending_var, total_cbp_down_var, total_validation_error_var, total_transactions_var\n" +
                 "        USING audit_date;\n" +
                 "        UPDATE public.daily_audit\n" +
                 "        SET\n" +
@@ -137,13 +139,14 @@ public class PostgresFunctionInit {
                 "            pending = total_pending_var,\n" +
                 "            accepted = total_accepted_var,\n" +
                 "            cbp_down = total_cbp_down_var,\n" +
+                "            validation_error = total_validation_error_var,\n" +
                 "            total_transactions = total_transactions_var\n" +
                 "        WHERE\n" +
                 "            date = audit_date\n" +
                 "            AND user_id = user_id_var;\n" +
                 "        IF NOT FOUND THEN\n" +
-                "            INSERT INTO public.daily_audit (date, rejected, pending, accepted, cbp_down, total_transactions, user_id)\n" +
-                "            VALUES (audit_date, total_rejected_var, total_pending_var, total_accepted_var, total_cbp_down_var, total_transactions_var, user_id_var);\n" +
+                "            INSERT INTO public.daily_audit (date, rejected, pending, accepted, cbp_down, validation_error, total_transactions, user_id)\n" +
+                "            VALUES (audit_date, total_rejected_var, total_pending_var, total_accepted_var, total_cbp_down_var, total_validation_error_var, total_transactions_var, user_id_var);\n" +
                 "        END IF;\n" +
                 "    END LOOP;\n" +
                 "END;\n" +

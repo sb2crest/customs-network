@@ -1,5 +1,7 @@
 package com.customs.network.fdapn.utils;
 
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.exception.InvalidReferenceIdException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,7 +36,7 @@ public class UtilMethods {
         try {
             return outputFormat.format(inputFormat.parse(date));
         } catch (ParseException e) {
-            throw new RuntimeException("Error in parsing");
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error in parsing date "+date);
         }
     }
 
@@ -93,12 +95,12 @@ public class UtilMethods {
     }
     public List<String> validateRefId(String refId){
         if(refId.length()!=26){
-            throw new InvalidReferenceIdException("Invalid Reference id");
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID,"Length mismatch : Expected 26,Actual "+refId.length());
         }
         String schemaName=getSchemaName(refId);
         String tableName=getTableName(refId).toLowerCase();
         if(!isSchemaExist(schemaName) && !isTableExist(schemaName,tableName))
-            throw new InvalidReferenceIdException("Invalid Reference id");
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID);
         return List.of(schemaName,tableName);
     }
 }

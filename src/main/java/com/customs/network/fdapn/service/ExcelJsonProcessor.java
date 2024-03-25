@@ -2,6 +2,8 @@ package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
 import com.customs.network.fdapn.dto.ExcelResponse;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +28,7 @@ public class ExcelJsonProcessor {
                 try {
                     result.get(SUCCESS_SUBMIT.getStatus()).add(XmlConverterService.convertToXml(excelResponse.getTrackingDetails()));
                 } catch (JAXBException e) {
-                    throw new RuntimeException(e);
+                    throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error while converting to xml , "+e);
                 }
             } else {
                 boolean userIdExists = excelResponse.getValidationErrors().stream()

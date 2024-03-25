@@ -26,12 +26,13 @@ public class AuditSchedulers {
     public void executeAuditFunction() {
         String functionName = "write_daily_audit_data";
         String dateParam = LocalDate.now().format(DateTimeFormatter.ISO_DATE); // Current date in 'yyyy-MM-dd' format
-        log.info("date - {}",dateParam);
+        log.info("Scanning schema for audit started");
+
         jdbcTemplate.execute("SELECT " + functionName + "(?)", (PreparedStatementCallback<Void>) ps -> {
             ps.setString(1, dateParam);
             ps.execute();
             return null;
         });
-        log.info("saved count in daily table");
+        log.info("Scanning schema completed and Daily audit table updated");
     }
 }

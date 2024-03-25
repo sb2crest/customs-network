@@ -1,5 +1,7 @@
 package com.customs.network.fdapn.utils;
 
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.CustomsFdapnSubmit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,7 +39,7 @@ public class TransactionExtractor implements ResultSetExtractor<List<CustomsFdap
                 request.setRequestJson(objectMapper.readTree(rs.getString("request_json")));
                 request.setResponseJson(objectMapper.readTree(rs.getString("response_json")));
             } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
+                throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error in converting JsonB to string , "+e);
             }
             request.setStatus(rs.getString("status"));
             request.setTraceId(rs.getString("trace_id"));

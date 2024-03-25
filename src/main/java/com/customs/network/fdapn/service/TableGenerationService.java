@@ -2,6 +2,8 @@ package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.FilterCriteriaDTO;
 import com.customs.network.fdapn.dto.PageDTO;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.initializers.PostgresFunctionInit;
 import com.customs.network.fdapn.model.CustomsFdapnSubmit;
 import com.customs.network.fdapn.repository.TransactionRepository;
@@ -77,42 +79,52 @@ public class TableGenerationService implements TransactionRepository {
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, schema, tableName));
     }
     public void createTable(String schemaName, String tableName) {
-        String sql = "CREATE TABLE IF NOT EXISTS " + schemaName + "." + tableName + " ("
-                + "serial BIGINT PRIMARY KEY,"
-                + "batch_id character varying(255) COLLATE pg_catalog.\"default\" NOT NULL,"
-                + "account_id character varying(255) COLLATE pg_catalog.\"default\","
-                + "created_on timestamp,"
-                + "envelop_number character varying(255) COLLATE pg_catalog.\"default\","
-                + "reference_id character varying(255) COLLATE pg_catalog.\"default\","
-                + "request_json jsonb,"
-                + "response_json jsonb,"
-                + "status character varying(255) COLLATE pg_catalog.\"default\","
-                + "trace_id character varying(255) COLLATE pg_catalog.\"default\","
-                + "updated_on date,"
-                + "user_id character varying(255) COLLATE pg_catalog.\"default\""
-                + ") PARTITION BY RANGE (serial)";
+        try {
+            String sql = "CREATE TABLE IF NOT EXISTS " + schemaName + "." + tableName + " ("
+                    + "serial BIGINT PRIMARY KEY,"
+                    + "batch_id character varying(255) COLLATE pg_catalog.\"default\" NOT NULL,"
+                    + "account_id character varying(255) COLLATE pg_catalog.\"default\","
+                    + "created_on timestamp,"
+                    + "envelop_number character varying(255) COLLATE pg_catalog.\"default\","
+                    + "reference_id character varying(255) COLLATE pg_catalog.\"default\","
+                    + "request_json jsonb,"
+                    + "response_json jsonb,"
+                    + "status character varying(255) COLLATE pg_catalog.\"default\","
+                    + "trace_id character varying(255) COLLATE pg_catalog.\"default\","
+                    + "updated_on date,"
+                    + "user_id character varying(255) COLLATE pg_catalog.\"default\""
+                    + ") PARTITION BY RANGE (serial)";
 
-        jdbcTemplate.execute(sql);
-        String firstPartitionTable = "CREATE TABLE " +
-                schemaName+"."+tableName + "_1 PARTITION OF " +
-                schemaName + "." +
-                tableName + " FOR VALUES FROM (1) TO (" + (max+1 )+ ")";
-        jdbcTemplate.execute(firstPartitionTable);
+            jdbcTemplate.execute(sql);
+            String firstPartitionTable = "CREATE TABLE " +
+                    schemaName + "." + tableName + "_1 PARTITION OF " +
+                    schemaName + "." +
+                    tableName + " FOR VALUES FROM (1) TO (" + (max + 1) + ")";
+            jdbcTemplate.execute(firstPartitionTable);
+        } catch (DataAccessException e) {
+            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Error creating transaction table for  : "+e);
+
+        }
     }
+
 
     private void createPartitionTable(String schemaName, String tableName, Long numberOfRecords) {
-        Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
-        Long noOfRecords=utilMethods.getNumberOfRecords(schemaName,tableName+"_"+partitions);
-        if(noOfRecords==0){
-           utilMethods.deletePartitionTable(schemaName,tableName,partitions);
-           partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
+        try {
+            Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
+            Long noOfRecords = utilMethods.getNumberOfRecords(schemaName, tableName + "_" + partitions);
+            if (noOfRecords == 0) {
+                utilMethods.deletePartitionTable(schemaName, tableName, partitions);
+                partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
+            }
+            String sql = "CREATE TABLE " +
+                    schemaName + "." + tableName + "_" + (partitions + 1) + " PARTITION OF " +
+                    schemaName + "." + tableName + " FOR VALUES FROM (" + (numberOfRecords + 1) + ") TO (" + (numberOfRecords + max + 1) + ")";
+            jdbcTemplate.execute(sql);
+        } catch (DataAccessException e) {
+            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Error creating partition table : "+e);
         }
-       String sql = "CREATE TABLE " +
-                schemaName + "." + tableName + "_" + (partitions + 1) + " PARTITION OF " +
-                schemaName + "." + tableName + " FOR VALUES FROM (" + (numberOfRecords + 1) + ") TO (" + (numberOfRecords + max+1) + ")";
-        jdbcTemplate.execute(sql);
-
     }
+
     private CustomsFdapnSubmit saveToTransactionTable(CustomsFdapnSubmit request, String schemaName, String tableName) {
         try {
             String insertSql = "INSERT INTO " + schemaName + "." + tableName + " (serial, batch_id, account_id, created_on, envelop_number, reference_id, request_json, response_json, status, trace_id, updated_on, user_id) "
@@ -142,7 +154,7 @@ public class TableGenerationService implements TransactionRepository {
             );
             return request;
         } catch (DataAccessException e) {
-            throw new RuntimeException("Failed to save to transaction table: " + e.getMessage());
+            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Failed to save data for "+request.getUserId()+ " : "+e);
         }
     }
     @Override
@@ -198,7 +210,6 @@ public class TableGenerationService implements TransactionRepository {
             int totalPartitions = (int) ((totalRecords - 1) / partitionSize + 1);
             int startPartition = (startRecord - 1) / partitionSize + 1;
             int endPartition = Math.min((endRecord - 1) / partitionSize + 1, totalPartitions);
-
             List<CustomsFdapnSubmit> results = new LinkedList<>();
             for (int partition = endPartition; partition >= startPartition; partition--) {
                 int partitionStartRecord = (partition - 1) * partitionSize + 1;
@@ -208,7 +219,7 @@ public class TableGenerationService implements TransactionRepository {
 
                 if (partitionStartRecord <= endRecord && partitionEndRecord >= startRecord) {
                     offSet = Math.max(startRecord - partitionStartRecord, 0);
-                    recordsToFetch = Math.min(partitionEndRecord, endRecord) - Math.max(partitionStartRecord, startRecord) + 1;
+                     recordsToFetch = Math.min(partitionEndRecord, endRecord) - Math.max(partitionStartRecord, startRecord) + 1;
                 }
 
                 if (recordsToFetch > 0) {
@@ -230,7 +241,7 @@ public class TableGenerationService implements TransactionRepository {
             pageDTO.setData(results);
             return pageDTO;
         }catch(Exception e){
-            throw new RuntimeException("Error in fetching pages");
+            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Error while fetching transaction pages\n "+e);
         }
     }
 
@@ -261,28 +272,32 @@ public class TableGenerationService implements TransactionRepository {
 
             return pageDTO;
         } catch (Exception e) {
-            throw new RuntimeException("Error fetching records by filter", e);
+            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Error fetching records by filter\n "+e);
         }
     }
 
     @Override
     public  PageDTO<CustomsFdapnSubmit> scanSchemaByColValue(String fieldName, String value, String startDate, String endDate, String userId,int page, int size) {
-        String query = "SELECT * FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?) " +
-                "ORDER BY created_on DESC " +
-                "LIMIT ? OFFSET ?";
-        String countQuery = "SELECT COUNT(*) FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?)";
-        String schemaPrefix="fdapn";
-        int offSet = (page - 1) * size;
-        Object[] args = {fieldName, value, schemaPrefix, startDate, endDate, userId, size, offSet};
-        Object[] argsForCount = {fieldName, value, schemaPrefix, startDate, endDate, userId};
-        List<CustomsFdapnSubmit> customsFdaPnSubmitListSubmit = jdbcTemplate.query(query,new TransactionExtractor(objectMapper),args);
-        Long totalRecords = jdbcTemplate.queryForObject(countQuery, Long.class,argsForCount);
-        PageDTO<CustomsFdapnSubmit> pageDTO = new PageDTO<>();
-        pageDTO.setPageSize(customsFdaPnSubmitListSubmit != null ? customsFdaPnSubmitListSubmit.size() : 0);
-        pageDTO.setPage(page);
-        pageDTO.setTotalRecords(totalRecords);
-        pageDTO.setData(customsFdaPnSubmitListSubmit);
-        return pageDTO;
+        try {
+            String query = "SELECT * FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?) " +
+                    "ORDER BY created_on DESC " +
+                    "LIMIT ? OFFSET ?";
+            String countQuery = "SELECT COUNT(*) FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?)";
+            String schemaPrefix = "fdapn";
+            int offSet = (page - 1) * size;
+            Object[] args = {fieldName, value, schemaPrefix, startDate, endDate, userId, size, offSet};
+            Object[] argsForCount = {fieldName, value, schemaPrefix, startDate, endDate, userId};
+            List<CustomsFdapnSubmit> customsFdaPnSubmitListSubmit = jdbcTemplate.query(query, new TransactionExtractor(objectMapper), args);
+            Long totalRecords = jdbcTemplate.queryForObject(countQuery, Long.class, argsForCount);
+            PageDTO<CustomsFdapnSubmit> pageDTO = new PageDTO<>();
+            pageDTO.setPageSize(customsFdaPnSubmitListSubmit != null ? customsFdaPnSubmitListSubmit.size() : 0);
+            pageDTO.setPage(page);
+            pageDTO.setTotalRecords(totalRecords);
+            pageDTO.setData(customsFdaPnSubmitListSubmit);
+            return pageDTO;
+        }catch (Exception e){
+            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Problem in scanning schema \n "+e);
+        }
     }
 
 

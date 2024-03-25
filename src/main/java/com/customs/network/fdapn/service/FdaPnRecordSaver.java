@@ -1,8 +1,8 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.*;
-import com.customs.network.fdapn.exception.NotFoundException;
-import com.customs.network.fdapn.exception.RecordNotFoundException;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.TransactionRepository;
 import com.customs.network.fdapn.utils.DateUtils;
@@ -34,7 +34,7 @@ public class FdaPnRecordSaver {
     public void save(ExcelResponse excelResponse) {
         TrackingDetails customerDetails = excelResponse.getTrackingDetails();
         if (customerDetails == null) {
-            throw new NotFoundException("CustomerDetails cannot be null");
+            throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS,"CustomerDetails cannot be null");
         }
         Date date = new Date();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -65,7 +65,7 @@ public class FdaPnRecordSaver {
     public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
         TrackingDetails customerDetails = excelResponse.getTrackingDetails();
         if (isNull(customerDetails) || StringUtils.isBlank(customerDetails.getUserId())) {
-            throw new NotFoundException(isNull(customerDetails) ? "CustomerDetails cannot be null" : "User ID cannot be null or empty");
+            throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS,isNull(customerDetails) ? "CustomerDetails cannot be null" : "User ID cannot be null or empty");
         }
         CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
         Date date = new Date();
@@ -118,7 +118,7 @@ public class FdaPnRecordSaver {
     public CustomsFdapnSubmit getFdaPn(String referenceId) {
         CustomsFdapnSubmit customsFdapnSubmit = transactionRepository.fetchTransaction(referenceId);
         if (isNull(customsFdapnSubmit)) {
-            throw new RecordNotFoundException("Record not found for referenceId = " + referenceId);
+            throw new FdapnCustomExceptions(ErrorResCodes.RECORD_NOT_FOUND,"Reference id "+referenceId);
         }
         return customsFdapnSubmit;
     }
