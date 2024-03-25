@@ -29,7 +29,7 @@ public class AuditController {
     public ResponseEntity<FinalCountForUser> getUserTransactionsForWeek(@RequestParam String userId,
                                                                          @RequestParam(required = false) String period) {
 
-        FinalCountForUser transactions = auditService.getUserTransactionsForWeek(userId, period);
+        FinalCountForUser transactions = auditService.getUserTransactionsForPeriod(userId, period);
         return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
     @GetMapping("/get-all-transaction")

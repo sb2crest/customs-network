@@ -18,6 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.customs.network.fdapn.model.MessageCode.SUCCESS_SUBMIT;
 import static com.customs.network.fdapn.utils.JsonUtils.*;
 import static java.util.Objects.isNull;
 
@@ -50,7 +51,7 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setEnvelopNumber("ENV001");
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
-        customsFdapnSubmit.setStatus(String.valueOf(Status.ACCEPTED));
+        customsFdapnSubmit.setStatus(SUCCESS_SUBMIT.getStatus());
         JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
         customsFdapnSubmit.setRequestJson(jsonNode);
         JsonNode response = JsonUtils.convertResponseToJson(getResponse(excelResponse,true));
@@ -80,7 +81,7 @@ public class FdaPnRecordSaver {
         customsFdapnSubmit.setEnvelopNumber("ENV003");
         customsFdapnSubmit.setCreatedOn(new Date());
         customsFdapnSubmit.setUpdatedOn(new Date());
-        customsFdapnSubmit.setStatus(String.valueOf(Status.REJECTED));
+        customsFdapnSubmit.setStatus(MessageCode.VALIDATION_ERRORS.getStatus());
         JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
         customsFdapnSubmit.setRequestJson(jsonNode);
         JsonNode saveResponse = convertResponseToJson(getResponse(excelResponse, false));

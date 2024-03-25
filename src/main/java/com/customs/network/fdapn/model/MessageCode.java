@@ -1,12 +1,11 @@
 package com.customs.network.fdapn.model;
 
 public enum MessageCode {
-    SUCCESS_SUBMIT("001", "Accepted"),
-    VALIDATION_ERRORS("002", "Validation Errors"),
-    REJECT("003","Rejected"),
-    PENDING("004","Pending"),
-    CBP_DOWN("005","CBP Down"),
-    INVALID_USER("006","Invalid User")
+    SUCCESS_SUBMIT("001", "PENDING"),
+    VALIDATION_ERRORS("002", "VALIDATION ERROR"),
+    REJECT("003","REJECTED"),
+    CBP_DOWN("004","CBP DOWN"),
+    INVALID_USER("005","Invalid User")
     ;
 
     private final String code;
