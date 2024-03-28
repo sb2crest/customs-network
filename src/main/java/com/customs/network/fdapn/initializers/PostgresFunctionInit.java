@@ -154,4 +154,90 @@ public class PostgresFunctionInit {
 
         jdbcTemplate.execute(sqlFunction);
     }
+    public void createWritePortInfoFunction() {
+        String fillPortInfoFunction =
+                "CREATE OR REPLACE FUNCTION update_port_info(date_param VARCHAR, user_id_param VARCHAR DEFAULT NULL) " +
+                        "RETURNS VOID AS $$ " +
+                        "DECLARE " +
+                        "    schema_name_var TEXT; " +
+                        "    table_name_var TEXT; " +
+                        "    user_id_var VARCHAR; " +
+                        "    audit_date DATE := date_param::DATE; " +
+                        "    port_number_var INTEGER; " +
+                        "    total_accepted_var BIGINT := 0; " +
+                        "    total_rejected_var BIGINT := 0; " +
+                        "    total_pending_var BIGINT := 0; " +
+                        "    arrival_location VARCHAR; " +
+                        "BEGIN " +
+                        "    FOR table_name_var IN " +
+                        "        SELECT table_name " +
+                        "        FROM information_schema.tables " +
+                        "        WHERE table_schema = 'fdapn_' || to_char(audit_date, 'YYYYMMDD') " +
+                        "        AND table_name !~ '.*_[0-9]+$' " +
+                        "        AND (user_id_param IS NULL OR table_name LIKE 'fdapn_' || user_id_param || '%') " +
+                        "    LOOP " +
+                        "        RAISE NOTICE 'Scanning table %', table_name_var; " +
+                        "        BEGIN " +
+                        "            EXECUTE 'SELECT user_id FROM ' || 'fdapn_' || to_char(audit_date, 'YYYYMMDD') || '.' || table_name_var || ' LIMIT 1' " +
+                        "            INTO user_id_var; " +
+                        "        EXCEPTION " +
+                        "            WHEN others THEN " +
+                        "                RAISE NOTICE 'Error getting user ID from table %: %', table_name_var, SQLERRM; " +
+                        "                CONTINUE; " +
+                        "        END; " +
+                        "        IF user_id_param IS NOT NULL AND user_id_param <> user_id_var THEN " +
+                        "            CONTINUE; " +
+                        "        END IF; " +
+                        "        FOR arrival_location IN " +
+                        "            EXECUTE 'SELECT DISTINCT request_json->>''arrivalLocation'' FROM ' || 'fdapn_' || to_char(audit_date, 'YYYYMMDD') || '.' || table_name_var " +
+                        "        LOOP " +
+                        "            BEGIN " +
+                        "                port_number_var := arrival_location::INTEGER; " +
+                        "            EXCEPTION " +
+                        "                WHEN others THEN " +
+                        "                    RAISE NOTICE 'Error converting arrival_location to INTEGER for table %: %', table_name_var, SQLERRM; " +
+                        "                    CONTINUE; " +
+                        "            END; " +
+                        "            BEGIN " +
+                        "                EXECUTE 'SELECT " +
+                        "                                COALESCE(SUM(CASE WHEN status = ''ACCEPTED'' THEN 1 ELSE 0 END), 0) AS total_accepted, " +
+                        "                                COALESCE(SUM(CASE WHEN status = ''REJECTED'' THEN 1 ELSE 0 END), 0) AS total_rejected, " +
+                        "                                COALESCE(SUM(CASE WHEN status = ''PENDING'' THEN 1 ELSE 0 END), 0) AS total_pending " +
+                        "                          FROM ' || 'fdapn_' || to_char(audit_date, 'YYYYMMDD') || '.' || table_name_var || " +
+                        "                          ' WHERE (request_json->>''arrivalLocation'')::INTEGER = $1' " +
+                        "                INTO total_accepted_var, total_rejected_var, total_pending_var " +
+                        "                USING port_number_var; " +
+                        "            EXCEPTION " +
+                        "                WHEN others THEN " +
+                        "                    RAISE NOTICE 'Error calculating status counts for table %: %', table_name_var, SQLERRM; " +
+                        "                    CONTINUE; " +
+                        "            END; " +
+                        "            BEGIN " +
+                        "                UPDATE public.port_info " +
+                        "                SET " +
+                        "                    accepted_count = total_accepted_var, " +
+                        "                    date = audit_date, " +
+                        "                    pending_count = total_pending_var, " +
+                        "                    rejected_count = total_rejected_var, " +
+                        "                    total_count = total_accepted_var + total_rejected_var + total_pending_var " +
+                        "                WHERE " +
+                        "                    date = audit_date " +
+                        "                    AND user_id = user_id_var " +
+                        "                    AND port_number = port_number_var; " +
+                        "                IF NOT FOUND THEN " +
+                        "                    INSERT INTO public.port_info (accepted_count, date, pending_count, port_number, rejected_count, total_count, user_id) " +
+                        "                    VALUES (total_accepted_var, audit_date, total_pending_var, port_number_var, total_rejected_var, total_accepted_var + total_rejected_var + total_pending_var, user_id_var); " +
+                        "                END IF; " +
+                        "            EXCEPTION " +
+                        "                WHEN others THEN " +
+                        "                    RAISE NOTICE 'Error updating or inserting into port_info table for table %: %', table_name_var, SQLERRM; " +
+                        "            END; " +
+                        "        END LOOP; " +
+                        "    END LOOP; " +
+                        "END; " +
+                        "$$ LANGUAGE plpgsql;";
+
+        jdbcTemplate.execute(fillPortInfoFunction);
+    }
+
 }

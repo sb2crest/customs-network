@@ -118,7 +118,7 @@ public class FdaPnRecordSaver {
     public CustomsFdapnSubmit getFdaPn(String referenceId) {
         CustomsFdapnSubmit customsFdapnSubmit = transactionRepository.fetchTransaction(referenceId);
         if (isNull(customsFdapnSubmit)) {
-            throw new FdapnCustomExceptions(ErrorResCodes.RECORD_NOT_FOUND,"Reference id "+referenceId);
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID,"Invalid Reference id "+referenceId);
         }
         return customsFdapnSubmit;
     }

@@ -1,13 +1,12 @@
 package com.customs.network.fdapn.service;
 
-import com.customs.network.fdapn.dto.DailyAuditDTO;
-import com.customs.network.fdapn.dto.FinalCount;
-import com.customs.network.fdapn.dto.FinalCountForUser;
-import com.customs.network.fdapn.dto.TotalTransactionCountDto;
+import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.DailyAudit;
+import com.customs.network.fdapn.model.PortInfo;
 import com.customs.network.fdapn.repository.DailyAuditRepository;
+import com.customs.network.fdapn.repository.PortInfoRepository;
 import com.customs.network.fdapn.utils.DateUtils;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,10 +19,12 @@ import java.util.stream.Collectors;
 public class AuditServiceImpl implements AuditService{
 
     private final DailyAuditRepository dailyAuditRepository;
+    private final PortInfoRepository portInfoRepository;
 
     @Autowired
-    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository) {
+    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository, PortInfoRepository portInfoRepository) {
         this.dailyAuditRepository = dailyAuditRepository;
+        this.portInfoRepository = portInfoRepository;
     }
 
     @Override
@@ -159,6 +160,26 @@ public class AuditServiceImpl implements AuditService{
         finalCount.setAllTransactions(overallTotal);
         finalCount.setTotalTransactionCountDtos(totalTransactionCountDtos);
         return finalCount;
+    }
+
+    @Override
+    public List<PortInfoDto> getByUser(String userId, String portCode) {
+        List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId,portCode);
+        return portInfoList.stream()
+                .filter(Objects::nonNull)
+                .map(entity -> {
+                    PortInfoDto portInfoDto = new PortInfoDto();
+                    portInfoDto.setSno(entity.getSno());
+                    portInfoDto.setPortCode(entity.getPortNumber());
+                    portInfoDto.setUserId(entity.getUserId());
+                    portInfoDto.setDate(DateUtils.formatterDate(entity.getDate()));
+                    portInfoDto.setAcceptedCount(entity.getAcceptedCount());
+                    portInfoDto.setPendingCount(entity.getPendingCount());
+                    portInfoDto.setRejectedCount(entity.getRejectedCount());
+                    portInfoDto.setTotalCount(entity.getTotalCount());
+                    return portInfoDto;
+                })
+                .toList();
     }
 
     private void iterateOverDates(Calendar calendar, int daysToIterate, String userId, List<TotalTransactionCountDto> totalTransactionCountDtos) {
