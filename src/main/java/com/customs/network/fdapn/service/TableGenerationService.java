@@ -44,32 +44,32 @@ public class TableGenerationService implements TransactionRepository {
     }
     @Override
     public CustomsFdapnSubmit saveTransaction(CustomsFdapnSubmit request) {
-        String schema ="fdapn_"+utilMethods.getFormattedDate();
-        String tableName ="fdapn_"+request.getUserId().toLowerCase();
-        if (isTableExist(schema, tableName)) {
-            Long numberOfRecords= utilMethods.getNumberOfRecords(schema,tableName);
-            Long lastId= utilMethods.getLastIdInTheTable(schema,tableName);
+        String schema = "fdapn_" + utilMethods.getFormattedDate();
+        String userIdLowerCase = request.getUserId().toLowerCase();
+        String tableName = "fdapn_" + userIdLowerCase;
+        Long lastId;
 
-            int newMax = (lastId>numberOfRecords)?(int) Math.ceil((double) lastId / max) * max:(int) Math.ceil((double) numberOfRecords / max) * max;
-            String refId=idGenerator.generator(request.getUserId(),lastId);
+        if (isTableExist(schema, tableName)) {
+            Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
+            lastId = utilMethods.getLastIdInTheTable(schema, tableName);
+            int newMax = (lastId > numberOfRecords) ? (int) Math.ceil((double) lastId / max) * max : (int) Math.ceil((double) numberOfRecords / max) * max;
+            String refId = idGenerator.generator(request.getUserId(), lastId);
             request.setReferenceId(refId);
             request.setSlNo(idGenerator.parseIdFromRefId(refId));
             if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
-                Long missingRecords = (lastId == newMax ) ? lastId - numberOfRecords : 0;
+                Long missingRecords = (lastId == newMax) ? lastId - numberOfRecords : 0;
                 createPartitionTable(schema, tableName, numberOfRecords + missingRecords);
             }
         } else {
             createTable(schema, tableName);
-
-            Long lastId= utilMethods.getLastIdInTheTable(schema,tableName);
-            String refId=idGenerator.generator(request.getUserId(), lastId);
-
+            lastId = utilMethods.getLastIdInTheTable(schema, tableName);
+            String refId = idGenerator.generator(request.getUserId(), lastId);
             request.setReferenceId(refId);
             request.setSlNo(idGenerator.parseIdFromRefId(refId));
         }
         return saveToTransactionTable(request, schema, tableName);
-
     }
+
 
     private boolean isTableExist(String schema, String tableName) {
         String sql = "SELECT EXISTS (" +
@@ -278,8 +278,11 @@ public class TableGenerationService implements TransactionRepository {
 
     @Override
     public  PageDTO<CustomsFdapnSubmit> scanSchemaByColValue(String fieldName, String value, String startDate, String endDate, String userId,int page, int size) {
-        try {
-            String query = "SELECT * FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?) " +
+            if(!DateUtils.isValidDate(endDate))
+                throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid End date(Expected format : yyyy-MM-dd , Provided : "+endDate +" )");
+            if(startDate !=null && !DateUtils.isValidDateFormat(startDate))
+                throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid End date(Expected format : yyyy-MM-dd , Provided : "+startDate +" )");
+        String query = "SELECT * FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?) " +
                     "ORDER BY created_on DESC " +
                     "LIMIT ? OFFSET ?";
             String countQuery = "SELECT COUNT(*) FROM fetch_data_by_status_and_date(?, ?, ?, ?, ?, ?)";
@@ -295,9 +298,6 @@ public class TableGenerationService implements TransactionRepository {
             pageDTO.setTotalRecords(totalRecords);
             pageDTO.setData(customsFdaPnSubmitListSubmit);
             return pageDTO;
-        }catch (Exception e){
-            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Problem in scanning schema \n "+e);
-        }
     }
 
 

@@ -5,7 +5,7 @@ public enum MessageCode {
     VALIDATION_ERRORS("002", "VALIDATION ERROR"),
     REJECT("003","REJECTED"),
     CBP_DOWN("004","CBP DOWN"),
-    INVALID_USER("005","Invalid User")
+    INVALID_USER("005","INVALID_USER")
     ;
 
     private final String code;

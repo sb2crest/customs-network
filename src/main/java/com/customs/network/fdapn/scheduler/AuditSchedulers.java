@@ -25,7 +25,7 @@ public class AuditSchedulers {
     @Scheduled(fixedRate = 30000)
     public void executeAuditFunction() {
         String functionName = "write_daily_audit_data";
-        String dateParam = LocalDate.now().format(DateTimeFormatter.ISO_DATE); // Current date in 'yyyy-MM-dd' format
+        String dateParam = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
         log.info("Scanning schema for audit started");
 
         jdbcTemplate.execute("SELECT " + functionName + "(?)", (PreparedStatementCallback<Void>) ps -> {
