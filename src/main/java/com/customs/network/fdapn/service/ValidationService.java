@@ -70,53 +70,76 @@ public class ValidationService {
     private static final Set<String> CANADA_STATE_CODES = Set.of(
             "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"
     );
-    private static final Map<String, List<String>> governmentAgencyProcessingCode = new HashMap<>();
-    private static final Map<String, List<String>> productNumber = new HashMap<>();
-    private static final Map<String, List<String>> countryOfProduction = new HashMap<>();
-    private static final Map<String, List<String>> uom = new HashMap<>();
-    private static final Map<String, List<String>> baseUom = new HashMap<>();
+    private static final Map<String, Set<String>> mapProcessingCodes = initializeMapProcessingCodes();
+    private static final Map<String, Set<String>> mapProductNumbers = initializeMapProductNumbers();
+    private static final Map<String, Set<String>> mapCountriesOfProduction = initializeMapCountriesOfProduction();
+    private static final Map<String, Set<String>> mapUom = initializeMapUom();
+    private static final Map<String, Set<String>> mapBaseUom = initializeMapBaseUom();
 
-    static {
-        governmentAgencyProcessingCode.put("BIO", Arrays.asList("ALG", "VAC", "HCT", "XEN", "CGT", "BLO", "BLD", "BDP", "BBA", "PVE"));
-        governmentAgencyProcessingCode.put("COS", Collections.emptyList());
-        governmentAgencyProcessingCode.put("DRU", Arrays.asList("PRE", "OTC", "INV", "PHN", "RND"));
-        governmentAgencyProcessingCode.put("DEV", Arrays.asList("RED", "NED"));
-        governmentAgencyProcessingCode.put("RAD", Arrays.asList("REP"));
-        governmentAgencyProcessingCode.put("TOB", Arrays.asList("CSU", "FFM", "INV"));
-        governmentAgencyProcessingCode.put("VME", Arrays.asList("ADE", "ADR"));
 
-        productNumber.put("BIO", Arrays.asList("57"));
-        productNumber.put("COS", Arrays.asList("50", "53"));
-        productNumber.put("DRU", Arrays.asList("54", "56", "60", "61", "62", "63", "64", "65", "66"));
-        productNumber.put("DEV", Arrays.asList("73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "91", "92"));
-        productNumber.put("RAD", Arrays.asList("94", "95", "96", "97"));
-        productNumber.put("TOB", Arrays.asList("98"));
-        productNumber.put("VME", Arrays.asList("54", "56", "60", "61", "62", "63", "64", "65", "66", "67"));
+    private static Map<String, Set<String>> initializeMapProcessingCodes() {
+        Map<String, Set<String>> mapProcessingCodes = new HashMap<>();
+        mapProcessingCodes.put("BIO", new HashSet<>(Arrays.asList("ALG", "VAC", "HCT", "XEN", "CGT", "BLO", "BLD", "BDP", "BBA", "PVE")));
+        mapProcessingCodes.put("COS", new HashSet<>(Collections.emptyList()));
+        mapProcessingCodes.put("DRU", new HashSet<>(Arrays.asList("PRE", "OTC", "INV", "PHN", "RND")));
+        mapProcessingCodes.put("DEV", new HashSet<>(Arrays.asList("RED", "NED")));
+        mapProcessingCodes.put("RAD", new HashSet<>(Arrays.asList("REP")));
+        mapProcessingCodes.put("TOB", new HashSet<>(Arrays.asList("CSU", "FFM", "INV")));
+        mapProcessingCodes.put("VME", new HashSet<>(Arrays.asList("ADE", "ADR")));
+        mapProcessingCodes.put("FOO", new HashSet<>(Arrays.asList("NSF", "PRO", "FEE", "ADD", "DSU", "CCW")));
+        return mapProcessingCodes;
+    }
 
-        countryOfProduction.put("BIO", Arrays.asList("39", "30"));
-        countryOfProduction.put("COS", Arrays.asList("39"));
-        countryOfProduction.put("DRU", Arrays.asList("30", "39"));
-        countryOfProduction.put("DEV", Arrays.asList("30", "39"));
-        countryOfProduction.put("RAD", Arrays.asList("30", "39"));
-        countryOfProduction.put("TOB", Arrays.asList("39", "262", "HRV", "30"));
-        countryOfProduction.put("VME", Arrays.asList("30", "39"));
+    private static Map<String, Set<String>> initializeMapProductNumbers() {
+        Map<String, Set<String>> mapProductNumbers = new HashMap<>();
+        mapProductNumbers.put("BIO", new HashSet<>(Arrays.asList("57")));
+        mapProductNumbers.put("COS", new HashSet<>(Arrays.asList("50", "53")));
+        mapProductNumbers.put("DRU", new HashSet<>(Arrays.asList("54", "56", "60", "61", "62", "63", "64", "65", "66")));
+        mapProductNumbers.put("DEV", new HashSet<>(Arrays.asList("73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "91", "92")));
+        mapProductNumbers.put("RAD", new HashSet<>(Arrays.asList("94", "95", "96", "97")));
+        mapProductNumbers.put("TOB", new HashSet<>(Arrays.asList("98")));
+        mapProductNumbers.put("VME", new HashSet<>(Arrays.asList("54", "56", "60", "61", "62", "63", "64", "65", "66", "67")));
+        mapProductNumbers.put("FOO", new HashSet<>(Arrays.asList("02", "03", "04", "05", "07", "08", "09", "12", "13", "14", "15", "16", "17", "18", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "45", "46", "47", "50", "52", "54", "69", "70", "71", "72")));
+        return mapProductNumbers;
+    }
 
-        uom.put("BIO", Arrays.asList("AE", "AM", "AP", "AT", "BA", "BC", "BG", "BO", "BQ", "BS", "BV", "BX", "CA", "CI", "CON", "CS", "CT", "CX", "CY", "DR", "EN", "FD", "GB", "MB", "PAL", "PC", "PK", "SY", "VI", "TU", "VP", "VL"));
-        uom.put("COS", Arrays.asList());
-        uom.put("DRU", Arrays.asList());
-        uom.put("DEV", Arrays.asList("CS", "CT", "BX", "PK"));
-        uom.put("RAD", Arrays.asList("CS", "CT", "BX", "PK"));
-        uom.put("TOB", Arrays.asList("AT", "BL", "BN", "BX", "CON", "CS", "CT", "CTR", "DR", "KIT", "PK", "VI", "VL"));
-        uom.put("VME", Arrays.asList());
+    private static Map<String, Set<String>> initializeMapCountriesOfProduction() {
+        Map<String, Set<String>> mapCountriesOfProduction = new HashMap<>();
+        mapCountriesOfProduction.put("BIO", new HashSet<>(Arrays.asList("39", "30")));
+        mapCountriesOfProduction.put("COS", new HashSet<>(Arrays.asList("39")));
+        mapCountriesOfProduction.put("DRU", new HashSet<>(Arrays.asList("30", "39")));
+        mapCountriesOfProduction.put("DEV", new HashSet<>(Arrays.asList("30", "39")));
+        mapCountriesOfProduction.put("RAD", new HashSet<>(Arrays.asList("30", "39")));
+        mapCountriesOfProduction.put("TOB", new HashSet<>(Arrays.asList("39", "262", "HRV", "30")));
+        mapCountriesOfProduction.put("VME", new HashSet<>(Arrays.asList("30", "39")));
+        mapCountriesOfProduction.put("FOO", new HashSet<>(Arrays.asList("39", "262")));
+        return mapCountriesOfProduction;
+    }
 
-        baseUom.put("BIO", Arrays.asList("AU", "BAU", "CAP", "CG", "FOZ", "G", "GAL", "KG", "L", "LB", "MG", "ML", "MCG", "NO", "OZ", "PCS", "PNU", "PTL", "QTL", "TAB"));
-        baseUom.put("COS", Arrays.asList());
-        baseUom.put("DRU", Arrays.asList("BBL", "BOL", "CAP", "CFT", "CG", "CM", "CM3", "CYD", "FOZ", "FT", "G", "GAL", "KG", "KM", "KM2", "KM3", "L", "LB", "LNM", "M", "M2", "M3", "MG", "MCG", "ML", "OZ", "PCS", "PTL", "QTL", "STN", "SUP", "T", "TAB", "TON", "TOZ"));
-        baseUom.put("DEV", Arrays.asList("PCS"));
-        baseUom.put("RAD", Arrays.asList("PCS"));
-        baseUom.put("TOB", Arrays.asList("BBL", "DOZ", "DPC", "FOZ", "GAL", "L", "ML", "NO", "PCS", "PTL", "QTL", "G", "KG", "LB"));
-        baseUom.put("VME", Arrays.asList());
+    private static Map<String, Set<String>> initializeMapUom() {
+        Map<String, Set<String>> mapUom = new HashMap<>();
+        mapUom.put("BIO", new HashSet<>(Arrays.asList("AE", "AM", "AP", "AT", "BA", "BC", "BG", "BO", "BQ", "BS", "BV", "BX", "CA", "CI", "CON", "CS", "CT", "CX", "CY", "DR", "EN", "FD", "GB", "MB", "PAL", "PC", "PK", "SY", "VI", "TU", "VP", "VL")));
+        mapUom.put("COS", new HashSet<>(Arrays.asList()));
+        mapUom.put("DRU", new HashSet<>(Arrays.asList()));
+        mapUom.put("DEV", new HashSet<>(Arrays.asList("CS", "CT", "BX", "PK")));
+        mapUom.put("RAD", new HashSet<>(Arrays.asList("CS", "CT", "BX", "PK")));
+        mapUom.put("TOB", new HashSet<>(Arrays.asList("AT", "BL", "BN", "BX", "CON", "CS", "CT", "CTR", "DR", "KIT", "PK", "VI", "VL")));
+        mapUom.put("VME", new HashSet<>(Arrays.asList()));
+        mapUom.put("FOO", new HashSet<>(Arrays.asList("AE", "AM", "AP", "AT", "BA", "BB", "BC", "BE", "BF", "BG", "BH", "BI", "BJ", "BK", "BL", "BN", "BO", "BP", "BQ", "BR", "BS", "BU", "BV", "BX", "BZ", "CA", "CAG", "CB", "CC", "CE", "CF", "CH", "CI", "CJ", "CK", "CL", "CO", "CON", "CP", "CR", "CS", "CT", "CU", "CV", "CX", "CY", "CZ", "DJ", "DP", "DR", "EN", "FC", "FD", "FI", "FL", "FO", "FR", "GB", "HG", "HR", "JC", "JG", "JR", "JT", "JY", "KEG", "KIT", "MB", "MC", "MS", "MT", "NE", "NS", "NT", "PA", "PAL", "PC", "PH", "PK", "PL", "PO", "PT", "PU", "PY", "RG", "RO", "SA", "SC", "SD", "SE", "SH", "SK", "SL", "SU", "SW", "SZ", "TB", "TC", "TD", "TK", "TN", "TO", "TR", "TS", "TU", "TY", "TZ", "VA", "VG", "VI", "VL", "VO", "VP", "VQ", "VR", "VY", "WB")));
+        return mapUom;
+    }
 
+    private static Map<String, Set<String>> initializeMapBaseUom() {
+        Map<String, Set<String>> mapBaseUom = new HashMap<>();
+        mapBaseUom.put("BIO", new HashSet<>(Arrays.asList("AU", "BAU", "CAP", "CG", "FOZ", "G", "GAL", "KG", "L", "LB", "MG", "ML", "MCG", "NO", "OZ", "PCS", "PNU", "PTL", "QTL", "TAB")));
+        mapBaseUom.put("COS", new HashSet<>(Arrays.asList()));
+        mapBaseUom.put("DRU", new HashSet<>(Arrays.asList("BBL", "BOL", "CAP", "CFT", "CG", "CM", "CM3", "CYD", "FOZ", "FT", "G", "GAL", "KG", "KM", "KM2", "KM3", "L", "LB", "LNM", "M", "M2", "M3", "MG", "MCG", "ML", "OZ", "PCS", "PTL", "QTL", "STN", "SUP", "T", "TAB", "TON", "TOZ")));
+        mapBaseUom.put("DEV", new HashSet<>(Arrays.asList("PCS")));
+        mapBaseUom.put("RAD", new HashSet<>(Arrays.asList("PCS")));
+        mapBaseUom.put("TOB", new HashSet<>(Arrays.asList("BBL", "DOZ", "DPC", "FOZ", "GAL", "L", "ML", "NO", "PCS", "PTL", "QTL", "G", "KG", "LB")));
+        mapBaseUom.put("VME", new HashSet<>(Arrays.asList()));
+        mapBaseUom.put("FOO", new HashSet<>(Arrays.asList("BBL", "BOL", "CAR", "CAP", "CFT", "CG", "CM3", "CYD", "DOZ", "DPC", "DPR", "FOZ", "G", "GAL", "GR", "KG", "KM3", "L", "LB", "M3", "MCG", "MG", "ML", "NO", "OZ", "PCS", "PRS", "PTL", "QTL", "STN", "T", "Tab", "TON", "TOZ")));
+        return mapBaseUom;
     }
 
     public List<ExcelResponse> validateField(List<ExcelResponse> excelResponseList) {
@@ -166,7 +189,7 @@ public class ValidationService {
         }
 
         String filer = trackingDetails.getFiler();
-        if (filer == null || !filer.matches(String.format(REGEX_PATTERN_FOR_ALL,4))) {
+        if (filer == null || !filer.matches(String.format(REGEX_PATTERN_FOR_ALL, 4))) {
             validationErrorList.add(createValidationError("Filer", "Invalid Filer. The field should contain 4 alphanumeric character.", filer));
         } else if (!filer.matches(fillerPattern)) {
             validationErrorList.add(createValidationError("Filer", "Invalid Filer. The field should contain valid filler.", filer));
@@ -208,6 +231,8 @@ public class ValidationService {
         }
 
         String productNumber = trackingDetails.getProductNumber();
+        String processingCode = trackingDetails.getGovernmentAgencyProcessingCode().toUpperCase();
+
         if (productNumber.isBlank() || !productNumber.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 1, 19))) {
             validationErrorList.add(createValidationError("Product Number", "Invalid Product Number. The field should have a length between 1 to 19", productNumber));
         } else {
@@ -222,8 +247,12 @@ public class ValidationService {
                         validationErrorList.add(createValidationError("Product Number", "Invalid Product Number. The field should have a valid Product Number for ADE code", productNumber));
                     }
                     break;
+                case "CCW":
+                    if (!productNumber.equals("52")) {
+                        validationErrorList.add(createValidationError("Product Number", "Invalid Product Number. The field should have a valid Product Number for CCW code", productNumber));
+                    }
                 default:
-                    if (!isValidProductCode(productNumber)) {
+                    if (!isValidProductNumber(processingCode, productNumber)) {
                         validationErrorList.add(createValidationError("Product Number", "Invalid Product Number. The field should have a valid code", productNumber));
                     }
                     break;
@@ -250,7 +279,7 @@ public class ValidationService {
         String countryOfProduction = trackingDetails.getCountryOfProduction();
         if (countryOfProduction.isBlank() || !countryOfProduction.matches(String.format(REGEX_PATTERN_FOR_ALL, 2))) {
             validationErrorList.add(createValidationError("Country Of Production", "Invalid Country Of Production. The field should have exactly 2 character length", countryOfProduction));
-        } else if (!isValidCountryOfProductionCode(countryOfProduction)) {
+        } else if (!isValidCountryOfProduction(processingCode, countryOfProduction)) {
             validationErrorList.add(createValidationError("Country Of Production", "Invalid Country Of Production. The field should be one of the allowed Country of Production ", countryOfProduction));
         }
 
@@ -303,12 +332,12 @@ public class ValidationService {
         String baseUOM = trackingDetails.getBaseUOM().toUpperCase();
         if (baseUOM.isBlank() || !baseUOM.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 1, 5))) {
             validationErrorList.add(createValidationError("Base UOM", "Invalid Base UOM. The field should have a length between 1 and 5", baseUOM));
-        } else if (!isValidBaseUomCode(baseUOM)) {
+        }else if (!isValidBaseUom(processingCode,baseUOM)) {
             validationErrorList.add(createValidationError("Base UOM", "Invalid Base UOM. The field should be one of the allowed Base UOM codes.", baseUOM));
         }
 
         int packagingQualifier = trackingDetails.getPackagingQualifier();
-        if (packagingQualifier < 1 || packagingQualifier >6) {
+        if (packagingQualifier < 1 || packagingQualifier > 6) {
             validationErrorList.add(createValidationError("Packaging Qualifier", "Invalid Packaging Qualifier. The field should be a Valid Packaging Level", packagingQualifier));
         }
 
@@ -320,7 +349,7 @@ public class ValidationService {
         String uom = trackingDetails.getUOM().toUpperCase();
         if (uom.isBlank() || !uom.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 1, 5))) {
             validationErrorList.add(createValidationError("UOM", "Invalid UOM. The field should have a length between 1 and 5", uom));
-        } else if (!isValidUomCode(uom)) {
+        }else if (!isValidUom(processingCode,uom)) {
             validationErrorList.add(createValidationError("UOM", "Invalid UOM. The field should be one of the allowed UOM codes.", uom));
         }
 
@@ -344,12 +373,13 @@ public class ValidationService {
 
             log.info("  ******************************************************");
             log.info("errors   {}:", validationErrorList);
-            CustomerFdaPnFailure customerFdpaFailure = new CustomerFdaPnFailure();
-            customerFdpaFailure.setBatchId("");
+            CustomerFdaPnFailure customerFdaPnFailure = new CustomerFdaPnFailure();
+            customerFdaPnFailure.setBatchId("");
         }
         excelResponse.setValidationErrors(validationErrorList);
         return excelResponse;
     }
+
 
     private void validatePartyDetails(PartyDetails p, List<ValidationError> validationErrorList) {
         String partyType = p.getPartyType();
@@ -457,53 +487,8 @@ public class ValidationService {
         return validationError;
     }
 
-    private static boolean isValidProcessingCode(String processingCode) {
-        for (List<String> codes : governmentAgencyProcessingCode.values()) {
-            if (codes.contains(processingCode.toUpperCase())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isValidProductCode(String productCode) {
-        for (List<String> codes : productNumber.values()) {
-            if (codes.contains(productCode)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isValidCountryOfProductionCode(String copCode) {
-        for (List<String> codes : countryOfProduction.values()) {
-            if (codes.contains(copCode)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isValidUomCode(String uomCode) {
-        for (List<String> codes : uom.values()) {
-            if (codes.contains(uomCode.toUpperCase())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isValidBaseUomCode(String baseUomCode) {
-        for (List<String> codes : baseUom.values()) {
-            if (codes.contains(baseUomCode.toUpperCase())) {
-                return true;
-            }
-        }
-        return false;
-    }
     private boolean isValidArrivalTime(String time) {
         String pattern = "^(?:(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])|(?:(0[0-9]|1[0-9]|2[0-3])[0-5][0-9])|(?:(0[1-9]|1[0-2]):[0-5][0-9]\\s?(AM|PM|am|pm))$";
-
         if (!time.matches(pattern)) {
             return false;
         }
@@ -514,8 +499,54 @@ public class ValidationService {
                 return false;
             }
         }
-
         return true;
+    }
+
+    private static String getCategory(String processingCode) {
+        for (Map.Entry<String, Set<String>> entry : mapProcessingCodes.entrySet()) {
+            if (entry.getValue().contains(processingCode.toUpperCase())) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    private static boolean isValidProcessingCode(String processingCode) {
+        String category = getCategory(processingCode);
+        return category != null;
+    }
+
+    private static boolean isValidProductNumber(String category, String productNumber) {
+        String finalCategory = getCategory(category);
+        Set<String> productNumbers = mapProductNumbers.get(finalCategory);
+        if (productNumbers != null && productNumbers.contains(productNumber)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isValidCountryOfProduction(String category, String countryOfProduction) {
+        String finalCategory = getCategory(category);
+        Set<String> countriesOfProduction = mapCountriesOfProduction.get(finalCategory);
+        if (countriesOfProduction != null && countriesOfProduction.contains(countryOfProduction)) {
+            return true;
+        }
+        return false;
+    }
+    private static boolean isValidUom(String category, String uom) {
+        String finalCategory = getCategory(category);
+        Set<String> uomCodes = mapUom.get(finalCategory);
+        if (uomCodes != null && uomCodes.contains(uom)) {
+            return true;
+        }
+        return false;
+    } private static boolean isValidBaseUom(String category, String baseUom) {
+        String finalCategory = getCategory(category);
+        Set<String> baseUomCodes = mapBaseUom.get(finalCategory);
+        if (baseUomCodes != null && baseUomCodes.contains(baseUom)) {
+            return true;
+        }
+        return false;
     }
 }
 
