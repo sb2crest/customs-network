@@ -1,6 +1,7 @@
 package com.customs.network.fdapn.scheduler;
 
 import com.customs.network.fdapn.initializers.PostgresFunctionInit;
+import com.customs.network.fdapn.service.AuditService;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +10,7 @@ import org.springframework.jdbc.core.PreparedStatementCallback;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.text.ParseException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 @Component
@@ -18,12 +20,14 @@ public class AuditSchedulers {
     JdbcTemplate jdbcTemplate;
     @Autowired
     PostgresFunctionInit postgresFunctionInit;
+    @Autowired
+    AuditService auditService;
     @PostConstruct
     void init(){
         postgresFunctionInit.createWriteDailyAuditDataFunction();
     }
     @Scheduled(fixedRate = 30000)
-    public void executeAuditFunction() {
+    public void executeDailyAuditFunction() {
         String functionName = "write_daily_audit_data";
         String dateParam = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
         log.info("Scanning schema for audit started");
@@ -35,4 +39,11 @@ public class AuditSchedulers {
         });
         log.info("Scanning schema completed and Daily audit table updated");
     }
+
+    @Scheduled(cron = "0 16 10 * * ?")
+    public void monthlyAuditTableUpdateScheduler() throws ParseException {
+        auditService.auditAndUpdateMonthlyAuditTable();
+        log.info("Updated Monthly table");
+    }
+
 }

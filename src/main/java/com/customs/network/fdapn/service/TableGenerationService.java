@@ -78,7 +78,7 @@ public class TableGenerationService implements TransactionRepository {
                 "WHERE table_schema = ? AND table_name = ?)";
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, schema, tableName));
     }
-    public void createTable(String schemaName, String tableName) {
+    private void createTable(String schemaName, String tableName) {
         try {
             String sql = "CREATE TABLE IF NOT EXISTS " + schemaName + "." + tableName + " ("
                     + "serial BIGINT PRIMARY KEY,"
