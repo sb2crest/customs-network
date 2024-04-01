@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PortCodeDetails {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long sno;
 
     private String country;
