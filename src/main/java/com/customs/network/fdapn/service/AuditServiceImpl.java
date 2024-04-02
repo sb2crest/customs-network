@@ -7,10 +7,7 @@ import com.customs.network.fdapn.model.DailyAudit;
 import com.customs.network.fdapn.model.MonthlyAudit;
 import com.customs.network.fdapn.model.PortCodeDetails;
 import com.customs.network.fdapn.model.PortInfo;
-import com.customs.network.fdapn.repository.DailyAuditRepository;
-import com.customs.network.fdapn.repository.MonthlyAuditRepository;
-import com.customs.network.fdapn.repository.PortCodeDetailsRepository;
-import com.customs.network.fdapn.repository.PortInfoRepository;
+import com.customs.network.fdapn.repository.*;
 import com.customs.network.fdapn.utils.DateUtils;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,13 +29,14 @@ public class AuditServiceImpl implements AuditService{
     private final PortInfoRepository portInfoRepository;
     private final MonthlyAuditRepository monthlyAuditRepository;
     private final PortCodeDetailsRepository portCodeDetailsRepository;
-
+    private final YearlyAuditRepository yearlyAuditRepository;
     @Autowired
-    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository, PortInfoRepository portInfoRepository, MonthlyAuditRepository monthlyAuditRepository, PortCodeDetailsRepository portCodeDetailsRepository) {
+    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository, PortInfoRepository portInfoRepository, MonthlyAuditRepository monthlyAuditRepository, PortCodeDetailsRepository portCodeDetailsRepository, YearlyAuditRepository yearlyAuditRepository) {
         this.dailyAuditRepository = dailyAuditRepository;
         this.portInfoRepository = portInfoRepository;
         this.monthlyAuditRepository = monthlyAuditRepository;
         this.portCodeDetailsRepository = portCodeDetailsRepository;
+        this.yearlyAuditRepository = yearlyAuditRepository;
     }
 
     @Override
@@ -90,6 +88,7 @@ public class AuditServiceImpl implements AuditService{
         finalCount.setDailyAuditData(transactions);
         return finalCount;
     }
+
     private List<DailyAuditDTO> getAuditDataForUser(String userId, Date startDate, Date endDate) {
         List<DailyAudit> auditLists = dailyAuditRepository.findByUserIdAndDateBetween(userId, startDate, endDate);
         return auditLists.stream()
@@ -313,7 +312,9 @@ public class AuditServiceImpl implements AuditService{
         }
     }
 
+    public void auditAndUpdateYearlyAuditTable(){
 
+    }
 
     private FinalCount<TotalTransactionCountDto<?>> fetchMonthlyAuditTrends(String userId) {
         FinalCount<TotalTransactionCountDto<?>> finalCount = new FinalCount<>();
@@ -332,7 +333,11 @@ public class AuditServiceImpl implements AuditService{
                 String monthYear = month.getMonth().name() + " " + month.getYear();
                 List<MonthlyAudit> monthlyAudits = monthlyAuditRepository.findAllByMonthAndUserId(monthYear, userId);
                 TotalTransactionCountDto<MonthlyAuditDto> totalTransactionCountDto = calculateTotalTransactionCounts(monthlyAudits);
-                trendsData.put(monthYear, totalTransactionCountDto);
+                String[] parts = monthYear.split(" ");
+                String formattedMonth= (parts[0].substring(0, 1).toUpperCase() + parts[0].substring(1).toLowerCase()).substring(0,3);
+                String year = parts[1];
+                String formattedMonthYear = formattedMonth + " " + year;
+                trendsData.put(formattedMonthYear, totalTransactionCountDto);
                 totalValidationErrorCount += totalTransactionCountDto.getValidationErrorCount();
                 totalAcceptedCount += totalTransactionCountDto.getAcceptedCount();
                 totalRejectedCount += totalTransactionCountDto.getRejectedCount();
