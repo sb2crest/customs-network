@@ -35,8 +35,8 @@ public class AuditServiceImpl implements AuditService{
     }
 
     @Override
-    public FinalCountForUser getUserTransactionsForPeriod(String userId, String period) {
-        FinalCountForUser finalCount = new FinalCountForUser();
+    public FinalCount<TotalTransactionCountDto<?>> getUserTransactionsForPeriod(String userId, String period) {
+        FinalCount<TotalTransactionCountDto<?>> finalCount = new FinalCount<TotalTransactionCountDto<?>>();
         if(StringUtils.isEmpty(userId)){
             throw new FdapnCustomExceptions(ErrorResCodes.NOT_FOUND,"userId is not provided");
         }
@@ -58,6 +58,9 @@ public class AuditServiceImpl implements AuditService{
                     Date startDateWeek = calendar.getTime();
                     transactions = getAuditDataForUser(userId, startDateWeek, endDate);
                 }
+                case "month"->{
+                    return fetchMonthlyAuditTrends(userId);
+                }
                 default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid Option "+period);
             }
         }
@@ -77,7 +80,7 @@ public class AuditServiceImpl implements AuditService{
         finalCount.setTotalPendingCount(pendingTotal);
         finalCount.setTotalCbpDownCount(cbpDownTotal);
         finalCount.setAllTransactions(overallTotal);
-        finalCount.setDailyAuditDTOS(transactions);
+        finalCount.setDailyAuditData(transactions);
         return finalCount;
     }
     private List<DailyAuditDTO> getAuditDataForUser(String userId, Date startDate, Date endDate) {
@@ -283,14 +286,7 @@ public class AuditServiceImpl implements AuditService{
             monthlyAuditRepository.save(monthlyAudit);
         }
     }
-    @Override
-    public List<MonthlyAuditDto> findMonthlyAuditsForUserId(String userId) {
-        List<MonthlyAudit> monthlyAudits = monthlyAuditRepository.findByUserId(userId);
-        return monthlyAudits.stream()
-                .filter(Objects::nonNull)
-                .map(this::convertToMonthlyAuditDto)
-                .collect(Collectors.toList());
-    }
+
 
 
     private FinalCount<TotalTransactionCountDto<?>> fetchMonthlyAuditTrends(String userId) {
@@ -339,13 +335,10 @@ public class AuditServiceImpl implements AuditService{
             totalTransactionCountDto.setValidationErrorCount(totalTransactionCountDto.getValidationErrorCount() + monthlyAudit.getValidationErrorCount());
             totalTransactionCountDto.setCbpDownCount(totalTransactionCountDto.getCbpDownCount() + monthlyAudit.getCbpDownCount());
             totalTransactionCountDto.setTotalTransactions(totalTransactionCountDto.getTotalTransactions() + monthlyAudit.getTotalTransactions());
+            totalTransactionCountDto.setMonth(monthlyAudit.getMonth());
         }   totalTransactionCountDto.setAuditData(monthlyAudits.stream().map(this::convertToMonthlyAuditDto).toList());
         return totalTransactionCountDto;
     }
-
-
-
-
 
     private MonthlyAuditDto convertToMonthlyAuditDto(MonthlyAudit monthlyAudit) {
         MonthlyAuditDto monthlyAuditDto = new MonthlyAuditDto();
@@ -360,10 +353,4 @@ public class AuditServiceImpl implements AuditService{
         monthlyAuditDto.setTotalTransactions(monthlyAudit.getTotalTransactions());
         return monthlyAuditDto;
     }
-
-
-
-
-
-
 }

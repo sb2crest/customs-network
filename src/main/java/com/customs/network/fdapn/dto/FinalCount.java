@@ -16,5 +16,6 @@ public class FinalCount<T> {
     private long totalCbpDownCount;
     private long allTransactions;
     List<T> totalTransactionCountDtos;
+    List<DailyAuditDTO> dailyAuditData;
     Map<String,T> trendsData;
 }

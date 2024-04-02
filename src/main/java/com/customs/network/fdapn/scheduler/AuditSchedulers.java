@@ -40,8 +40,9 @@ public class AuditSchedulers {
         log.info("Scanning schema completed and Daily audit table updated");
     }
 
-    @Scheduled(cron = "0 16 10 * * ?")
+    @Scheduled(cron = "0 32 10 * * ?")
     public void monthlyAuditTableUpdateScheduler() throws ParseException {
+        log.info("Updating monthly audit table");
         auditService.auditAndUpdateMonthlyAuditTable();
         log.info("Updated Monthly table");
     }

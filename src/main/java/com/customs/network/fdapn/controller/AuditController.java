@@ -22,10 +22,10 @@ public class AuditController {
     }
 
     @GetMapping("/user-transaction")
-    public ResponseEntity<FinalCountForUser> getUserTransactionsForWeek(@RequestParam String userId,
+    public ResponseEntity<FinalCount<TotalTransactionCountDto<?>>> getUserTransactionsForWeek(@RequestParam String userId,
                                                                          @RequestParam(required = false) String period) {
 
-        FinalCountForUser transactions = auditService.getUserTransactionsForPeriod(userId, period);
+        FinalCount<TotalTransactionCountDto<?>> transactions = auditService.getUserTransactionsForPeriod(userId, period);
         return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
     @GetMapping("/get-all-transaction")
