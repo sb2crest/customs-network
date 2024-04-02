@@ -5,9 +5,11 @@ import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.DailyAudit;
 import com.customs.network.fdapn.model.MonthlyAudit;
+import com.customs.network.fdapn.model.PortCodeDetails;
 import com.customs.network.fdapn.model.PortInfo;
 import com.customs.network.fdapn.repository.DailyAuditRepository;
 import com.customs.network.fdapn.repository.MonthlyAuditRepository;
+import com.customs.network.fdapn.repository.PortCodeDetailsRepository;
 import com.customs.network.fdapn.repository.PortInfoRepository;
 import com.customs.network.fdapn.utils.DateUtils;
 import io.micrometer.common.util.StringUtils;
@@ -20,18 +22,23 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
 @Service
 public class AuditServiceImpl implements AuditService{
 
     private final DailyAuditRepository dailyAuditRepository;
     private final PortInfoRepository portInfoRepository;
     private final MonthlyAuditRepository monthlyAuditRepository;
+    private final PortCodeDetailsRepository portCodeDetailsRepository;
 
     @Autowired
-    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository, PortInfoRepository portInfoRepository, MonthlyAuditRepository monthlyAuditRepository) {
+    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository, PortInfoRepository portInfoRepository, MonthlyAuditRepository monthlyAuditRepository, PortCodeDetailsRepository portCodeDetailsRepository) {
         this.dailyAuditRepository = dailyAuditRepository;
         this.portInfoRepository = portInfoRepository;
         this.monthlyAuditRepository = monthlyAuditRepository;
+        this.portCodeDetailsRepository = portCodeDetailsRepository;
     }
 
     @Override
@@ -175,8 +182,27 @@ public class AuditServiceImpl implements AuditService{
     }
 
     @Override
-    public List<PortInfoDto> getByUser(String userId, String portCode) {
-        List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId,portCode);
+    public List<PortInfoDto> getPortTransactionInfoByUser(String userId, String portName, String portCode) {
+        if (StringUtils.isNotBlank(portCode)) {
+            List<PortInfoDto> portInfoDtos = getByPortCode(userId, portCode);
+            return nonNull(portInfoDtos) ? portInfoDtos : Collections.emptyList();
+        } else if (StringUtils.isNotBlank(portName)) {
+            PortCodeDetails portCodeDetails = portCodeDetailsRepository.findByPortName(portName);
+            if (isNull(portCodeDetails)) {
+                return Collections.emptyList();
+            }
+            List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId, portCodeDetails.getPortCode());
+            return mapToPortInfoDtoList(portInfoList);
+        } else {
+            return Collections.emptyList();
+        }
+    }
+    private List<PortInfoDto> getByPortCode(String userId, String portCode) {
+        List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId, Integer.valueOf(portCode));
+        return mapToPortInfoDtoList(portInfoList);
+    }
+
+    private List<PortInfoDto> mapToPortInfoDtoList(List<PortInfo> portInfoList) {
         return portInfoList.stream()
                 .filter(Objects::nonNull)
                 .map(entity -> {

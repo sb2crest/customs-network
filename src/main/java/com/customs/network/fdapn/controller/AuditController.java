@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 
 
 @RestController
@@ -32,5 +33,10 @@ public class AuditController {
     public FinalCount<TotalTransactionCountDto<?>> getAllTransactionsCount(@RequestParam(required = false) String userId,
                                               @RequestParam(required = false) String period){
         return auditService.getAllTransactionsCounts(userId,period);
+    }
+    @GetMapping("/getPortTransactionDetails")
+    public List<PortInfoDto> getByUser(@RequestParam String userId,@RequestParam(required = false) String portName,
+                                       @RequestParam(required = false) String portCode){
+        return auditService.getPortTransactionInfoByUser(userId,portName,portCode);
     }
 }

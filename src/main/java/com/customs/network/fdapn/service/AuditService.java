@@ -10,6 +10,6 @@ import java.util.List;
 public interface AuditService {
     FinalCount<TotalTransactionCountDto<?>> getUserTransactionsForPeriod(String userId, String period);
     FinalCount<TotalTransactionCountDto<?>> getAllTransactionsCounts(String userId, String period);
-    List<PortInfoDto> getByUser(String userId,String portCode);
+    List<PortInfoDto> getPortTransactionInfoByUser(String userId, String portName, String portCode);
     void auditAndUpdateMonthlyAuditTable() throws ParseException;
 }
