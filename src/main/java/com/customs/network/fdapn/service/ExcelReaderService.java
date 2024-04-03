@@ -18,6 +18,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 
 @Component
@@ -29,7 +32,14 @@ public class ExcelReaderService {
 
     public Map<String, List<Object>> processExcelFile(MultipartFile file) {
         try {
+            long startTime = System.currentTimeMillis(); // Get the current time in milliseconds
             List<ExcelResponse> excelResponses = readExcelFile(file);
+            long endTime = System.currentTimeMillis();
+            long elapsedTime = endTime - startTime; // Calculate the elapsed time in milliseconds
+
+            double elapsedTimeInSeconds = elapsedTime / 1000.0;
+            System.out.println("Time taken: " + elapsedTimeInSeconds + " seconds");
+            log.info("Time taken to read excel (seconds) : ->{}",elapsedTimeInSeconds);
             return excelJsonProcessor.processResponses(excelResponses);
         } catch (Exception e) {
             log.error("Error converting Excel to XML: -> {} ", e.getMessage());
@@ -37,20 +47,31 @@ public class ExcelReaderService {
         }
     }
 
+
     public List<ExcelResponse> readExcelFile(MultipartFile file) throws Exception {
         if (file.isEmpty()) {
             throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS, "The uploaded file is empty.");
         }
-        List<ExcelResponse> excelResponseList = new ArrayList<>();
+
+        List<ExcelResponse> excelResponseListFinal = new ArrayList<>();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
         Sheet sheet = workbook.getSheetAt(0);
         TrackingDetails currentTrackingDetails = null;
         LinkedList<PartyDetails> partyDetailsList = new LinkedList<>();
         ExcelResponse excelResponse = null;
+
+        ExecutorService executorService = Executors.newCachedThreadPool();
+
+        List<Future<List<ExcelResponse>>> futures = new ArrayList<>();
+        int rowCount = 0;
+
         for (Row currentRow : sheet) {
+            rowCount++;
+
             if (currentRow.getRowNum() == 0) {
                 continue;
             }
+
             Cell firstCell = currentRow.getCell(0);
             if (firstCell == null || firstCell.getCellType() == CellType.BLANK) {
                 if (currentTrackingDetails != null) {
@@ -71,12 +92,37 @@ public class ExcelReaderService {
                 currentTrackingDetails.setPartyDetails(partyDetailsList);
                 excelResponse = new ExcelResponse();
                 excelResponse.setTrackingDetails(currentTrackingDetails);
-                excelResponseList.add(excelResponse);
+                excelResponseListFinal.add(excelResponse);
+
+                // If batch size reached, submit for validation
+                if (excelResponseListFinal.size() % 1000 == 0) {
+                    final List<ExcelResponse> batchForValidation = new ArrayList<>(excelResponseListFinal);
+                    Future<List<ExcelResponse>> future = executorService.submit(() -> validationService.validateField(batchForValidation));
+                    futures.add(future);
+                    excelResponseListFinal.clear();
+                }
             }
         }
+
+        // Submit remaining records for validation
+        if (!excelResponseListFinal.isEmpty()) {
+            final List<ExcelResponse> remainingBatchForValidation = new ArrayList<>(excelResponseListFinal);
+            Future<List<ExcelResponse>> future = executorService.submit(() -> validationService.validateField(remainingBatchForValidation));
+            futures.add(future);
+            excelResponseListFinal.clear();
+        }
+
+        // Collect validation results
+        for (Future<List<ExcelResponse>> future : futures) {
+            excelResponseListFinal.addAll(future.get());
+        }
+
+        executorService.shutdown();
         workbook.close();
-        return validationService.validateField(excelResponseList);
+
+        return excelResponseListFinal;
     }
+
 
     private boolean isRowEmpty(Row row) {
         for (Cell cell : row) {
