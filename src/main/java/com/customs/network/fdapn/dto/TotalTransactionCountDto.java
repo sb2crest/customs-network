@@ -16,5 +16,6 @@ public class TotalTransactionCountDto <T>{
     private long totalTransactions;
     private String date;
     private String month;
+    private String year;
     List<T> auditData;
 }

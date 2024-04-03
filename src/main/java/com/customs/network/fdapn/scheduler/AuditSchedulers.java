@@ -40,11 +40,18 @@ public class AuditSchedulers {
         log.info("Scanning schema completed and Daily audit table updated");
     }
 
-    @Scheduled(cron = "0 32 10 * * ?")
+    @Scheduled(cron = "0 35 10 * * ?")
     public void monthlyAuditTableUpdateScheduler() throws ParseException {
         log.info("Updating monthly audit table");
         auditService.auditAndUpdateMonthlyAuditTable();
         log.info("Updated Monthly table");
+    }
+
+    @Scheduled(cron = "0 0 11 1 * ?")
+    public void yearlyAuditTableUpdateScheduler() throws ParseException {
+        log.info("Updating yearly audit table");
+        auditService.auditAndUpdateYearlyAuditTable();
+        log.info("Updated yearly table");
     }
 
 }

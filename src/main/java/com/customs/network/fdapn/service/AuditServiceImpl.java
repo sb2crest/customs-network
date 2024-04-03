@@ -3,10 +3,7 @@ package com.customs.network.fdapn.service;
 import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
-import com.customs.network.fdapn.model.DailyAudit;
-import com.customs.network.fdapn.model.MonthlyAudit;
-import com.customs.network.fdapn.model.PortCodeDetails;
-import com.customs.network.fdapn.model.PortInfo;
+import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.*;
 import com.customs.network.fdapn.utils.DateUtils;
 import io.micrometer.common.util.StringUtils;
@@ -66,6 +63,9 @@ public class AuditServiceImpl implements AuditService{
                 case "month"->{
                     return fetchMonthlyAuditTrends(userId);
                 }
+                case "year"->{
+                    return fetchYearlyAuditTrends(userId);
+                }
                 default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid Option "+period);
             }
         }
@@ -124,26 +124,11 @@ public class AuditServiceImpl implements AuditService{
         }
     }
 
-    private DailyAuditDTO convertToMonthlyAuditDto(DailyAudit dailyAudit) {
-        DailyAuditDTO dto = new DailyAuditDTO();
-        dto.setId(dailyAudit.getId());
-        dto.setUserId(dailyAudit.getUserId());
-        dto.setDate(DateUtils.formatterDate(dailyAudit.getDate()));
-        dto.setValidationErrorCount(dailyAudit.getValidationErrorCount());
-        dto.setAcceptedCount(dailyAudit.getAcceptedCount());
-        dto.setRejectedCount(dailyAudit.getRejectedCount());
-        dto.setPendingCount(dailyAudit.getPendingCount());
-        dto.setCbpDownCount(dailyAudit.getCbpDownCount());
-        dto.setTotalTransactions(dailyAudit.getTotalTransactions());
-        return dto;
-    }
     @Override
     public FinalCount<TotalTransactionCountDto<?>> getAllTransactionsCounts(String userId, String period) {
-        FinalCount<TotalTransactionCountDto<?>> finalCount = new FinalCount<TotalTransactionCountDto<?>>();
         List<TotalTransactionCountDto<?>> totalTransactionCountDtos = new ArrayList<>();
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
-
 
         if (StringUtils.isBlank(userId) && StringUtils.isBlank(period)) {
             iterateOverDates(calendar, 3, userId, totalTransactionCountDtos);
@@ -151,31 +136,18 @@ public class AuditServiceImpl implements AuditService{
             iterateOverDates(calendar, 3, userId, totalTransactionCountDtos);
         } else {
             switch (period) {
-                case "today" -> iterateOverDates(calendar, 4, userId, totalTransactionCountDtos);
+                case "today" -> iterateOverDates(calendar, 3, userId, totalTransactionCountDtos);
                 case "week" -> iterateOverDates(calendar, 7, userId, totalTransactionCountDtos);
                 case "month"-> {
                     return fetchMonthlyAuditTrends(userId);
                 }
+                case "year"->{
+                    return fetchYearlyAuditTrends(userId);
+                }
                 default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid Option "+period);
             }
         }
-
-        long validationErrorCount = 0, acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
-        for (TotalTransactionCountDto<?>  dto : totalTransactionCountDtos) {
-            validationErrorCount += dto.getValidationErrorCount();
-            acceptedTotal += dto.getAcceptedCount();
-            rejectedTotal += dto.getRejectedCount();
-            pendingTotal += dto.getPendingCount();
-            cbpDownTotal += dto.getCbpDownCount();
-            overallTotal += dto.getTotalTransactions();
-        }
-
-        finalCount.setTotalValidationErrorCount(validationErrorCount);
-        finalCount.setTotalAcceptedCount(acceptedTotal);
-        finalCount.setTotalRejectedCount(rejectedTotal);
-        finalCount.setTotalPendingCount(pendingTotal);
-        finalCount.setTotalCbpDownCount(cbpDownTotal);
-        finalCount.setAllTransactions(overallTotal);
+        FinalCount<TotalTransactionCountDto<?>> finalCount=calculateFinalCount(totalTransactionCountDtos);
         finalCount.setTotalTransactionCountDtos(totalTransactionCountDtos);
         return finalCount;
     }
@@ -225,57 +197,10 @@ public class AuditServiceImpl implements AuditService{
             calendar.add(Calendar.DATE, -i);
             Date startDate = calendar.getTime();
             List<DailyAudit> dailyAudits = dailyAuditRepository.findByUserIdAndDateRange(userId, startDate, startDate);
-            TotalTransactionCountDto<DailyAuditDTO> transactions = getAllTransactionsWithCount(dailyAudits);
+            TotalTransactionCountDto<DailyAuditDTO> transactions = getAllTransactionsWithCountForDaily(dailyAudits);
             transactions.setDate(DateUtils.formatterDate(startDate));
             totalTransactionCountDtos.add(transactions);
         }
-    }
-
-    private TotalTransactionCountDto<DailyAuditDTO> getAllTransactionsWithCount(List<DailyAudit> dailyAudits) {
-        TotalTransactionCountDto<DailyAuditDTO> totalTransactionCountDto = new TotalTransactionCountDto<DailyAuditDTO>();
-        List<DailyAuditDTO> dailyAuditDTOS = new ArrayList<>();
-        long validationErrorTotal=0, acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
-
-        for (DailyAudit audit : dailyAudits) {
-            if (audit != null) {
-                Date createdOn = audit.getDate();
-                long validationErrorCount = audit.getValidationErrorCount();
-                long acceptedCount = audit.getAcceptedCount();
-                long rejectedCount = audit.getRejectedCount();
-                long pendingCount = audit.getPendingCount();
-                long cbpDownCount = audit.getCbpDownCount();
-                long totalTransactions = audit.getTotalTransactions();
-
-                validationErrorTotal += validationErrorCount;
-                acceptedTotal += acceptedCount;
-                rejectedTotal += rejectedCount;
-                pendingTotal += pendingCount;
-                cbpDownTotal += cbpDownCount;
-                overallTotal += totalTransactions;
-
-                DailyAuditDTO dailyAuditDTO = new DailyAuditDTO();
-                dailyAuditDTO.setId(audit.getId());
-                dailyAuditDTO.setUserId(audit.getUserId());
-                dailyAuditDTO.setDate(DateUtils.formatterDate(createdOn));
-                dailyAuditDTO.setValidationErrorCount(validationErrorCount);
-                dailyAuditDTO.setAcceptedCount(acceptedCount);
-                dailyAuditDTO.setRejectedCount(rejectedCount);
-                dailyAuditDTO.setPendingCount(pendingCount);
-                dailyAuditDTO.setCbpDownCount(cbpDownCount);
-                dailyAuditDTO.setTotalTransactions(totalTransactions);
-
-                dailyAuditDTOS.add(dailyAuditDTO);
-            }
-        }
-        totalTransactionCountDto.setValidationErrorCount(validationErrorTotal);
-        totalTransactionCountDto.setAcceptedCount(acceptedTotal);
-        totalTransactionCountDto.setRejectedCount(rejectedTotal);
-        totalTransactionCountDto.setPendingCount(pendingTotal);
-        totalTransactionCountDto.setCbpDownCount(cbpDownTotal);
-        totalTransactionCountDto.setTotalTransactions(overallTotal);
-        totalTransactionCountDto.setAuditData(dailyAuditDTOS);
-
-        return totalTransactionCountDto;
     }
 
     @Override
@@ -312,52 +237,107 @@ public class AuditServiceImpl implements AuditService{
         }
     }
 
-    public void auditAndUpdateYearlyAuditTable(){
+    @Override
+    public void auditAndUpdateYearlyAuditTable() {
+        LocalDate now = LocalDate.now();
+        LocalDate month = now.minusMonths(1);
+        String monthYear = month.getMonth().name() + " " + month.getYear();
+        List<MonthlyAudit> monthlyAudits = monthlyAuditRepository.findByMonth(monthYear);
 
+        monthlyAudits.stream()
+                .filter(Objects::nonNull)
+                .forEach(monthlyAudit -> {
+                    String[] monthYearArray = monthlyAudit.getMonth().split(" ");
+                    String year = monthYearArray[1];
+                    Optional<YearlyAudit> yearlyAuditOptional = yearlyAuditRepository.findByYearAndUserId(year, monthlyAudit.getUserId());
+                    YearlyAudit yearlyAudit=null;
+                    if (yearlyAuditOptional.isPresent()) {
+                         yearlyAudit = yearlyAuditOptional.get();
+                        yearlyAudit.setAcceptedCount(yearlyAudit.getAcceptedCount() + monthlyAudit.getAcceptedCount());
+                        yearlyAudit.setRejectedCount(yearlyAudit.getRejectedCount() + monthlyAudit.getRejectedCount());
+                        yearlyAudit.setPendingCount(yearlyAudit.getPendingCount() + monthlyAudit.getPendingCount());
+                        yearlyAudit.setValidationErrorCount(yearlyAudit.getValidationErrorCount() + monthlyAudit.getValidationErrorCount());
+                        yearlyAudit.setCbpDownCount(yearlyAudit.getCbpDownCount() + monthlyAudit.getCbpDownCount());
+                        yearlyAudit.setTotalTransactions(yearlyAudit.getTotalTransactions() + monthlyAudit.getTotalTransactions());
+                        yearlyAuditRepository.save(yearlyAudit);
+                    } else {
+                         yearlyAudit = new YearlyAudit();
+                        yearlyAudit.setUserId(monthlyAudit.getUserId());
+                        yearlyAudit.setYear(year);
+                        yearlyAudit.setAcceptedCount(monthlyAudit.getAcceptedCount());
+                        yearlyAudit.setRejectedCount(monthlyAudit.getRejectedCount());
+                        yearlyAudit.setPendingCount(monthlyAudit.getPendingCount());
+                        yearlyAudit.setValidationErrorCount(monthlyAudit.getValidationErrorCount());
+                        yearlyAudit.setCbpDownCount(monthlyAudit.getCbpDownCount());
+                        yearlyAudit.setTotalTransactions(monthlyAudit.getTotalTransactions());
+                        yearlyAuditRepository.save(yearlyAudit);
+                    }
+                });
     }
 
+
     private FinalCount<TotalTransactionCountDto<?>> fetchMonthlyAuditTrends(String userId) {
-        FinalCount<TotalTransactionCountDto<?>> finalCount = new FinalCount<>();
         Map<String, TotalTransactionCountDto<?>> trendsData = new LinkedHashMap<>();
+        List<TotalTransactionCountDto<?>> transactionCountDtoList=new ArrayList<>();
+        LocalDate now = LocalDate.now();
+            for (int i = 0; i <6; i++) {
+                LocalDate month = now.minusMonths(i);
+                String monthYear = month.getMonth().name() + " " + month.getYear();
+                List<MonthlyAudit> monthlyAudits = monthlyAuditRepository.findAllByMonthAndUserId(monthYear, userId);
+                TotalTransactionCountDto<MonthlyAuditDto> totalTransactionCountDto = calculateTotalTransactionCountsForMonth(monthlyAudits);
+                String[] parts = monthYear.split(" ");
+                String formattedMonth= (parts[0].substring(0, 1).toUpperCase() + parts[0].substring(1).toLowerCase()).substring(0,3);
+                String year = parts[1];
+                String formattedMonthYear = formattedMonth + " " + year;
+                trendsData.put(formattedMonthYear, totalTransactionCountDto);
+                transactionCountDtoList.add(totalTransactionCountDto);
+            }
+        FinalCount<TotalTransactionCountDto<?>> finalCount=calculateFinalCount(transactionCountDtoList);
+        finalCount.setTrendsData(trendsData);
+        return finalCount;
+    }
+    private FinalCount<TotalTransactionCountDto<?>> fetchYearlyAuditTrends(String userId) {
+        Map<String, TotalTransactionCountDto<?>> trendsData = new LinkedHashMap<>();
+        List<TotalTransactionCountDto<?>> transactionCountDtoList = new ArrayList<>();
+        LocalDate now = LocalDate.now();
+        for (int i = 0; i < 5; i++) {
+            int year = now.minusYears(i).getYear();
+            List<YearlyAudit> yearlyAudits = yearlyAuditRepository.findAllByYearAndUserId(String.valueOf(year), userId);
+            TotalTransactionCountDto<YearlyAuditDto> totalTransactionCountDto = calculateTotalTransactionCountsForYear(yearlyAudits);
+            trendsData.put(String.valueOf(year), totalTransactionCountDto);
+            transactionCountDtoList.add(totalTransactionCountDto);
+        }
+        FinalCount<TotalTransactionCountDto<?>> finalCount = calculateFinalCount(transactionCountDtoList);
+        finalCount.setTrendsData(trendsData);
+        return finalCount;
+    }
+
+    private FinalCount<TotalTransactionCountDto<?>> calculateFinalCount(List<TotalTransactionCountDto<?>> totalTransactionCountDtoList){
+        FinalCount<TotalTransactionCountDto<?>> finalCount = new FinalCount<>();
         long totalValidationErrorCount = 0;
         long totalAcceptedCount = 0;
         long totalRejectedCount = 0;
         long totalPendingCount = 0;
         long totalCbpDownCount = 0;
         long allTransactions = 0;
-
-        LocalDate now = LocalDate.now();
-
-            for (int i = 0; i <6; i++) {
-                LocalDate month = now.minusMonths(i);
-                String monthYear = month.getMonth().name() + " " + month.getYear();
-                List<MonthlyAudit> monthlyAudits = monthlyAuditRepository.findAllByMonthAndUserId(monthYear, userId);
-                TotalTransactionCountDto<MonthlyAuditDto> totalTransactionCountDto = calculateTotalTransactionCounts(monthlyAudits);
-                String[] parts = monthYear.split(" ");
-                String formattedMonth= (parts[0].substring(0, 1).toUpperCase() + parts[0].substring(1).toLowerCase()).substring(0,3);
-                String year = parts[1];
-                String formattedMonthYear = formattedMonth + " " + year;
-                trendsData.put(formattedMonthYear, totalTransactionCountDto);
-                totalValidationErrorCount += totalTransactionCountDto.getValidationErrorCount();
-                totalAcceptedCount += totalTransactionCountDto.getAcceptedCount();
-                totalRejectedCount += totalTransactionCountDto.getRejectedCount();
-                totalPendingCount += totalTransactionCountDto.getPendingCount();
-                totalCbpDownCount += totalTransactionCountDto.getCbpDownCount();
-                allTransactions += totalTransactionCountDto.getTotalTransactions();
-            }
-
-
+        for (TotalTransactionCountDto<?> transactions:totalTransactionCountDtoList) {
+            totalValidationErrorCount += transactions.getValidationErrorCount();
+            totalAcceptedCount += transactions.getAcceptedCount();
+            totalRejectedCount += transactions.getRejectedCount();
+            totalPendingCount += transactions.getPendingCount();
+            totalCbpDownCount += transactions.getCbpDownCount();
+            allTransactions += transactions.getTotalTransactions();
+        }
         finalCount.setTotalValidationErrorCount(totalValidationErrorCount);
         finalCount.setTotalAcceptedCount(totalAcceptedCount);
         finalCount.setTotalRejectedCount(totalRejectedCount);
         finalCount.setTotalPendingCount(totalPendingCount);
         finalCount.setTotalCbpDownCount(totalCbpDownCount);
         finalCount.setAllTransactions(allTransactions);
-        finalCount.setTrendsData(trendsData);
         return finalCount;
     }
 
-    private TotalTransactionCountDto<MonthlyAuditDto> calculateTotalTransactionCounts(List<MonthlyAudit> monthlyAudits) {
+    private TotalTransactionCountDto<MonthlyAuditDto> calculateTotalTransactionCountsForMonth(List<MonthlyAudit> monthlyAudits) {
         TotalTransactionCountDto<MonthlyAuditDto> totalTransactionCountDto = new TotalTransactionCountDto<>();
         for (MonthlyAudit monthlyAudit : monthlyAudits) {
             totalTransactionCountDto.setAcceptedCount(totalTransactionCountDto.getAcceptedCount() + monthlyAudit.getAcceptedCount());
@@ -368,6 +348,36 @@ public class AuditServiceImpl implements AuditService{
             totalTransactionCountDto.setTotalTransactions(totalTransactionCountDto.getTotalTransactions() + monthlyAudit.getTotalTransactions());
             totalTransactionCountDto.setMonth(monthlyAudit.getMonth());
         }   totalTransactionCountDto.setAuditData(monthlyAudits.stream().map(this::convertToMonthlyAuditDto).toList());
+        return totalTransactionCountDto;
+    }
+    private TotalTransactionCountDto<DailyAuditDTO> getAllTransactionsWithCountForDaily(List<DailyAudit> dailyAudits) {
+        TotalTransactionCountDto<DailyAuditDTO> totalTransactionCountDto = new TotalTransactionCountDto<>();
+        for (DailyAudit audit : dailyAudits) {
+            if (audit != null) {
+                totalTransactionCountDto.setAcceptedCount(totalTransactionCountDto.getAcceptedCount() + audit.getAcceptedCount());
+                totalTransactionCountDto.setRejectedCount(totalTransactionCountDto.getRejectedCount() + audit.getRejectedCount());
+                totalTransactionCountDto.setPendingCount(totalTransactionCountDto.getPendingCount() + audit.getPendingCount());
+                totalTransactionCountDto.setValidationErrorCount(totalTransactionCountDto.getValidationErrorCount() + audit.getValidationErrorCount());
+                totalTransactionCountDto.setCbpDownCount(totalTransactionCountDto.getCbpDownCount() + audit.getCbpDownCount());
+                totalTransactionCountDto.setTotalTransactions(totalTransactionCountDto.getTotalTransactions() + audit.getTotalTransactions());
+            }
+        }
+        totalTransactionCountDto.setAuditData(dailyAudits.stream().map(this::convertToMonthlyAuditDto).toList());
+        return totalTransactionCountDto;
+    }
+
+    private TotalTransactionCountDto<YearlyAuditDto> calculateTotalTransactionCountsForYear(List<YearlyAudit> yearlyAudits) {
+        TotalTransactionCountDto<YearlyAuditDto> totalTransactionCountDto = new TotalTransactionCountDto<>();
+        for (YearlyAudit yearlyAudit : yearlyAudits) {
+            totalTransactionCountDto.setAcceptedCount(totalTransactionCountDto.getAcceptedCount() + yearlyAudit.getAcceptedCount());
+            totalTransactionCountDto.setRejectedCount(totalTransactionCountDto.getRejectedCount() + yearlyAudit.getRejectedCount());
+            totalTransactionCountDto.setPendingCount(totalTransactionCountDto.getPendingCount() + yearlyAudit.getPendingCount());
+            totalTransactionCountDto.setValidationErrorCount(totalTransactionCountDto.getValidationErrorCount() + yearlyAudit.getValidationErrorCount());
+            totalTransactionCountDto.setCbpDownCount(totalTransactionCountDto.getCbpDownCount() + yearlyAudit.getCbpDownCount());
+            totalTransactionCountDto.setTotalTransactions(totalTransactionCountDto.getTotalTransactions() + yearlyAudit.getTotalTransactions());
+            totalTransactionCountDto.setYear(yearlyAudit.getYear());
+        }
+        totalTransactionCountDto.setAuditData(yearlyAudits.stream().map(this::convertYearlyAuditToDto).toList());
         return totalTransactionCountDto;
     }
 
@@ -384,4 +394,31 @@ public class AuditServiceImpl implements AuditService{
         monthlyAuditDto.setTotalTransactions(monthlyAudit.getTotalTransactions());
         return monthlyAuditDto;
     }
+    public YearlyAuditDto convertYearlyAuditToDto(YearlyAudit yearlyAudit) {
+        YearlyAuditDto yearlyAuditDto = new YearlyAuditDto();
+        yearlyAuditDto.setId(yearlyAudit.getId());
+        yearlyAuditDto.setUserId(yearlyAudit.getUserId());
+        yearlyAuditDto.setYear(yearlyAudit.getYear());
+        yearlyAuditDto.setAcceptedCount(yearlyAudit.getAcceptedCount());
+        yearlyAuditDto.setRejectedCount(yearlyAudit.getRejectedCount());
+        yearlyAuditDto.setPendingCount(yearlyAudit.getPendingCount());
+        yearlyAuditDto.setValidationErrorCount(yearlyAudit.getValidationErrorCount());
+        yearlyAuditDto.setCbpDownCount(yearlyAudit.getCbpDownCount());
+        yearlyAuditDto.setTotalTransactions(yearlyAudit.getTotalTransactions());
+        return yearlyAuditDto;
+    }
+    private DailyAuditDTO convertToMonthlyAuditDto(DailyAudit dailyAudit) {
+        DailyAuditDTO dto = new DailyAuditDTO();
+        dto.setId(dailyAudit.getId());
+        dto.setUserId(dailyAudit.getUserId());
+        dto.setDate(DateUtils.formatterDate(dailyAudit.getDate()));
+        dto.setValidationErrorCount(dailyAudit.getValidationErrorCount());
+        dto.setAcceptedCount(dailyAudit.getAcceptedCount());
+        dto.setRejectedCount(dailyAudit.getRejectedCount());
+        dto.setPendingCount(dailyAudit.getPendingCount());
+        dto.setCbpDownCount(dailyAudit.getCbpDownCount());
+        dto.setTotalTransactions(dailyAudit.getTotalTransactions());
+        return dto;
+    }
+
 }

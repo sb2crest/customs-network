@@ -12,4 +12,6 @@ public interface AuditService {
     FinalCount<TotalTransactionCountDto<?>> getAllTransactionsCounts(String userId, String period);
     List<PortInfoDto> getPortTransactionInfoByUser(String userId, String portName, String portCode);
     void auditAndUpdateMonthlyAuditTable() throws ParseException;
+
+    void auditAndUpdateYearlyAuditTable();
 }
