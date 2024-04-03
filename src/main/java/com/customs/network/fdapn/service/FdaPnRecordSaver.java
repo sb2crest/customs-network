@@ -1,5 +1,9 @@
 package com.customs.network.fdapn.service;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
@@ -14,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,6 +34,10 @@ import static java.util.Objects.isNull;
 public class FdaPnRecordSaver {
     private final TransactionRepository transactionRepository;
     private final AtomicInteger sequentialNumber = new AtomicInteger(0);
+//    @Value("${aws.bucketName}")
+//    private String s3BucketName;
+//    @Value("${aws.region}")
+//    private String s3Region;
 
     @Transactional
     public void save(ExcelResponse excelResponse) {
@@ -59,7 +68,56 @@ public class FdaPnRecordSaver {
         CustomsFdapnSubmit record = transactionRepository.saveTransaction(customsFdapnSubmit);
         excelResponse.getTrackingDetails().setReferenceIdentifierNo(record.getReferenceId());
         log.info("submit saved in Data base : {}", customsFdapnSubmit);
+        hitCbp(record);
 
+    }
+    public void hitCbp(CustomsFdapnSubmit customsFdapnSubmit) {
+        String convertToTxt = null;
+        try {
+            convertToTxt = convertToEdi(customsFdapnSubmit);
+            throw new NullPointerException("Simulated NullPointerException while hitting CBP");//cbp down
+        } catch (Exception e) {
+            log.error("Exception occurred while hitting CBP: " + e.getMessage());
+            assert convertToTxt != null;
+            saveToS3(convertToTxt,customsFdapnSubmit.getUserId());
+        }
+    }
+    private void saveToS3(String ediContent, String userId) {
+        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
+                .withRegion("ap-south-1")
+                .build();
+
+        String currentDateFolder = new SimpleDateFormat("yyyyMMdd").format(new Date());
+        String folderKey = currentDateFolder + "/fdapn_" + userId + "/";
+        String key = folderKey + "customs_fdaPn_submit_" + userId + ".txt";
+        try {
+            byte[] contentBytes = ediContent.getBytes();
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(contentBytes.length);
+            s3Client.putObject(new PutObjectRequest("fdapn-submit-cbp-down-records", key, new ByteArrayInputStream(contentBytes), metadata));
+            System.out.println("EDI content saved to S3 bucket: " + "fdapn-submit-cbp-down-records" + "/" + key);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error occurred while saving EDI content to S3: " + e.getMessage());
+        }
+    }
+    public static String convertToEdi(CustomsFdapnSubmit obj) {
+        return "SLNO:" + obj.getSlNo() + "|" +
+                "BATCH_ID:" + obj.getBatchId() + "|" +
+                "TRACE_ID:" + obj.getTraceId() + "|" +
+                "USER_ID:" + obj.getUserId() + "|" +
+                "ACCOUNT_ID:" + obj.getAccountId() + "|" +
+                "REFERENCE_ID:" + obj.getReferenceId() + "|" +
+                "ENVELOP_NUMBER:" + obj.getEnvelopNumber() + "|" +
+                "CREATED_ON:" + formatDate(obj.getCreatedOn()) + "|" +
+                "UPDATED_ON:" + formatDate(obj.getUpdatedOn()) + "|" +
+                "STATUS:" + obj.getStatus() + "|" +
+                "REQUEST_JSON:" + obj.getRequestJson().toString() + "|" +
+                "RESPONSE_JSON:" + obj.getResponseJson().toString() + "|";
+    }
+    private static String formatDate(Date date) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+        return dateFormat.format(date);
     }
     @Transactional
     public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
