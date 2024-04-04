@@ -10,7 +10,7 @@ import java.util.LinkedList;
 @Data
 public class TrackingDetails {
     @ExcelColumn(index = 0)
-    private int sNo;
+    private long sNo;
 
     @ExcelColumn(index = 1)
     private String accountId;

@@ -2,22 +2,28 @@ package com.customs.network.fdapn.service;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.*;
 import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.TransactionRepository;
+import com.customs.network.fdapn.utils.CustomIdGenerator;
 import com.customs.network.fdapn.utils.DateUtils;
 import com.customs.network.fdapn.utils.JsonUtils;
+import com.customs.network.fdapn.utils.UtilMethods;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.micrometer.common.util.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -34,10 +40,8 @@ import static java.util.Objects.isNull;
 public class FdaPnRecordSaver {
     private final TransactionRepository transactionRepository;
     private final AtomicInteger sequentialNumber = new AtomicInteger(0);
-//    @Value("${aws.bucketName}")
-//    private String s3BucketName;
-//    @Value("${aws.region}")
-//    private String s3Region;
+    private final CustomIdGenerator idGenerator;
+    private final UtilMethods utilMethods;
 
     @Transactional
     public void save(ExcelResponse excelResponse) {
@@ -68,28 +72,28 @@ public class FdaPnRecordSaver {
         CustomsFdapnSubmit record = transactionRepository.saveTransaction(customsFdapnSubmit);
         excelResponse.getTrackingDetails().setReferenceIdentifierNo(record.getReferenceId());
         log.info("submit saved in Data base : {}", customsFdapnSubmit);
-        hitCbp(record);
 
     }
-    public void hitCbp(CustomsFdapnSubmit customsFdapnSubmit) {
-        String convertToTxt = null;
-        try {
-            convertToTxt = convertToEdi(customsFdapnSubmit);
-            throw new NullPointerException("Simulated NullPointerException while hitting CBP");//cbp down
-        } catch (Exception e) {
-            log.error("Exception occurred while hitting CBP: " + e.getMessage());
-            assert convertToTxt != null;
-            saveToS3(convertToTxt,customsFdapnSubmit.getUserId());
+    public void hitCbp(String xmlData) {
+        //CBP
+        String referenceId = extractReferenceFromXml(xmlData);
+        assert referenceId != null;
+        Long sNo=idGenerator.parseIdFromRefId(referenceId);
+        if(sNo%17==0){
+            saveToS3(xmlData);
         }
     }
-    private void saveToS3(String ediContent, String userId) {
+    private void saveToS3(String ediContent) {
         AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
                 .withRegion("ap-south-1")
                 .build();
 
-        String currentDateFolder = new SimpleDateFormat("yyyyMMdd").format(new Date());
-        String folderKey = currentDateFolder + "/fdapn_" + userId + "/";
-        String key = folderKey + "customs_fdaPn_submit_" + userId + ".txt";
+        String currentDate = new SimpleDateFormat("yyyyMMdd").format(new Date());
+        String userId = extractUserIdFromXml(ediContent);
+        String referenceId = extractReferenceFromXml(ediContent);
+        String folderKey = currentDate + "/" + "fdapn_" + userId + "/";
+        String key = folderKey + referenceId + ".txt" ;
+        transactionRepository.changeTransactionStatus(referenceId, MessageCode.CBP_DOWN.getStatus());
         try {
             byte[] contentBytes = ediContent.getBytes();
             ObjectMetadata metadata = new ObjectMetadata();
@@ -101,23 +105,89 @@ public class FdaPnRecordSaver {
             System.out.println("Error occurred while saving EDI content to S3: " + e.getMessage());
         }
     }
-    public static String convertToEdi(CustomsFdapnSubmit obj) {
-        return "SLNO:" + obj.getSlNo() + "|" +
-                "BATCH_ID:" + obj.getBatchId() + "|" +
-                "TRACE_ID:" + obj.getTraceId() + "|" +
-                "USER_ID:" + obj.getUserId() + "|" +
-                "ACCOUNT_ID:" + obj.getAccountId() + "|" +
-                "REFERENCE_ID:" + obj.getReferenceId() + "|" +
-                "ENVELOP_NUMBER:" + obj.getEnvelopNumber() + "|" +
-                "CREATED_ON:" + formatDate(obj.getCreatedOn()) + "|" +
-                "UPDATED_ON:" + formatDate(obj.getUpdatedOn()) + "|" +
-                "STATUS:" + obj.getStatus() + "|" +
-                "REQUEST_JSON:" + obj.getRequestJson().toString() + "|" +
-                "RESPONSE_JSON:" + obj.getResponseJson().toString() + "|";
+    public List<String> getTextFilesInFolder(String folderKey) {
+        if(StringUtils.isNotBlank(folderKey)){
+            folderKey = utilMethods.getFormattedDate(folderKey);
+        }else {
+            folderKey = utilMethods.getFormattedDate();
+        }
+        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
+                .withRegion("ap-south-1")
+                .build();
+        List<String> textFiles = new ArrayList<>();
+        ListObjectsV2Request request = new ListObjectsV2Request()
+                .withBucketName("fdapn-submit-cbp-down-records")
+                .withPrefix(folderKey);
+
+        ListObjectsV2Result result;
+        do {
+            result = s3Client.listObjectsV2(request);
+
+            for (S3ObjectSummary objectSummary : result.getObjectSummaries()) {
+                String key = objectSummary.getKey();
+                if (key.endsWith(".txt")) {
+                    textFiles.add(key);
+                }
+            }
+            request.setContinuationToken(result.getNextContinuationToken());
+        } while (result.isTruncated());
+        textFiles.forEach(txt->{
+            String refId  = txt.substring(txt.lastIndexOf("/") + 1, txt.lastIndexOf("."));
+            transactionRepository.changeTransactionStatus(refId, MessageCode.SUCCESS_SUBMIT.getStatus());
+            s3Client.deleteObject(new DeleteObjectRequest("fdapn-submit-cbp-down-records", txt));
+        });
+        return textFiles;
     }
-    private static String formatDate(Date date) {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
-        return dateFormat.format(date);
+    private String extractUserIdFromXml(String xmlContent) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(new ByteArrayInputStream(xmlContent.getBytes()));
+            Element root = doc.getDocumentElement();
+            NodeList userIdNodeList = root.getElementsByTagName("userId");
+            if (userIdNodeList.getLength() > 0) {
+                return ((Element) userIdNodeList.item(0)).getTextContent();
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    private String extractSnoFromXml(String xmlContent) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(new ByteArrayInputStream(xmlContent.getBytes()));
+            Element root = doc.getDocumentElement();
+            NodeList userIdNodeList = root.getElementsByTagName("sNo");
+            if (userIdNodeList.getLength() > 0) {
+                return ((Element) userIdNodeList.item(0)).getTextContent();
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    private String extractReferenceFromXml(String xmlContent) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(new ByteArrayInputStream(xmlContent.getBytes()));
+            Element root = doc.getDocumentElement();
+            NodeList userIdNodeList = root.getElementsByTagName("referenceIdentifierNo");
+            if (userIdNodeList.getLength() > 0) {
+                return ((Element) userIdNodeList.item(0)).getTextContent();
+            } else {
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
     @Transactional
     public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
