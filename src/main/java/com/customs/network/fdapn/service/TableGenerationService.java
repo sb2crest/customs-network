@@ -199,6 +199,7 @@ public class TableGenerationService implements TransactionRepository {
             if (slNumber >= minId && slNumber <= maxId) {
                 String position = schemaName + "." + tableName + "_" + mid;
                  updateTaskStatus(position, slNumber,newStatus);
+                 return;
             } else if (slNumber < minId) {
                 right = mid - 1;
             } else {
