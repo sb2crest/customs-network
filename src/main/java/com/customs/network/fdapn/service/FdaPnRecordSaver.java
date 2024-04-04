@@ -1,7 +1,6 @@
 package com.customs.network.fdapn.service;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.*;
 import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.ErrorResCodes;
@@ -42,6 +41,7 @@ public class FdaPnRecordSaver {
     private final AtomicInteger sequentialNumber = new AtomicInteger(0);
     private final CustomIdGenerator idGenerator;
     private final UtilMethods utilMethods;
+    private final AmazonS3 s3Client;
 
     @Transactional
     public void save(ExcelResponse excelResponse) {
@@ -84,10 +84,6 @@ public class FdaPnRecordSaver {
         }
     }
     private void saveToS3(String ediContent) {
-        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
-                .withRegion("ap-south-1")
-                .build();
-
         String currentDate = new SimpleDateFormat("yyyyMMdd").format(new Date());
         String userId = extractUserIdFromXml(ediContent);
         String referenceId = extractReferenceFromXml(ediContent);
@@ -111,9 +107,6 @@ public class FdaPnRecordSaver {
         }else {
             folderKey = utilMethods.getFormattedDate();
         }
-        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
-                .withRegion("ap-south-1")
-                .build();
         List<String> textFiles = new ArrayList<>();
         ListObjectsV2Request request = new ListObjectsV2Request()
                 .withBucketName("fdapn-submit-cbp-down-records")
@@ -138,6 +131,17 @@ public class FdaPnRecordSaver {
         });
         return textFiles;
     }
+    public List<String> getFoldersInBucket(String bucketName) {
+        List<String> folderKeys = new ArrayList<>();
+        ListObjectsV2Request request = new ListObjectsV2Request().withBucketName(bucketName).withDelimiter("/");
+        ListObjectsV2Result result;
+        do {
+            result = s3Client.listObjectsV2(request);
+            folderKeys.addAll(result.getCommonPrefixes());
+            request.setContinuationToken(result.getNextContinuationToken());
+        } while (result.isTruncated());
+        return folderKeys;
+    }
     private String extractUserIdFromXml(String xmlContent) {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -145,23 +149,6 @@ public class FdaPnRecordSaver {
             Document doc = builder.parse(new ByteArrayInputStream(xmlContent.getBytes()));
             Element root = doc.getDocumentElement();
             NodeList userIdNodeList = root.getElementsByTagName("userId");
-            if (userIdNodeList.getLength() > 0) {
-                return ((Element) userIdNodeList.item(0)).getTextContent();
-            } else {
-                return null;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-    private String extractSnoFromXml(String xmlContent) {
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document doc = builder.parse(new ByteArrayInputStream(xmlContent.getBytes()));
-            Element root = doc.getDocumentElement();
-            NodeList userIdNodeList = root.getElementsByTagName("sNo");
             if (userIdNodeList.getLength() > 0) {
                 return ((Element) userIdNodeList.item(0)).getTextContent();
             } else {

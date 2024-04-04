@@ -63,5 +63,10 @@ public class ConverterController {
     public List<String> getTextFilesInFolder(@RequestParam(required = false) String folderKey) {
         return fdaPnRecordSaver.getTextFilesInFolder(folderKey);
     }
+    @GetMapping("/s3-folders")
+    public List<String> getFoldersInBucket() {
+        String bucketName = "fdapn-submit-cbp-down-records";
+        return fdaPnRecordSaver.getFoldersInBucket(bucketName);
+    }
 
 }
