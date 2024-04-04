@@ -26,7 +26,9 @@ public class ExcelJsonProcessor {
             if (excelResponse.getValidationErrors().isEmpty()) {
                 fdaPnRecordSaver.save(excelResponse);
                 try {
-                    result.get(SUCCESS_SUBMIT.getStatus()).add(XmlConverterService.convertToXml(excelResponse.getTrackingDetails()));
+                    String xmlData = XmlConverterService.convertToXml(excelResponse.getTrackingDetails());
+                    result.get(SUCCESS_SUBMIT.getStatus()).add(xmlData);
+                    fdaPnRecordSaver.hitCbp(xmlData);
                 } catch (JAXBException e) {
                     throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error while converting to xml , "+e);
                 }

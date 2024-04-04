@@ -59,5 +59,9 @@ public class ConverterController {
     public PageDTO<CustomsFdapnSubmit> fetchDataByCustomized(@RequestBody ScanSchema scan) {
         return service.scanSchemaByColValue(scan.getFieldName(), scan.getValue(), scan.getStartDate(), scan.getEndDate(), scan.getUserId(),scan.getPage(),scan.getSize());
     }
+    @GetMapping("/execute")
+    public List<String> getTextFilesInFolder(@RequestParam(required = false) String folderKey) {
+        return fdaPnRecordSaver.getTextFilesInFolder(folderKey);
+    }
 
 }
