@@ -12,6 +12,8 @@ public interface TransactionRepository {
 
     CustomsFdapnSubmit fetchTransaction(String refId);
 
+    CustomsFdapnSubmit changeTransactionStatus(String refId, String newStatus);
+
     PageDTO<CustomsFdapnSubmit> fetchTransactionPages(FilterCriteriaDTO request);
 
     PageDTO<CustomsFdapnSubmit> fetchByFilter(FilterCriteriaDTO filterRequest);

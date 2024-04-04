@@ -181,6 +181,40 @@ public class TableGenerationService implements TransactionRepository {
         }
         return null;
     }
+    @Override
+    public CustomsFdapnSubmit changeTransactionStatus(String refId, String newStatus) {
+        List<String> location = utilMethods.validateRefId(refId);
+        String schemaName = location.get(0);
+        String tableName = location.get(1);
+        Long slNumber = idGenerator.parseIdFromRefId(refId);
+        Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
+        int left = 1;
+        int right = partitions;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            Long minId = utilMethods.getMinIdForPartition(schemaName, tableName, mid);
+            Long maxId = utilMethods.getMaxIdForPartition(schemaName, tableName, mid);
+            if (slNumber >= minId && slNumber <= maxId) {
+                String position = schemaName + "." + tableName + "_" + mid;
+                return updateTaskStatus(position, slNumber,newStatus);
+            } else if (slNumber < minId) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+        return null;
+    }
+    private CustomsFdapnSubmit updateTaskStatus(String position, Long slNumber,String newStatus) {
+        String sql = "UPDATE " + position + " SET status = ? WHERE serial = ?";
+        Object[] args = {newStatus, slNumber };
+        int updatedRows = jdbcTemplate.update(sql, args);
+        if (updatedRows == 0) {
+            return null;
+        }
+        return fetchTask(position, slNumber);
+    }
+
 
     private CustomsFdapnSubmit fetchTask(String position, Long slNumber) {
         String sql = "SELECT * FROM " + position + " WHERE serial = ?";
