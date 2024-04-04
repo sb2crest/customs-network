@@ -14,6 +14,7 @@ import com.customs.network.fdapn.utils.UtilMethods;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.common.util.StringUtils;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
@@ -24,6 +25,7 @@ import java.sql.Timestamp;
 import java.util.*;
 
 @Service
+@Slf4j
 public class TableGenerationService implements TransactionRepository {
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -182,7 +184,7 @@ public class TableGenerationService implements TransactionRepository {
         return null;
     }
     @Override
-    public CustomsFdapnSubmit changeTransactionStatus(String refId, String newStatus) {
+    public void changeTransactionStatus(String refId, String newStatus) {
         List<String> location = utilMethods.validateRefId(refId);
         String schemaName = location.get(0);
         String tableName = location.get(1);
@@ -196,25 +198,25 @@ public class TableGenerationService implements TransactionRepository {
             Long maxId = utilMethods.getMaxIdForPartition(schemaName, tableName, mid);
             if (slNumber >= minId && slNumber <= maxId) {
                 String position = schemaName + "." + tableName + "_" + mid;
-                return updateTaskStatus(position, slNumber,newStatus);
+                 updateTaskStatus(position, slNumber,newStatus);
             } else if (slNumber < minId) {
                 right = mid - 1;
             } else {
                 left = mid + 1;
             }
         }
-        return null;
-    }
-    private CustomsFdapnSubmit updateTaskStatus(String position, Long slNumber,String newStatus) {
-        String sql = "UPDATE " + position + " SET status = ? WHERE serial = ?";
-        Object[] args = {newStatus, slNumber };
-        int updatedRows = jdbcTemplate.update(sql, args);
-        if (updatedRows == 0) {
-            return null;
-        }
-        return fetchTask(position, slNumber);
-    }
 
+    }
+    private void updateTaskStatus(String position, Long slNumber,String newStatus) {
+        try{
+            String sql = "UPDATE " + position + " SET status = ? WHERE serial = ?";
+            Object[] args = {newStatus, slNumber };
+            int updatedRows = jdbcTemplate.update(sql, args);
+            log.info("'{}' row is updated.Changed status to '{}' in the table '{}' for serial number '{}'",updatedRows,newStatus,position,slNumber);
+        }catch (DataAccessException e){
+            log.error("Failed to update the status '{}' in table '{}' for serial number '{}'", newStatus, position, slNumber);
+        }
+    }
 
     private CustomsFdapnSubmit fetchTask(String position, Long slNumber) {
         String sql = "SELECT * FROM " + position + " WHERE serial = ?";

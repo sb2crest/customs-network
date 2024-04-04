@@ -12,7 +12,7 @@ public interface TransactionRepository {
 
     CustomsFdapnSubmit fetchTransaction(String refId);
 
-    CustomsFdapnSubmit changeTransactionStatus(String refId, String newStatus);
+    void changeTransactionStatus(String refId, String newStatus);
 
     PageDTO<CustomsFdapnSubmit> fetchTransactionPages(FilterCriteriaDTO request);
 
