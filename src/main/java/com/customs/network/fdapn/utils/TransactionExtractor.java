@@ -32,7 +32,7 @@ public class TransactionExtractor implements ResultSetExtractor<List<CustomsFdap
             request.setSlNo(rs.getLong("serial"));
             request.setBatchId(rs.getString("batch_id"));
             request.setAccountId(rs.getString("account_id"));
-            request.setCreatedOn(rs.getDate("created_on"));
+            request.setCreatedOn(rs.getTimestamp("created_on"));
             request.setEnvelopNumber(rs.getString("envelop_number"));
             request.setReferenceId(rs.getString("reference_id"));
             try {
@@ -43,7 +43,7 @@ public class TransactionExtractor implements ResultSetExtractor<List<CustomsFdap
             }
             request.setStatus(rs.getString("status"));
             request.setTraceId(rs.getString("trace_id"));
-            request.setUpdatedOn(rs.getDate("updated_on"));
+            request.setUpdatedOn(rs.getTimestamp("updated_on"));
             request.setUserId(rs.getString("user_id"));
             transactions.add(request);
         }
