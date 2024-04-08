@@ -42,8 +42,8 @@ public class ExcelParser {
                 }
 
                 Cell portCodeCell = row.getCell(4);
-                if (portCodeCell != null && portCodeCell.getCellType() == CellType.NUMERIC) {
-                    portCodeDetails.setPortCode((int) portCodeCell.getNumericCellValue());
+                if (portCodeCell != null) {
+                    portCodeDetails.setPortCode(portCodeCell.getStringCellValue());
                 } else {
                     portCodeDetails.setPortCode(null);
                     System.out.println("Row with Serial Number " + portCodeDetails.getSno() + " has a null PortCode.");
@@ -53,7 +53,7 @@ public class ExcelParser {
         }
         return portCodeDetailsList;
     }
-    public List<?> getPortDetailsByPortNumberOrPortName(String portName, Integer portCode) {
+    public List<?> getPortDetailsByPortNumberOrPortName(String portName, String portCode) {
         List<?> portDetails;
         if(!StringUtils.isBlank(portName)){
             portDetails = repository.findDistinctPortNamesByPattern(portName);

@@ -17,7 +17,7 @@ public interface PortCodeDetailsRepository extends JpaRepository<PortCodeDetails
     @Query("SELECT DISTINCT p.portCode FROM PortCodeDetails p " +
             "WHERE (:portCodePattern IS NULL OR SUBSTRING(CAST(p.portCode AS string), 1, 3) LIKE CONCAT('%', :portCodePattern, '%')) " +
             "ORDER BY p.portCode DESC")
-    List<Integer> findDistinctPortCodesByPattern(@Param("portCodePattern") Integer portCodePattern);
+    List<Integer> findDistinctPortCodesByPattern(@Param("portCodePattern") String portCodePattern);
 
     PortCodeDetails findByPortName(String portName);
 }

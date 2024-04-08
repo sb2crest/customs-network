@@ -21,5 +21,5 @@ public class PortCodeDetails {
 
     private String portName;
 
-    private Integer portCode;
+    private String portCode;
 }

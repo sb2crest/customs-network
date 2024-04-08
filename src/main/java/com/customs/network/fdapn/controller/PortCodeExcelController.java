@@ -38,7 +38,7 @@ public class PortCodeExcelController {
 
     @GetMapping("/getPortData")
     public List<?> getByPortDetails(@RequestParam(required = false) String portName,
-                                    @RequestParam(required = false) Integer portCode){
+                                    @RequestParam(required = false) String portCode){
        return excelParser.getPortDetailsByPortNumberOrPortName(portName,portCode);
     }
 }
