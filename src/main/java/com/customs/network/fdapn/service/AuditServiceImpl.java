@@ -14,7 +14,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
@@ -51,14 +50,10 @@ public class AuditServiceImpl implements AuditService{
         } else {
             switch (period) {
                 case "today" -> {
-                    calendar.add(Calendar.DATE, -3);
-                    Date startDateToday = calendar.getTime();
-                    transactions = getDailyAuditByUserId(userId, startDateToday, endDate);
+                    transactions = fetchLastThreeDaysAuditTrends(userId);
                 }
                 case "week" -> {
-                    calendar.add(Calendar.DATE, -7);
-                    Date startDateWeek = calendar.getTime();
-                    transactions = getAuditDataForUser(userId, startDateWeek, endDate);
+                    transactions = fetchWeeklyAuditTrends(userId);
                 }
                 case "month"->{
                     return fetchMonthlyAuditTrends(userId);
@@ -89,13 +84,18 @@ public class AuditServiceImpl implements AuditService{
         return finalCount;
     }
 
-    private List<DailyAuditDTO> getAuditDataForUser(String userId, Date startDate, Date endDate) {
-        List<DailyAudit> auditLists = dailyAuditRepository.findByUserIdAndDateBetween(userId, startDate, endDate);
-        return auditLists.stream()
-                .filter(Objects::nonNull)
-                .map(this::convertToMonthlyAuditDto)
-                .sorted(Comparator.comparing(DailyAuditDTO::getDate).reversed()) // S
-                .toList();
+    private List<DailyAuditDTO> fetchWeeklyAuditTrends(String userId) {
+        List<DailyAuditDTO> dailyAuditList = new ArrayList<>();
+        LocalDate currentDate = LocalDate.now();
+        LocalDate endDate = currentDate.minusDays(1);
+        LocalDate startDate = endDate.minusDays(6);
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            Date currentDate1 = java.sql.Date.valueOf(date);
+            List<DailyAuditDTO> dailyAuditForDay = getDailyAuditBasedOnDayBack(userId, currentDate1);
+            dailyAuditList.addAll(dailyAuditForDay);
+        }
+        dailyAuditList.sort(Comparator.comparing(DailyAuditDTO::getDate).reversed());
+        return dailyAuditList;
     }
     private DailyAuditDTO getDailyAuditByUserIdAndDate(String userId, Date date) {
         Optional<DailyAudit> userDailyAudit = dailyAuditRepository.findByUserIdAndDate(userId, date);
@@ -108,20 +108,34 @@ public class AuditServiceImpl implements AuditService{
             return auditDTO;
         }
     }
-    private List<DailyAuditDTO> getDailyAuditByUserId(String userId, Date startDate,Date endDate) {
-        List<DailyAudit> userDailyAudit = dailyAuditRepository.findByUserIdAndDateRange(userId, startDate,endDate);
-        if (!userDailyAudit.isEmpty()) {
-           return userDailyAudit.stream()
+    public List<DailyAuditDTO> fetchLastThreeDaysAuditTrends(String userId) {
+        List<DailyAuditDTO> dailyAuditList = new ArrayList<>();
+        LocalDate currentDate = LocalDate.now();
+        LocalDate endDate = currentDate.minusDays(1);
+        LocalDate startDate = endDate.minusDays(2);
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            Date currentDate1 = java.sql.Date.valueOf(date);
+            List<DailyAuditDTO> dailyAuditForDay = getDailyAuditBasedOnDayBack(userId, currentDate1);
+            dailyAuditList.addAll(dailyAuditForDay);
+        }
+        dailyAuditList.sort(Comparator.comparing(DailyAuditDTO::getDate).reversed());
+        return dailyAuditList;
+    }
+    public List<DailyAuditDTO> getDailyAuditBasedOnDayBack(String userId, Date date) {
+        Optional<DailyAudit> userDailyAudit = dailyAuditRepository.findByUserIdAndDate(userId, date);
+        List<DailyAuditDTO> dailyAuditList = new ArrayList<>();
+        if (userDailyAudit.isPresent()) {
+            dailyAuditList.addAll(userDailyAudit.stream()
                     .filter(Objects::nonNull)
                     .map(this::convertToMonthlyAuditDto)
-                    .sorted(Comparator.comparing(DailyAuditDTO::getDate).reversed())
-                    .collect(Collectors.toList());
-        }
-        else {
+                    .toList());
+        } else {
             DailyAuditDTO auditDTO = new DailyAuditDTO();
             auditDTO.setUserId(userId);
-            return List.of(auditDTO);
+            auditDTO.setDate(DateUtils.formatterDate(date));
+            dailyAuditList.add(auditDTO);
         }
+        return dailyAuditList;
     }
 
     @Override
