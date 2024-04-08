@@ -183,7 +183,7 @@ public class AuditServiceImpl implements AuditService{
         }
     }
     private List<PortInfoDto> getByPortCode(String userId, String portCode) {
-        List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId, Integer.valueOf(portCode));
+        List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId,portCode);
         return mapToPortInfoDtoList(portInfoList);
     }
 
