@@ -1,9 +1,9 @@
 package com.customs.network.fdapn.service;
 
+import com.customs.network.fdapn.dto.PortCodeDetailsDto;
 import com.customs.network.fdapn.model.PortCodeDetails;
 import com.customs.network.fdapn.repository.PortCodeDetailsRepository;
 import io.micrometer.common.util.StringUtils;
-import org.apache.poi.ss.formula.functions.T;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
@@ -53,13 +53,21 @@ public class ExcelParser {
         }
         return portCodeDetailsList;
     }
-    public List<?> getPortDetailsByPortNumberOrPortName(String portName, String portCode) {
-        List<?> portDetails;
-        if(!StringUtils.isBlank(portName)){
-            portDetails = repository.findDistinctPortNamesByPattern(portName);
-        } else {
-            portDetails = repository.findDistinctPortCodesByPattern(portCode);
+    public List<PortCodeDetailsDto> getPortDetailsByPortNumberOrPortName(String portDetails) {
+        List<PortCodeDetails> portCodeDetailsList = null;
+        if(!StringUtils.isBlank(portDetails)){
+            portCodeDetailsList = repository.findByPortCodeOrPortName(portDetails);
         }
-        return portDetails;
+
+        return portCodeDetailsList.stream().map(this::convertToPortCodeDetails).toList();
+    }
+    private PortCodeDetailsDto convertToPortCodeDetails(PortCodeDetails portCodeDetails){
+        PortCodeDetailsDto portCodeDetailsDto=new PortCodeDetailsDto();
+        portCodeDetailsDto.setPortName(portCodeDetails.getPortName());
+        portCodeDetailsDto.setCountry(portCodeDetails.getCountry());
+        portCodeDetailsDto.setState(portCodeDetails.getState());
+        portCodeDetailsDto.setPortCode(portCodeDetails.getPortCode());
+        portCodeDetailsDto.setSno(portCodeDetails.getSno());
+        return portCodeDetailsDto;
     }
 }

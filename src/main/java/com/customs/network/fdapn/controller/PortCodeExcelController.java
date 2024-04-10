@@ -1,9 +1,9 @@
 package com.customs.network.fdapn.controller;
 
+import com.customs.network.fdapn.dto.PortCodeDetailsDto;
 import com.customs.network.fdapn.model.PortCodeDetails;
 import com.customs.network.fdapn.repository.PortCodeDetailsRepository;
 import com.customs.network.fdapn.service.ExcelParser;
-import org.apache.poi.ss.formula.functions.T;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,8 +37,7 @@ public class PortCodeExcelController {
     }
 
     @GetMapping("/getPortData")
-    public List<?> getByPortDetails(@RequestParam(required = false) String portName,
-                                    @RequestParam(required = false) String portCode){
-       return excelParser.getPortDetailsByPortNumberOrPortName(portName,portCode);
+    public List<PortCodeDetailsDto> getByPortDetails(@RequestParam(required = false) String portDetails){
+       return excelParser.getPortDetailsByPortNumberOrPortName(portDetails);
     }
 }
