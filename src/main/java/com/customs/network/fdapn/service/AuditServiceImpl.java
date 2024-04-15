@@ -6,8 +6,11 @@ import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.*;
 import com.customs.network.fdapn.utils.DateUtils;
+import com.customs.network.fdapn.utils.UtilMethods;
 import io.micrometer.common.util.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
@@ -19,6 +22,7 @@ import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 @Service
+@Slf4j
 public class AuditServiceImpl implements AuditService{
 
     private final DailyAuditRepository dailyAuditRepository;
@@ -27,7 +31,7 @@ public class AuditServiceImpl implements AuditService{
     private final PortCodeDetailsRepository portCodeDetailsRepository;
     private final YearlyAuditRepository yearlyAuditRepository;
     @Autowired
-    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository, PortInfoRepository portInfoRepository, MonthlyAuditRepository monthlyAuditRepository, PortCodeDetailsRepository portCodeDetailsRepository, YearlyAuditRepository yearlyAuditRepository) {
+    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository, PortInfoRepository portInfoRepository, MonthlyAuditRepository monthlyAuditRepository, PortCodeDetailsRepository portCodeDetailsRepository, YearlyAuditRepository yearlyAuditRepository, UtilMethods utilMethods) {
         this.dailyAuditRepository = dailyAuditRepository;
         this.portInfoRepository = portInfoRepository;
         this.monthlyAuditRepository = monthlyAuditRepository;
@@ -137,21 +141,22 @@ public class AuditServiceImpl implements AuditService{
         }
         return dailyAuditList;
     }
-
     @Override
+    @Cacheable(value = "transactionsCache", key = "#userId + '_' + #period")
     public FinalCount<TotalTransactionCountDto<?>> getAllTransactionsCounts(String userId, String period) {
+        log.info("Fetching from database");
         List<TotalTransactionCountDto<?>> totalTransactionCountDtos = new ArrayList<>();
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
 
         if (StringUtils.isBlank(userId) && StringUtils.isBlank(period)) {
-            iterateOverDates(calendar, 3, userId, totalTransactionCountDtos);
+            iterateOverDates(calendar, 0, 3, userId, totalTransactionCountDtos);
         } else if (StringUtils.isNotBlank(userId) && StringUtils.isBlank(period)) {
-            iterateOverDates(calendar, 3, userId, totalTransactionCountDtos);
+            iterateOverDates(calendar, 0,3, userId, totalTransactionCountDtos);
         } else {
             switch (period) {
-                case "today" -> iterateOverDates(calendar, 3, userId, totalTransactionCountDtos);
-                case "week" -> iterateOverDates(calendar, 7, userId, totalTransactionCountDtos);
+                case "today" -> iterateOverDates(calendar, 0,3, userId, totalTransactionCountDtos);
+                case "week" -> iterateOverDates(calendar, 0,7, userId, totalTransactionCountDtos);
                 case "month"-> {
                     return fetchMonthlyAuditTrends(userId);
                 }
@@ -205,8 +210,8 @@ public class AuditServiceImpl implements AuditService{
                 .toList();
     }
 
-    private void iterateOverDates(Calendar calendar, int daysToIterate, String userId, List<TotalTransactionCountDto<?>> totalTransactionCountDtos) {
-        for (int i = 0; i < daysToIterate; i++) {
+    private void iterateOverDates(Calendar calendar,int start, int daysToIterate, String userId, List<TotalTransactionCountDto<?>> totalTransactionCountDtos) {
+        for (int i = start; i < daysToIterate; i++) {
             calendar.setTime(new Date());
             calendar.add(Calendar.DATE, -i);
             Date startDate = calendar.getTime();

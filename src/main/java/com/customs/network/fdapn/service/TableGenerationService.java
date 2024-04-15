@@ -45,42 +45,48 @@ public class TableGenerationService implements TransactionRepository {
         postgresFunctionInit.scanSchemaFunctionInit();
     }
     @Override
-    public CustomsFdapnSubmit saveTransaction(CustomsFdapnSubmit request) {
-        String schema = "fdapn_" + utilMethods.getFormattedDate();
-        String userIdLowerCase = request.getUserId().toLowerCase();
-        String tableName = "fdapn_" + userIdLowerCase;
-        Long lastId;
+    public synchronized CustomsFdapnSubmit saveTransaction(CustomsFdapnSubmit request) {
+        synchronized (this) {
+            String schema = "fdapn_" + utilMethods.getFormattedDate();
+            String userIdLowerCase = request.getUserId().toLowerCase();
+            String tableName = "fdapn_" + userIdLowerCase;
+            Long lastId;
 
-        if (isTableExist(schema, tableName)) {
-            Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
-            lastId = utilMethods.getLastIdInTheTable(schema, tableName);
-            int newMax = (lastId > numberOfRecords) ? (int) Math.ceil((double) lastId / max) * max : (int) Math.ceil((double) numberOfRecords / max) * max;
-            String refId = idGenerator.generator(request.getUserId(), lastId);
-            request.setReferenceId(refId);
-            request.setSlNo(idGenerator.parseIdFromRefId(refId));
-            if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
-                Long missingRecords = (lastId == newMax) ? lastId - numberOfRecords : 0;
-                createPartitionTable(schema, tableName, numberOfRecords + missingRecords);
+
+            if (isTableExist(schema, tableName)) {
+                Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
+                lastId = utilMethods.getLastIdInTheTable(schema, tableName);
+                int newMax = (lastId > numberOfRecords) ? (int) Math.ceil((double) lastId / max) * max : (int) Math.ceil((double) numberOfRecords / max) * max;
+                String refId = idGenerator.generator(request.getUserId(), lastId);
+                request.setReferenceId(refId);
+                request.setSlNo(idGenerator.parseIdFromRefId(refId));
+                if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
+                    Long missingRecords = (lastId == newMax) ? lastId - numberOfRecords : 0;
+                    createPartitionTable(schema, tableName, numberOfRecords + missingRecords);
+                }
+            } else {
+                createTable(schema, tableName);
+                lastId = utilMethods.getLastIdInTheTable(schema, tableName);
+                String refId = idGenerator.generator(request.getUserId(), lastId);
+                request.setReferenceId(refId);
+                request.setSlNo(idGenerator.parseIdFromRefId(refId));
             }
-        } else {
-            createTable(schema, tableName);
-            lastId = utilMethods.getLastIdInTheTable(schema, tableName);
-            String refId = idGenerator.generator(request.getUserId(), lastId);
-            request.setReferenceId(refId);
-            request.setSlNo(idGenerator.parseIdFromRefId(refId));
+
+
+            return saveToTransactionTable(request, schema, tableName);
         }
-        return saveToTransactionTable(request, schema, tableName);
     }
 
 
-    private boolean isTableExist(String schema, String tableName) {
+
+    private synchronized boolean isTableExist(String schema, String tableName) {
         String sql = "SELECT EXISTS (" +
                 "SELECT 1 " +
                 "FROM information_schema.tables " +
                 "WHERE table_schema = ? AND table_name = ?)";
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, schema, tableName));
     }
-    private void createTable(String schemaName, String tableName) {
+    private synchronized void createTable(String schemaName, String tableName) {
         try {
             String sql = "CREATE TABLE IF NOT EXISTS " + schemaName + "." + tableName + " ("
                     + "serial BIGINT PRIMARY KEY,"
@@ -104,13 +110,11 @@ public class TableGenerationService implements TransactionRepository {
                     tableName + " FOR VALUES FROM (1) TO (" + (max + 1) + ")";
             jdbcTemplate.execute(firstPartitionTable);
         } catch (DataAccessException e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Error creating transaction table for  : "+e);
-
+            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG, "Error creating transaction table for  : " + e);
         }
     }
 
-
-    private void createPartitionTable(String schemaName, String tableName, Long numberOfRecords) {
+    private synchronized void createPartitionTable(String schemaName, String tableName, Long numberOfRecords) {
         try {
             Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
             Long noOfRecords = utilMethods.getNumberOfRecords(schemaName, tableName + "_" + partitions);
