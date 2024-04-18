@@ -27,6 +27,10 @@ import java.io.ByteArrayInputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.customs.network.fdapn.model.MessageCode.SUCCESS_SUBMIT;
 import static com.customs.network.fdapn.utils.JsonUtils.*;
@@ -43,37 +47,51 @@ public class FdaPnRecordSaver {
     private final UtilMethods utilMethods;
     private final AmazonS3 s3Client;
 
+    private final Lock lock = new ReentrantLock();
     @Transactional
-    public void save(ExcelResponse excelResponse) {
-        TrackingDetails customerDetails = excelResponse.getTrackingDetails();
-        if (customerDetails == null) {
-            throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS,"CustomerDetails cannot be null");
+    public List<CustomsFdapnSubmit> save(List<ExcelResponse> excelResponseList)  {
+
+        List<CustomsFdapnSubmit> list = excelResponseList.stream()
+                .filter(Objects::nonNull)
+                .map(excelResponse -> {
+                    TrackingDetails customerDetails = excelResponse.getTrackingDetails();
+                    if (customerDetails == null) {
+                        throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS, "CustomerDetails cannot be null");
+                    }
+                    Date date = new Date();
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+                    String formattedDate = dateFormat.format(date);
+                    CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
+
+                    String batchId = customerDetails.getUserId() + formattedDate;
+                    customsFdapnSubmit.setBatchId(batchId);
+
+                    String traceId = formattedDate + generateSequentialNumber();
+                    customsFdapnSubmit.setTraceId(traceId);
+                    customsFdapnSubmit.setUserId(customerDetails.getUserId());
+                    customsFdapnSubmit.setAccountId(customerDetails.getAccountId());
+                    customsFdapnSubmit.setEnvelopNumber("ENV001");
+                    customsFdapnSubmit.setCreatedOn(new Date());
+                    customsFdapnSubmit.setUpdatedOn(new Date());
+                    customsFdapnSubmit.setStatus(SUCCESS_SUBMIT.getStatus());
+                    JsonNode jsonNode = convertCustomerDetailsToJson(customerDetails);
+                    customsFdapnSubmit.setRequestJson(jsonNode);
+                    JsonNode response = convertResponseToJson(getResponse(excelResponse, true));
+                    customsFdapnSubmit.setResponseJson(response);
+                    return customsFdapnSubmit;
+                }).toList();
+
+        List<CustomsFdapnSubmit> records;
+        lock.lock();
+        try {
+             records = transactionRepository.saveTransaction(list);
+        } finally {
+            lock.unlock();
         }
-        Date date = new Date();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
-        String formattedDate = dateFormat.format(date);
-        CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
 
-        String batchId = customerDetails.getUserId() + formattedDate;
-        customsFdapnSubmit.setBatchId(batchId);
-
-        String traceId = formattedDate + generateSequentialNumber();
-        customsFdapnSubmit.setTraceId(traceId);
-        customsFdapnSubmit.setUserId(customerDetails.getUserId());
-        customsFdapnSubmit.setAccountId(customerDetails.getAccountId());
-        customsFdapnSubmit.setEnvelopNumber("ENV001");
-        customsFdapnSubmit.setCreatedOn(new Date());
-        customsFdapnSubmit.setUpdatedOn(new Date());
-        customsFdapnSubmit.setStatus(SUCCESS_SUBMIT.getStatus());
-        JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
-        customsFdapnSubmit.setRequestJson(jsonNode);
-        JsonNode response = JsonUtils.convertResponseToJson(getResponse(excelResponse,true));
-        customsFdapnSubmit.setResponseJson(response);
-        CustomsFdapnSubmit record = transactionRepository.saveTransaction(customsFdapnSubmit);
-        excelResponse.getTrackingDetails().setReferenceIdentifierNo(record.getReferenceId());
-        log.info("submit saved in Data base : {}", customsFdapnSubmit);
-
+        return records;
     }
+
     public void hitCbp(String xmlData) {
         //CBP
         String referenceId = extractReferenceFromXml(xmlData);
@@ -176,41 +194,67 @@ public class FdaPnRecordSaver {
             return null;
         }
     }
-    @Transactional
-    public CustomerFdaPnFailure failureRecords(ExcelResponse excelResponse) {
-        TrackingDetails customerDetails = excelResponse.getTrackingDetails();
-        if (isNull(customerDetails) || StringUtils.isBlank(customerDetails.getUserId())) {
-            throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS,isNull(customerDetails) ? "CustomerDetails cannot be null" : "User ID cannot be null or empty");
-        }
-        CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
-        Date date = new Date();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
-        String formattedDate = dateFormat.format(date);
 
-        String batchId = customerDetails.getUserId() + formattedDate;
-        customsFdapnSubmit.setBatchId(batchId);
-        String traceId = formattedDate + generateSequentialNumber();
-        customsFdapnSubmit.setTraceId(traceId);
-        customsFdapnSubmit.setUserId(customerDetails.getUserId());
-        customsFdapnSubmit.setAccountId(customerDetails.getAccountId());
-        customsFdapnSubmit.setEnvelopNumber("ENV003");
-        customsFdapnSubmit.setCreatedOn(new Date());
-        customsFdapnSubmit.setUpdatedOn(new Date());
-        customsFdapnSubmit.setStatus(MessageCode.VALIDATION_ERRORS.getStatus());
-        JsonNode jsonNode = JsonUtils.convertCustomerDetailsToJson(customerDetails);
-        customsFdapnSubmit.setRequestJson(jsonNode);
-        JsonNode saveResponse = convertResponseToJson(getResponse(excelResponse, false));
-        customsFdapnSubmit.setResponseJson(saveResponse);
-        CustomsFdapnSubmit record = transactionRepository.saveTransaction(customsFdapnSubmit);
-        CustomerFdaPnFailure dto = new CustomerFdaPnFailure();
-        dto.setBatchId(record.getBatchId());
-        dto.setUserId(record.getUserId());
-        dto.setReferenceIdentifierNo(record.getReferenceId());
-        dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
-        dto.setStatus(record.getStatus());
-        dto.setResponseJson(getResponse(excelResponse, false));
-        dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
-        return dto;
+    @Transactional
+    public List<CustomerFdaPnFailure> failureRecords(List<ExcelResponse> excelResponseList) {
+        List<CustomerFdaPnFailure> fdaPnFailures=new ArrayList<>();
+        List<CustomsFdapnSubmit> failedList = excelResponseList.stream()
+                .filter(Objects::nonNull)
+                .map(
+                        excelResponse -> {
+                            TrackingDetails customerDetails = excelResponse.getTrackingDetails();
+                            if (isNull(customerDetails) || StringUtils.isBlank(customerDetails.getUserId())) {
+                                throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS, isNull(customerDetails) ? "CustomerDetails cannot be null" : "User ID cannot be null or empty");
+                            }
+                            CustomerFdaPnFailure dto = new CustomerFdaPnFailure();
+                            dto.setResponseJson(getResponse(excelResponse,false));
+                            fdaPnFailures.add(dto);
+                            CustomsFdapnSubmit customsFdapnSubmit = new CustomsFdapnSubmit();
+                            Date date = new Date();
+                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+                            String formattedDate = dateFormat.format(date);
+
+                            String batchId = customerDetails.getUserId() + formattedDate;
+                            customsFdapnSubmit.setBatchId(batchId);
+                            String traceId = formattedDate + generateSequentialNumber();
+                            customsFdapnSubmit.setTraceId(traceId);
+                            customsFdapnSubmit.setUserId(customerDetails.getUserId());
+                            customsFdapnSubmit.setAccountId(customerDetails.getAccountId());
+                            customsFdapnSubmit.setEnvelopNumber("ENV003");
+                            customsFdapnSubmit.setCreatedOn(new Date());
+                            customsFdapnSubmit.setUpdatedOn(new Date());
+                            customsFdapnSubmit.setStatus(MessageCode.VALIDATION_ERRORS.getStatus());
+                            JsonNode jsonNode = convertCustomerDetailsToJson(customerDetails);
+                            customsFdapnSubmit.setRequestJson(jsonNode);
+                            JsonNode saveResponse = convertResponseToJson(getResponse(excelResponse, false));
+                            customsFdapnSubmit.setResponseJson(saveResponse);
+                            return customsFdapnSubmit;
+                        }
+                ).toList();
+
+        List<CustomsFdapnSubmit> records=null;
+        lock.lock();
+        try {
+            records = transactionRepository.saveTransaction(failedList);
+        } finally {
+            lock.unlock();
+        }
+        List<CustomsFdapnSubmit> finalRecords = records;
+
+        assert fdaPnFailures != null;
+        return IntStream.range(0, Math.min(fdaPnFailures.size(), records.size()))
+                .mapToObj(i -> {
+                    CustomerFdaPnFailure dto = fdaPnFailures.get(i);
+                    CustomsFdapnSubmit record = finalRecords.get(i);
+                    dto.setBatchId(record.getBatchId());
+                    dto.setUserId(record.getUserId());
+                    dto.setReferenceIdentifierNo(record.getReferenceId());
+                    dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
+                    dto.setStatus(record.getStatus());
+                    dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
     private SuccessOrFailureResponse getResponse(ExcelResponse excelResponse,boolean isSuccess){
         SuccessOrFailureResponse response = new SuccessOrFailureResponse();

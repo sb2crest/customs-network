@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -45,41 +46,53 @@ public class TableGenerationService implements TransactionRepository {
         postgresFunctionInit.scanSchemaFunctionInit();
     }
     @Override
-    public synchronized CustomsFdapnSubmit saveTransaction(CustomsFdapnSubmit request) {
-        synchronized (this) {
+    public CustomsFdapnSubmit saveTransaction(CustomsFdapnSubmit request) {
             String schema = "fdapn_" + utilMethods.getFormattedDate();
             String userIdLowerCase = request.getUserId().toLowerCase();
             String tableName = "fdapn_" + userIdLowerCase;
-            Long lastId;
-
-
-            if (isTableExist(schema, tableName)) {
-                Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
-                lastId = utilMethods.getLastIdInTheTable(schema, tableName);
-                int newMax = (lastId > numberOfRecords) ? (int) Math.ceil((double) lastId / max) * max : (int) Math.ceil((double) numberOfRecords / max) * max;
-                String refId = idGenerator.generator(request.getUserId(), lastId);
-                request.setReferenceId(refId);
-                request.setSlNo(idGenerator.parseIdFromRefId(refId));
-                if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
-                    Long missingRecords = (lastId == newMax) ? lastId - numberOfRecords : 0;
-                    createPartitionTable(schema, tableName, numberOfRecords + missingRecords);
-                }
-            } else {
+            if (!isTableExist(schema, tableName))
                 createTable(schema, tableName);
-                lastId = utilMethods.getLastIdInTheTable(schema, tableName);
-                String refId = idGenerator.generator(request.getUserId(), lastId);
+            Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
+            Long lastId = utilMethods.getLastIdInTheTable(schema, tableName);
+            int newMax = (lastId > numberOfRecords) ? (int) Math.ceil((double) lastId / max) * max : (int) Math.ceil((double) numberOfRecords / max) * max;
+            String refId = idGenerator.generator(request.getUserId(), lastId);
+            request.setReferenceId(refId);
+            request.setSlNo(idGenerator.parseIdFromRefId(refId));
+            if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
+                Long missingRecords = (lastId == newMax) ? lastId - numberOfRecords : 0;
+                createPartitionTable(schema, tableName, numberOfRecords + missingRecords);
+            }
+        return saveToTransactionTable(request, schema, tableName);
+    }
+@Override
+public List<CustomsFdapnSubmit> saveTransaction(List<CustomsFdapnSubmit> requestList) {
+    String schema = "fdapn_" + utilMethods.getFormattedDate();
+    String userIdLowerCase = requestList.get(0).getUserId().toLowerCase();
+    String tableName = "fdapn_" + userIdLowerCase;
+    if (!isTableExist(schema, tableName))
+        createTable(schema, tableName);
+
+    final Long[] lastId = {utilMethods.getLastIdInTheTable(schema, tableName)};
+    final Long[] numberOfRecords = {utilMethods.getLastIdInTheTable(schema, tableName)};
+    List<CustomsFdapnSubmit> list = requestList.stream()
+            .filter(Objects::nonNull)
+            .peek(request -> {
+                int newMax = (lastId[0] > numberOfRecords[0]) ? (int) Math.ceil((double) lastId[0] / max) * max : (int) Math.ceil((double) numberOfRecords[0] / max) * max;
+                String refId = idGenerator.generator(request.getUserId(), lastId[0]);
+                lastId[0]++;
                 request.setReferenceId(refId);
                 request.setSlNo(idGenerator.parseIdFromRefId(refId));
-            }
+                if ((numberOfRecords[0] >= newMax && numberOfRecords[0] != 0) || (lastId[0] == newMax && lastId[0] > numberOfRecords[0])) {
+                    Long missingRecords = (lastId[0] == newMax) ? lastId[0] - numberOfRecords[0] : 0;
+                    createPartitionTable(schema, tableName, numberOfRecords[0] + missingRecords);
+                }
+                numberOfRecords[0] = lastId[0];
+            }).toList();
+    return saveToTransactionTable(list, schema, tableName);
+}
 
 
-            return saveToTransactionTable(request, schema, tableName);
-        }
-    }
-
-
-
-    private synchronized boolean isTableExist(String schema, String tableName) {
+    private  boolean isTableExist(String schema, String tableName) {
         String sql = "SELECT EXISTS (" +
                 "SELECT 1 " +
                 "FROM information_schema.tables " +
@@ -87,31 +100,32 @@ public class TableGenerationService implements TransactionRepository {
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, schema, tableName));
     }
     private synchronized void createTable(String schemaName, String tableName) {
-        try {
-            String sql = "CREATE TABLE IF NOT EXISTS " + schemaName + "." + tableName + " ("
-                    + "serial BIGINT PRIMARY KEY,"
-                    + "batch_id character varying(255) COLLATE pg_catalog.\"default\" NOT NULL,"
-                    + "account_id character varying(255) COLLATE pg_catalog.\"default\","
-                    + "created_on timestamp,"
-                    + "envelop_number character varying(255) COLLATE pg_catalog.\"default\","
-                    + "reference_id character varying(255) COLLATE pg_catalog.\"default\","
-                    + "request_json jsonb,"
-                    + "response_json jsonb,"
-                    + "status character varying(255) COLLATE pg_catalog.\"default\","
-                    + "trace_id character varying(255) COLLATE pg_catalog.\"default\","
-                    + "updated_on date,"
-                    + "user_id character varying(255) COLLATE pg_catalog.\"default\""
-                    + ") PARTITION BY RANGE (serial)";
+            try {
+                String sql = "CREATE TABLE IF NOT EXISTS " + schemaName + "." + tableName + " ("
+                        + "serial BIGINT PRIMARY KEY,"
+                        + "batch_id character varying(255) COLLATE pg_catalog.\"default\" NOT NULL,"
+                        + "account_id character varying(255) COLLATE pg_catalog.\"default\","
+                        + "created_on timestamp,"
+                        + "envelop_number character varying(255) COLLATE pg_catalog.\"default\","
+                        + "reference_id character varying(255) COLLATE pg_catalog.\"default\","
+                        + "request_json jsonb,"
+                        + "response_json jsonb,"
+                        + "status character varying(255) COLLATE pg_catalog.\"default\","
+                        + "trace_id character varying(255) COLLATE pg_catalog.\"default\","
+                        + "updated_on date,"
+                        + "user_id character varying(255) COLLATE pg_catalog.\"default\""
+                        + ") PARTITION BY RANGE (serial)";
 
-            jdbcTemplate.execute(sql);
-            String firstPartitionTable = "CREATE TABLE " +
-                    schemaName + "." + tableName + "_1 PARTITION OF " +
-                    schemaName + "." +
-                    tableName + " FOR VALUES FROM (1) TO (" + (max + 1) + ")";
-            jdbcTemplate.execute(firstPartitionTable);
-        } catch (DataAccessException e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG, "Error creating transaction table for  : " + e);
-        }
+                jdbcTemplate.execute(sql);
+                String firstPartitionTable = "CREATE TABLE " +
+                        schemaName + "." + tableName + "_1 PARTITION OF " +
+                        schemaName + "." +
+                        tableName + " FOR VALUES FROM (1) TO (" + (max + 1) + ")";
+                jdbcTemplate.execute(firstPartitionTable);
+            } catch (DataAccessException e) {
+                throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG, "Error creating transaction table for  : " + e);
+            }
+
     }
 
     private synchronized void createPartitionTable(String schemaName, String tableName, Long numberOfRecords) {
@@ -131,7 +145,7 @@ public class TableGenerationService implements TransactionRepository {
         }
     }
 
-    private CustomsFdapnSubmit saveToTransactionTable(CustomsFdapnSubmit request, String schemaName, String tableName) {
+    private synchronized CustomsFdapnSubmit saveToTransactionTable(CustomsFdapnSubmit request, String schemaName, String tableName) {
         try {
             String insertSql = "INSERT INTO " + schemaName + "." + tableName + " (serial, batch_id, account_id, created_on, envelop_number, reference_id, request_json, response_json, status, trace_id, updated_on, user_id) "
                     + "VALUES (?, ?, ?, ?, ?, ?, CAST(? AS jsonb),CAST(? AS jsonb), ?, ?, ?, ?)";
@@ -158,11 +172,51 @@ public class TableGenerationService implements TransactionRepository {
                     request.getUpdatedOn(),
                     request.getUserId()
             );
-            return request;
-        } catch (DataAccessException e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,"Failed to save data for "+request.getUserId()+ " : "+e);
+        } catch (DuplicateKeyException keyException) {
+            log.warn("Duplicate key error occurred for key {}. Retrying with a new key...", request.getSlNo());
         }
+        return request;
     }
+    private synchronized List<CustomsFdapnSubmit> saveToTransactionTable(List<CustomsFdapnSubmit> requests, String schemaName, String tableName) {
+        try {
+            String insertSql = "INSERT INTO " + schemaName + "." + tableName + " (serial, batch_id, account_id, created_on, envelop_number, reference_id, request_json, response_json, status, trace_id, updated_on, user_id) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, CAST(? AS jsonb), CAST(? AS jsonb), ?, ?, ?, ?)";
+            List<Object[]> batchArgs = new ArrayList<>();
+            for (CustomsFdapnSubmit request : requests) {
+                Date createdOnDate = request.getCreatedOn();
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(createdOnDate);
+                calendar.set(Calendar.HOUR_OF_DAY, Calendar.getInstance().get(Calendar.HOUR_OF_DAY));
+                calendar.set(Calendar.MINUTE, Calendar.getInstance().get(Calendar.MINUTE));
+                calendar.set(Calendar.SECOND, Calendar.getInstance().get(Calendar.SECOND));
+
+                Timestamp createdOnTimestamp = new Timestamp(calendar.getTime().getTime());
+
+                batchArgs.add(new Object[]{
+                        request.getSlNo(),
+                        request.getBatchId(),
+                        request.getAccountId(),
+                        createdOnTimestamp,
+                        request.getEnvelopNumber(),
+                        request.getReferenceId(),
+                        request.getRequestJson().toString(),
+                        request.getResponseJson().toString(),
+                        request.getStatus(),
+                        request.getTraceId(),
+                        request.getUpdatedOn(),
+                        request.getUserId()
+                });
+            }
+
+            jdbcTemplate.batchUpdate(insertSql, batchArgs);
+        } catch (DuplicateKeyException keyException) {
+            log.warn("Duplicate key error occurred. Some records may not be inserted.", keyException);
+        }
+        return requests;
+    }
+
+
+
     @Override
     public CustomsFdapnSubmit fetchTransaction(String refId) {
         List<String> location = utilMethods.validateRefId(refId);

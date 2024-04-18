@@ -10,6 +10,8 @@ import java.util.List;
 public interface TransactionRepository {
     CustomsFdapnSubmit saveTransaction(CustomsFdapnSubmit request);
 
+    List<CustomsFdapnSubmit> saveTransaction(List<CustomsFdapnSubmit> requestList);
+
     CustomsFdapnSubmit fetchTransaction(String refId);
 
     void changeTransactionStatus(String refId, String newStatus);

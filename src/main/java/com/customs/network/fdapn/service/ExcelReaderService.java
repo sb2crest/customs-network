@@ -18,6 +18,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 
 @Component
@@ -29,34 +32,88 @@ public class ExcelReaderService {
 
     public Map<String, List<Object>> processExcelFile(MultipartFile file) {
         try {
-            long startTime = System.currentTimeMillis(); // Get the current time in milliseconds
-            List<ExcelResponse> excelResponses = readExcelFile(file);
-            long endTime = System.currentTimeMillis();
-            long elapsedTime = endTime - startTime; // Calculate the elapsed time in milliseconds
-
-            double elapsedTimeInSeconds = elapsedTime / 1000.0;
-            System.out.println("Time taken: " + elapsedTimeInSeconds + " seconds");
-            log.info("Time taken to read excel (seconds) : ->{}",elapsedTimeInSeconds);
-            return excelJsonProcessor.processResponses(excelResponses);
+            return readExcelFile(file);
         } catch (Exception e) {
             log.error("Error converting Excel to XML: -> {} ", e.getMessage());
             throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Error converting Excel to XML , " + e.getMessage());
         }
     }
 
-    public List<ExcelResponse> readExcelFile(MultipartFile file) throws Exception {
+    public Map<String, List<Object>> readExcelFile(MultipartFile file) throws Exception {
         if (file.isEmpty()) {
             throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS, "The uploaded file is empty.");
         }
-        List<ExcelResponse> excelResponseList = new ArrayList<>();
+        Map<String, List<Object>> excelResponseList = new TreeMap<>();
+        long startTime=System.currentTimeMillis();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
+        long endTime = System.currentTimeMillis();
+        double executionTimeSeconds = (endTime - startTime) / 1000.0;
+        log.info("Loading the excel took : {} seconds", executionTimeSeconds);
+        List<Future<Map<String, List<Object>>>> futures = new ArrayList<>();
         Sheet sheet = workbook.getSheetAt(0);
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        int endRow = sheet.getLastRowNum();
+        int totalTransactions=0;
+        int currentRowNumber=-1;
+        int chunkSize =500;
+        int chunkStart=0;
+        int chunkEnd=0;
+         startTime = System.currentTimeMillis();
+        for (int i=0;i<=endRow;i++) {
+            Row row= sheet.getRow(i);
+            if (i == endRow && chunkStart < endRow) {
+                int finalChunkStart = chunkStart;
+                futures.add(executorService.submit(() -> processRows(sheet, finalChunkStart, endRow)));
+            }
+            currentRowNumber++;
+            if(currentRowNumber==0){
+                continue;
+            }
+            if(row.getRowNum()==1){
+                chunkStart=row.getRowNum();
+                continue;
+            }
+            Cell firstCell = row.getCell(1);
+            if (firstCell != null && firstCell.getCellType() != CellType.BLANK) {
+                totalTransactions++;
+                chunkEnd =row.getRowNum()-1;
+
+                if(totalTransactions % chunkSize==0 && totalTransactions!=0){
+                    int finalChunkStart = chunkStart;
+                    int finalChunkEnd = chunkEnd;
+                    futures.add(executorService.submit(() -> processRows(sheet, finalChunkStart, finalChunkEnd)));
+                    chunkStart=row.getRowNum()-1;
+                }
+            }
+        }
+         endTime = System.currentTimeMillis();
+         executionTimeSeconds = (endTime - startTime) / 1000.0;
+        log.info("Chunking the excel completed in : {} seconds", executionTimeSeconds);
+
+        for (Future<Map<String, List<Object>>> future : futures) {
+            Map<String, List<Object>> futureResult = future.get();
+
+            for (Map.Entry<String, List<Object>> entry : futureResult.entrySet()) {
+                String key = entry.getKey();
+                List<Object> value = entry.getValue();
+                List<Object> existingList = excelResponseList.computeIfAbsent(key, k -> new ArrayList<>());
+                existingList.addAll(value);
+            }
+        }
+        executorService.shutdown();
+        workbook.close();
+        return excelResponseList;
+    }
+
+    private Map<String, List<Object>> processRows(Sheet sheet, int startRow, int endRow) throws Exception {
+        List<ExcelResponse> excelResponseList = new ArrayList<>();
         TrackingDetails currentTrackingDetails = null;
         LinkedList<PartyDetails> partyDetailsList = new LinkedList<>();
         ExcelResponse excelResponse = null;
-        for (Row currentRow : sheet) {
-            if (currentRow.getRowNum() == 0) {
-                continue;
+        for (int i = startRow; i <= endRow; i++) {
+            Row currentRow = sheet.getRow(i);
+            if (currentRow == null) {
+                break;
             }
             Cell firstCell = currentRow.getCell(0);
             if (firstCell == null || firstCell.getCellType() == CellType.BLANK) {
@@ -81,8 +138,8 @@ public class ExcelReaderService {
                 excelResponseList.add(excelResponse);
             }
         }
-        workbook.close();
-        return validationService.validateField(excelResponseList);
+        List<ExcelResponse> excelResponses = validationService.validateField(excelResponseList);
+        return excelJsonProcessor.processResponses(excelResponses);
     }
 
     private boolean isRowEmpty(Row row) {

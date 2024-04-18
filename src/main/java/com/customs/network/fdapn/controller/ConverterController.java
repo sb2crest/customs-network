@@ -32,7 +32,12 @@ public class ConverterController {
 
     @PostMapping("/excel-to-xml")
     public Map<String, List<Object>> convertExcelToXml(@RequestParam("file") MultipartFile file) {
-       return excelReaderService.processExcelFile(file);
+        long startTime = System.currentTimeMillis();
+        Map<String, List<Object>> result = excelReaderService.processExcelFile(file);
+        long endTime = System.currentTimeMillis();
+        double executionTimeSeconds = (endTime - startTime) / 1000.0;
+        log.info("Execution time: {} seconds", executionTimeSeconds);
+        return result;
     }
     @PostMapping("/json-to-xml")
     public Map<String, List<Object>> convertXmlFromJson(@RequestBody List<TrackingDetails> trackingDetails) {

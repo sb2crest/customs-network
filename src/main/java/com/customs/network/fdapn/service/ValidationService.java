@@ -341,9 +341,6 @@ public class ValidationService {
 
 
         if (!validationErrorList.isEmpty()) {
-
-            log.info("  ******************************************************");
-            log.info("errors   {}:", validationErrorList);
             CustomerFdaPnFailure customerFdpaFailure = new CustomerFdaPnFailure();
             customerFdpaFailure.setBatchId("");
         }
