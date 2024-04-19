@@ -1,5 +1,6 @@
 package com.customs.network.fdapn.exception;
 
+import com.amazonaws.services.alexaforbusiness.model.UnauthorizedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -26,6 +27,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<String> handleNoSuchRecordException(NoSuchElementException ex) {
         return ResponseEntity.status(HttpStatus.OK).body(ex.getMessage());
+    }
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<String> handleTokenExpirationException(UnauthorizedException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized access to the resource.");
     }
     @ExceptionHandler(FdapnCustomExceptions.class)
     public ResponseEntity<ErrorDetails> handleFdapnCustomExceptions(FdapnCustomExceptions ex) {
