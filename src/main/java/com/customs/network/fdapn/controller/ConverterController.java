@@ -16,7 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 
 @RestController
@@ -31,21 +30,21 @@ public class ConverterController {
     private final TransactionRepository service;
 
     @PostMapping("/excel-to-xml")
-    public Map<String, List<Object>> convertExcelToXml(@RequestParam("file") MultipartFile file) {
+    public String convertExcelToXml(@RequestParam("file") MultipartFile file) {
         long startTime = System.currentTimeMillis();
-        Map<String, List<Object>> result = excelReaderService.processExcelFile(file);
+        String result = excelReaderService.processExcelFile(file);
         long endTime = System.currentTimeMillis();
         double executionTimeSeconds = (endTime - startTime) / 1000.0;
         log.info("Execution time: {} seconds", executionTimeSeconds);
         return result;
     }
     @PostMapping("/json-to-xml")
-    public Map<String, List<Object>> convertXmlFromJson(@RequestBody List<TrackingDetails> trackingDetails) {
+    public String convertXmlFromJson(@RequestBody List<TrackingDetails> trackingDetails) {
         return jsonToXmlService.convertJsonToXml(trackingDetails);
     }
 
     @PostMapping("/json-file-to-xml")
-    public Map<String, List<Object>> convertJsonToXml(@RequestParam("file") MultipartFile file) throws IOException {
+    public String convertJsonToXml(@RequestParam("file") MultipartFile file) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         TypeReference<List<TrackingDetails>> typeReference = new TypeReference<List<TrackingDetails>>() {};
         List<TrackingDetails> trackingDetailsList = objectMapper.readValue(file.getInputStream(), typeReference);

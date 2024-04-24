@@ -3,20 +3,19 @@ package com.customs.network.fdapn.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.*;
 import com.customs.network.fdapn.dto.*;
+import com.customs.network.fdapn.exception.BatchInsertionException;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.TransactionRepository;
 import com.customs.network.fdapn.utils.CustomIdGenerator;
 import com.customs.network.fdapn.utils.DateUtils;
-import com.customs.network.fdapn.utils.JsonUtils;
 import com.customs.network.fdapn.utils.UtilMethods;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.micrometer.common.util.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -48,8 +47,7 @@ public class FdaPnRecordSaver {
     private final AmazonS3 s3Client;
 
     private final Lock lock = new ReentrantLock();
-    @Transactional
-    public List<CustomsFdapnSubmit> save(List<ExcelResponse> excelResponseList)  {
+    public List<CustomsFdapnSubmit> save(List<ExcelResponse> excelResponseList) throws BatchInsertionException {
 
         List<CustomsFdapnSubmit> list = excelResponseList.stream()
                 .filter(Objects::nonNull)
@@ -85,6 +83,9 @@ public class FdaPnRecordSaver {
         lock.lock();
         try {
              records = transactionRepository.saveTransaction(list);
+        } catch (BatchInsertionException e) {
+            log.error("Error during batch insertion, resubmitting batch...");
+            records = transactionRepository.saveTransaction(list);
         } finally {
             lock.unlock();
         }
@@ -195,8 +196,8 @@ public class FdaPnRecordSaver {
         }
     }
 
-    @Transactional
-    public List<CustomerFdaPnFailure> failureRecords(List<ExcelResponse> excelResponseList) {
+
+    public List<CustomerFdaPnFailure> failureRecords(List<ExcelResponse> excelResponseList) throws BatchInsertionException {
         List<CustomerFdaPnFailure> fdaPnFailures=new ArrayList<>();
         List<CustomsFdapnSubmit> failedList = excelResponseList.stream()
                 .filter(Objects::nonNull)
@@ -235,6 +236,9 @@ public class FdaPnRecordSaver {
         List<CustomsFdapnSubmit> records=null;
         lock.lock();
         try {
+            records = transactionRepository.saveTransaction(failedList);
+        }catch (BatchInsertionException e) {
+            log.error("Error during batch insertion, resubmitting batch...");
             records = transactionRepository.saveTransaction(failedList);
         } finally {
             lock.unlock();

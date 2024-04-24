@@ -2,6 +2,9 @@ package com.customs.network.fdapn.utils;
 
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -10,6 +13,8 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -18,6 +23,8 @@ public class UtilMethods {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    @PersistenceContext
+    private EntityManager entityManager;
     public String getFormattedDate() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         return sdf.format(new Date());
@@ -102,4 +109,31 @@ public class UtilMethods {
             throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID);
         return List.of(schemaName,tableName);
     }
+    public List<String> getNotificationEmailsByUserIdentifier(String userIdentifier) {
+        Query query = entityManager.createNativeQuery("SELECT notification_emails FROM public._user WHERE user_identifier = :userIdentifier");
+        query.setParameter("userIdentifier", userIdentifier);
+        List<String> resultList = query.getResultList();
+        if (resultList.isEmpty()) {
+            return Collections.emptyList();
+        } else {
+            String notificationEmails = resultList.get(0);
+            if (notificationEmails == null) {
+                return Collections.emptyList();
+            } else {
+                return Arrays.asList(notificationEmails.split(","));
+            }
+        }
+    }
+
+    public String getEmailByUserIdentifier(String userIdentifier) {
+        Query query = entityManager.createNativeQuery("SELECT email FROM public._user WHERE user_identifier = :userIdentifier");
+        query.setParameter("userIdentifier", userIdentifier);
+        List<String> resultList = query.getResultList();
+        if (resultList.isEmpty()) {
+            return null; // or throw an exception
+        } else {
+            return resultList.get(0);
+        }
+    }
+
 }

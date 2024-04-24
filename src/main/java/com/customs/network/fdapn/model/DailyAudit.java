@@ -9,7 +9,7 @@ import java.util.Date;
 public class DailyAudit {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
 
     @Column(name="userId")
     private String userId;
@@ -19,19 +19,19 @@ public class DailyAudit {
     private Date date;
 
     @Column(name="accepted")
-    private long acceptedCount;
+    private Long acceptedCount;
 
     @Column(name="rejected")
-    private long rejectedCount;
+    private Long rejectedCount;
 
     @Column(name="pending")
-    private long pendingCount;
+    private Long pendingCount;
     @Column(name = "validation_error")
-    private long validationErrorCount;
+    private Long validationErrorCount;
 
     @Column(name="cbpDown")
-    private long cbpDownCount;
+    private Long cbpDownCount;
 
     @Column(name="Total_Transactions")
-    private long totalTransactions;
+    private Long totalTransactions;
 }

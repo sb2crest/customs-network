@@ -1,5 +1,6 @@
 package com.customs.network.fdapn.service;
 
+import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
 import com.customs.network.fdapn.dto.ExcelResponse;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -29,8 +31,9 @@ import java.util.concurrent.Future;
 public class ExcelReaderService {
     private final ValidationService validationService;
     private final ExcelJsonProcessor excelJsonProcessor;
+    private final ExcelWriter excelWriter;
 
-    public Map<String, List<Object>> processExcelFile(MultipartFile file) {
+    public String processExcelFile(MultipartFile file) {
         try {
             return readExcelFile(file);
         } catch (Exception e) {
@@ -39,73 +42,79 @@ public class ExcelReaderService {
         }
     }
 
-    public Map<String, List<Object>> readExcelFile(MultipartFile file) throws Exception {
+    public String readExcelFile(MultipartFile file) throws Exception {
         if (file.isEmpty()) {
             throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS, "The uploaded file is empty.");
         }
-        Map<String, List<Object>> excelResponseList = new TreeMap<>();
-        long startTime=System.currentTimeMillis();
+        List<CustomerFdaPnFailure> excelResponseList = new ArrayList<>();
+        long startTime = System.currentTimeMillis();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
         long endTime = System.currentTimeMillis();
         double executionTimeSeconds = (endTime - startTime) / 1000.0;
         log.info("Loading the excel took : {} seconds", executionTimeSeconds);
-        List<Future<Map<String, List<Object>>>> futures = new ArrayList<>();
+        List<Future<List<CustomerFdaPnFailure>>> futures = new ArrayList<>();
         Sheet sheet = workbook.getSheetAt(0);
         ExecutorService executorService = Executors.newFixedThreadPool(10);
         int endRow = sheet.getLastRowNum();
-        int totalTransactions=0;
-        int currentRowNumber=-1;
-        int chunkSize =500;
-        int chunkStart=0;
-        int chunkEnd=0;
-         startTime = System.currentTimeMillis();
-        for (int i=0;i<=endRow;i++) {
-            Row row= sheet.getRow(i);
+        int totalTransactions = 0;
+        int currentRowNumber = -1;
+        int chunkSize = 500;
+        int chunkStart = 0;
+        int chunkEnd = 0;
+        startTime = System.currentTimeMillis();
+        for (int i = 0; i <= endRow; i++) {
+            Row row = sheet.getRow(i);
             if (i == endRow && chunkStart < endRow) {
                 int finalChunkStart = chunkStart;
                 futures.add(executorService.submit(() -> processRows(sheet, finalChunkStart, endRow)));
             }
             currentRowNumber++;
-            if(currentRowNumber==0){
+            if (currentRowNumber == 0) {
                 continue;
             }
-            if(row.getRowNum()==1){
-                chunkStart=row.getRowNum();
+            if (row.getRowNum() == 1) {
+                chunkStart = row.getRowNum();
                 continue;
             }
             Cell firstCell = row.getCell(1);
             if (firstCell != null && firstCell.getCellType() != CellType.BLANK) {
                 totalTransactions++;
-                chunkEnd =row.getRowNum()-1;
+                chunkEnd = row.getRowNum() - 1;
 
-                if(totalTransactions % chunkSize==0 && totalTransactions!=0){
+                if (totalTransactions % chunkSize == 0 && totalTransactions != 0) {
                     int finalChunkStart = chunkStart;
                     int finalChunkEnd = chunkEnd;
                     futures.add(executorService.submit(() -> processRows(sheet, finalChunkStart, finalChunkEnd)));
-                    chunkStart=row.getRowNum()-1;
+                    chunkStart = row.getRowNum() - 1;
                 }
             }
         }
-         endTime = System.currentTimeMillis();
-         executionTimeSeconds = (endTime - startTime) / 1000.0;
+        endTime = System.currentTimeMillis();
+        executionTimeSeconds = (endTime - startTime) / 1000.0;
         log.info("Chunking the excel completed in : {} seconds", executionTimeSeconds);
+        new Thread(() -> {
+            try {
+                for (Future<List<CustomerFdaPnFailure>> future : futures) {
+                    List<CustomerFdaPnFailure> futureResult = future.get();
+                    if (!futureResult.isEmpty()) {
+                        excelResponseList.addAll(futureResult);
+                    }
+                }
 
-        for (Future<Map<String, List<Object>>> future : futures) {
-            Map<String, List<Object>> futureResult = future.get();
-
-            for (Map.Entry<String, List<Object>> entry : futureResult.entrySet()) {
-                String key = entry.getKey();
-                List<Object> value = entry.getValue();
-                List<Object> existingList = excelResponseList.computeIfAbsent(key, k -> new ArrayList<>());
-                existingList.addAll(value);
+                if (!excelResponseList.isEmpty()) {
+                    log.info("Validation errors are found");
+                    excelWriter.writeExcel(excelResponseList);
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                log.error(e.toString());
             }
-        }
+        }).start();
         executorService.shutdown();
         workbook.close();
-        return excelResponseList;
+        return "Excel uploaded successfully";
     }
 
-    private Map<String, List<Object>> processRows(Sheet sheet, int startRow, int endRow) throws Exception {
+    private List<CustomerFdaPnFailure> processRows(Sheet sheet, int startRow, int endRow) throws Exception {
         List<ExcelResponse> excelResponseList = new ArrayList<>();
         TrackingDetails currentTrackingDetails = null;
         LinkedList<PartyDetails> partyDetailsList = new LinkedList<>();
