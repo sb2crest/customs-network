@@ -51,7 +51,7 @@ class PGAIdentifierServiceImpTest {
         verify(identifierRepository).findById("BIO");
     }
     @Test
-    void whenGovernmentAgencyProgramCodeIsNotPresent_ThrowFdapnCustomeException(){
+    void whenGovernmentAgencyProgramCodeIsNotPresent_thenThrowFdapnCustomeException(){
 
         when(identifierRepository.findById("INVALID_CODE")).thenReturn(Optional.empty());
 
