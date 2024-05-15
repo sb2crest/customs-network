@@ -34,5 +34,4 @@ public class PGAIdentifierServiceImp implements PGAIdentifierService {
             throw new FdapnCustomExceptions(ErrorResCodes.SERVER_ERROR, "getting error in while retrieving data");
         }
     }
-
 }
