@@ -174,8 +174,7 @@ public class AuditServiceImpl implements AuditService{
     @Override
     public List<PortInfoDto> getPortTransactionInfoByUser(String userId, String portName, String portCode) {
         if (StringUtils.isNotBlank(portCode)) {
-            List<PortInfoDto> portInfoDtos = getByPortCode(userId, portCode);
-            return nonNull(portInfoDtos) ? portInfoDtos : Collections.emptyList();
+            return getByPortCode(userId, portCode);
         } else if (StringUtils.isNotBlank(portName)) {
             PortCodeDetails portCodeDetails = portCodeDetailsRepository.findByPortName(portName);
             if (isNull(portCodeDetails)) {
@@ -189,6 +188,8 @@ public class AuditServiceImpl implements AuditService{
     }
     private List<PortInfoDto> getByPortCode(String userId, String portCode) {
         List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId,portCode);
+        if(portInfoList.isEmpty())
+            return Collections.emptyList();
         return mapToPortInfoDtoList(portInfoList);
     }
 

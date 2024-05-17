@@ -1,6 +1,8 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.PortCodeDetailsDto;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.PortCodeDetails;
 import com.customs.network.fdapn.repository.PortCodeDetailsRepository;
 import io.micrometer.common.util.StringUtils;
@@ -57,8 +59,9 @@ public class ExcelParser {
         List<PortCodeDetails> portCodeDetailsList = null;
         if(!StringUtils.isBlank(portDetails)){
             portCodeDetailsList = repository.findByPortCodeOrPortName(portDetails);
+        }else{
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"port details cannot be empty or null");
         }
-
         return portCodeDetailsList.stream().map(this::convertToPortCodeDetails).toList();
     }
     private PortCodeDetailsDto convertToPortCodeDetails(PortCodeDetails portCodeDetails){
