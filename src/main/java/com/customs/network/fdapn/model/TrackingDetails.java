@@ -87,8 +87,6 @@ public class TrackingDetails {
     @ExcelColumn(index = 25)
     private String containerNumber;
 
-    private LinkedList<PartyDetails> partyDetails;
-
     @ExcelColumn(index = 40)
     private long baseQuantity;
 
@@ -109,6 +107,8 @@ public class TrackingDetails {
 
     @ExcelColumn(index = 46)
     private String affirmationComplianceQualifier;
+
+    private LinkedList<PartyDetails> partyDetails;
 
     @ExcelColumn(index = 47)
     private String end;

@@ -39,6 +39,7 @@ public class GlobalExceptionHandler {
         details.setErrorCode(resCodes.getErrorCode());
         details.setErrorCause(ex.getMessage());
         details.setErrorDesc(resCodes.getErrorMsg());
+        details.setErrorList(ex.getErrorList());
         return ResponseEntity.status(HttpStatus.OK).body(details);
     }
 
