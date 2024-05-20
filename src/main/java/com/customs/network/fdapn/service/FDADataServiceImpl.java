@@ -38,96 +38,81 @@ public class FDADataServiceImpl implements FDADataService {
 
     @Override
     public JsonNode getAllIndustry() throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
-        return executeRequest(entity, buildUrl(apiProperties.getIndustryEndpoint()));
+        return executeRequest(buildUrl(apiProperties.getIndustryEndpoint()));
     }
 
     @Override
     public JsonNode getByIndustryId(Integer id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getIndustryIdEndpoint().replace("{industryid}", String.valueOf(id));
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode getSubClassData() throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
-        return executeRequest(entity, buildUrl(apiProperties.getSubClassEndpoint()));
+        return executeRequest(buildUrl(apiProperties.getSubClassEndpoint()));
     }
-
 
     @Override
     public JsonNode getBySubclassId(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getSubClassIdEndpoint().replace("{subclassid}", id);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode getByIndustrySubclassId(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getIndustrySubClassId().replace("{industryid}", id);
-        return executeRequest(entity, buildUrl( url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode fetchClass() throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
-        return executeRequest(entity, buildUrl(apiProperties.getClassEndpoint()));
+        return executeRequest(buildUrl(apiProperties.getClassEndpoint()));
     }
 
     @Override
     public JsonNode getByClassId(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getClassIdEndpoint().replace("{classid}", id);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode getByIndustryClassId(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getIndustryClassIdEndpoint().replace("{industryid}", id);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode getPic() throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
-        return executeRequest(entity, buildUrl(apiProperties.getPicEndpoint()));
+        return executeRequest(buildUrl(apiProperties.getPicEndpoint()));
     }
 
     @Override
     public JsonNode getByPicId(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getPicIdEndpoint().replace("{picid}", id);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode getByIndustryPic(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getIndustryPicEndpoint().replace("{industryid}", id);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode getProduct() throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
-        return executeRequest(entity, buildUrl(apiProperties.getProductEndpoint()));
+        return executeRequest(buildUrl(apiProperties.getProductEndpoint()));
     }
 
     @Override
     public JsonNode getByProductId(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getProductIdEndpoint().replace("{productId}", id);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode getByProductName(String name) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getProductNameEndpoint().replace("{name}", name);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
@@ -138,25 +123,23 @@ public class FDADataServiceImpl implements FDADataService {
         String url = apiProperties.getProductNameFormDataEndpoint();
         return executeRequestForProduct(entity, buildUrl(url));
     }
+
     @Override
     public JsonNode getByIndustryProductByIndustryId(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getIndustryProductEndpoint().replace("{industryid}", id);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode validateProductCode(String code) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getProductCodeEndpoint().replace("{code}", code);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
     public JsonNode getProductCodeByIndustry(String id) throws IOException {
-        HttpEntity<String> entity = setupHttpEntity();
         String url = apiProperties.getProductCodeByIndustryEndpoint().replace("{industryid}", id);
-        return executeRequest(entity, buildUrl(url));
+        return executeRequest(buildUrl(url));
     }
 
     @Override
@@ -176,30 +159,29 @@ public class FDADataServiceImpl implements FDADataService {
         filteredParams.forEach(builder::queryParam);
 
         URI uri = builder.build().toUri();
-        HttpEntity<String> entity = setupHttpEntity();
         log.info("url {}", uri);
-        return executeRequest(entity, String.valueOf(uri));
+        return executeRequest(String.valueOf(uri));
     }
 
-
-    private JsonNode executeRequest(HttpEntity<String> entity, String url) throws IOException {
+    private JsonNode executeRequest(String url) throws IOException {
         try {
+            HttpEntity<String> entity = setupHttpEntity();
             return restTemplate.exchange(url, HttpMethod.GET, entity, JsonNode.class).getBody();
         } catch (Exception e) {
             log.error("Failed to fetch data. Exception: {}", e.getMessage());
             throw new IOException("Failed to fetch data due to network issue", e);
         }
     }
+
     private JsonNode executeRequestForProduct(HttpEntity<MultiValueMap<String, Object>> entity, String url) {
         try {
             return restTemplate.exchange(url, HttpMethod.POST, entity, JsonNode.class).getBody();
         } catch (HttpServerErrorException.ServiceUnavailable e) {
-            throw new FdapnCustomExceptions(SERVICE_UNAVAILABLE," 503 - Service Unavailable.");
+            throw new FdapnCustomExceptions(SERVICE_UNAVAILABLE, " 503 - Service Unavailable.");
         } catch (Exception e) {
-            throw new FdapnCustomExceptions(SERVER_ERROR,"Failed to fetch product name");
+            throw new FdapnCustomExceptions(SERVER_ERROR, "Failed to fetch product name");
         }
     }
-
 
     private HttpEntity<String> setupHttpEntity() {
         HttpHeaders headers = new HttpHeaders();
