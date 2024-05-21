@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/pgaIdentifier")
 public class PGAIdentifierController {
@@ -28,6 +30,11 @@ public class PGAIdentifierController {
     @GetMapping("/get-state-codes")
     public ResponseEntity<StateCodeInfoDto> getStateCodes(@RequestParam("countryCode") String countryCode) {
         return new ResponseEntity<>(pgaIdentifierService.getStateCodes(countryCode), HttpStatus.OK);
+    }
+
+    @GetMapping("/get-all-country-codes")
+    public ResponseEntity<List<String>> getAllCountryCodes() {
+        return new ResponseEntity<>(pgaIdentifierService.getAllCountryCodes(), HttpStatus.OK);
     }
 
 
