@@ -15,6 +15,8 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -69,6 +71,16 @@ public class PGAIdentifierServiceImp implements PGAIdentifierService {
         StateCodeInfo stateCodeInfo = stateCodeInfoRep.findById(countryCode.toUpperCase())
                 .orElseThrow(() -> new FdapnCustomExceptions(ErrorResCodes.RECORD_NOT_FOUND, "No data available for " + countryCode));
         return getStateCodeInfoDto(stateCodeInfo);
+    }
+
+    @Override
+    public List<String> getAllCountryCodes(){
+        try{
+            return stateCodeInfoRep.findAllCountryCodes();
+        }catch (Exception e){
+            log.error("Error getting country codes -{}",e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private StateCodeInfo getStateCodeInfo(StateCodeInfoDto stateCodeInfoDto) {
