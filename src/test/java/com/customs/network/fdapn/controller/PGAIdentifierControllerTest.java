@@ -52,7 +52,7 @@ class PGAIdentifierControllerTest {
                 .add("element1")
                 .add("element2");
        dto.setProgramCodeData(dummyJson);
-        mockMvc.perform(get("/pgaIdentifier/product")
+        mockMvc.perform(get("/pgaIdentifier/get-agency-program-code")
                         .param("governmentAgencyProgramCode","FOO")
                         .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }

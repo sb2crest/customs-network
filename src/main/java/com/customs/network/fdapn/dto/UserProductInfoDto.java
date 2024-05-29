@@ -8,6 +8,6 @@ import lombok.Data;
 @Builder
 public class UserProductInfoDto {
     private String productCode;
-    private String userId;
+    private String uniqueUserIdentifier;
     private JsonNode productInfo;
 }

@@ -2,7 +2,6 @@ package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.PGAIdentifierDto;
 import com.customs.network.fdapn.dto.StateCodeInfoDto;
-import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.PGAIdentifierDetails;
 import com.customs.network.fdapn.model.StateCodeInfo;
@@ -18,6 +17,8 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import static com.customs.network.fdapn.exception.ErrorResCodes.*;
 
 @Service
 @Slf4j
@@ -39,10 +40,10 @@ public class PGAIdentifierServiceImp implements PGAIdentifierService {
                 pgaIdentifierDto.setProgramCodeData(details.getProgramCodeData());
                 return pgaIdentifierDto;
             } else {
-                throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS, "No data available for " + governmentAgencyProgramCode);
+                throw new FdapnCustomExceptions(EMPTY_DETAILS, "No data available for " + governmentAgencyProgramCode);
             }
         } catch (DataRetrievalFailureException exception) {
-            throw new FdapnCustomExceptions(ErrorResCodes.SERVER_ERROR, "getting error in while retrieving data");
+            throw new FdapnCustomExceptions(SERVER_ERROR, "getting error in while retrieving data");
         }
     }
 
@@ -54,22 +55,22 @@ public class PGAIdentifierServiceImp implements PGAIdentifierService {
         } catch (DataAccessException e) {
             log.error("fail to save state codes with country code {} ,{} ",
                     stateCodeInfoDto.getCountryCode(), e.getMessage());
-            throw new FdapnCustomExceptions(ErrorResCodes.FAIL_TO_SAVE_DATA,
+            throw new FdapnCustomExceptions(SERVER_ERROR,
                     "Failed to save the countryCode " + stateCodeInfoDto.getCountryCode());
         } catch (Exception e) {
             log.error("Unexpected error while saving stateCode with country code {} ,{} ",
                     stateCodeInfoDto.getCountryCode(), e.getMessage());
-            throw new FdapnCustomExceptions(ErrorResCodes.UNEXPECTED_ERROR,
-                    "Unexpected error while saving the stateCodes " + stateCodeInfoDto.getCountryCode());
+            throw new FdapnCustomExceptions(SERVER_ERROR,
+                    "Error while saving the stateCodes " + stateCodeInfoDto.getCountryCode());
         }
     }
 
     @Override
     public StateCodeInfoDto getStateCodes(String countryCode) {
         if (StringUtils.isBlank(countryCode))
-            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "country code cannot be empty or null");
+            throw new FdapnCustomExceptions(INVALID_DETAILS, "country code cannot be empty or null");
         StateCodeInfo stateCodeInfo = stateCodeInfoRep.findById(countryCode.toUpperCase())
-                .orElseThrow(() -> new FdapnCustomExceptions(ErrorResCodes.RECORD_NOT_FOUND, "No data available for " + countryCode));
+                .orElseThrow(() -> new FdapnCustomExceptions(RECORD_NOT_FOUND, "No data available for " + countryCode));
         return getStateCodeInfoDto(stateCodeInfo);
     }
 
