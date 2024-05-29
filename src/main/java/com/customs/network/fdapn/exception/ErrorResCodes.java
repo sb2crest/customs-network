@@ -13,11 +13,9 @@ public enum ErrorResCodes{
     INVALID_DETAILS("1006","Invalid details"),
     CONVERSION_FAILURE("1007","Data conversion failure"),
     EMPTY_NOTIFICATION_EMAIL_LIST("1008","Empty notification email list"),
-    SERVER_ERROR("1009","Failed to fetch data. Server error"),
-    SERVICE_UNAVAILABLE("1012","Service Unavailable: FDA API is currently unavailable"),
-    FAIL_TO_SAVE_DATA("1013","Failed to save data"),
-    UNEXPECTED_ERROR("1014","Unexpected Error" );
-
+    SERVER_ERROR("1009","Server error"),
+    SERVICE_UNAVAILABLE("1010","Service Unavailable: FDA API is currently unavailable"),
+    ALREADY_EXISTING("1011","Already Existing");
     private final String errorCode;
     private final String errorMsg;
 

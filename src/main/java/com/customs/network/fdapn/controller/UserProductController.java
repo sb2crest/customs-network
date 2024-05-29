@@ -4,6 +4,8 @@ import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.service.UserProductInfoServices;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/products")
 public class UserProductController {
@@ -15,10 +17,29 @@ public class UserProductController {
 
     @PostMapping("/save")
     public String save(@RequestBody UserProductInfoDto customerProductInfo) {
-        return customerProductInfoService.save(customerProductInfo);
+        return customerProductInfoService.saveProduct(customerProductInfo);
     }
-    @GetMapping("/get-product")
-    public UserProductInfoDto get(@RequestParam("code") String productCode){
-        return customerProductInfoService.getProductByProductCode(productCode);
+    @GetMapping("/get")
+    public UserProductInfoDto get(@RequestParam("code") String productCode,
+                                  @RequestParam("uniqueUserIdentifier") String uniqueUserIdentifier
+    ){
+        return customerProductInfoService.getProductByProductCode(uniqueUserIdentifier,productCode);
+    }
+
+    @GetMapping("/list-all-codes")
+    public List<String> listAllCodes(@RequestParam("uniqueUserIdentifier") String uniqueUserIdentifier){
+        return customerProductInfoService.getProductCodeList(uniqueUserIdentifier);
+    }
+
+    @PutMapping("/update")
+    public String update(@RequestBody UserProductInfoDto customerProductInfo){
+        return customerProductInfoService.updateProductInfo(customerProductInfo);
+    }
+
+    @DeleteMapping("/delete")
+    public String delete(@RequestParam("code") String productCode,
+                         @RequestParam("uniqueUserIdentifier") String uniqueUserIdentifier
+    ){
+        return customerProductInfoService.deleteProduct(uniqueUserIdentifier,productCode);
     }
 }
