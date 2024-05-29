@@ -59,8 +59,8 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
 
     @Override
     public String deleteProduct(String uniqueUserIdentifier, String productCode) {
+        UserProductInfo userProductInfo = supplyUserProductInfo(uniqueUserIdentifier, productCode);
         try {
-            UserProductInfo userProductInfo = supplyUserProductInfo(uniqueUserIdentifier, productCode);
             userProductInfoRepository.delete(userProductInfo);
             return "Deleted product with code " + productCode;
         } catch (DataAccessException e) {
@@ -69,7 +69,7 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
         } catch (Exception e) {
             log.error("Unexpected error while deleting product with code {} for the user {}: {}", productCode, uniqueUserIdentifier, e.getMessage());
             throw new FdapnCustomExceptions(SERVER_ERROR, "error while deleting product with code "
-                    + productCode + ". Try again after a few seconds");
+                    + productCode );
         }
     }
 
@@ -92,7 +92,7 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
                     productInfoDto.getProductCode(), productInfoDto.getUniqueUserIdentifier(), e.getMessage());
             throw new FdapnCustomExceptions(SERVER_ERROR,
                     "Error while updating product with code "
-                            + productInfoDto.getProductCode() + " Try again after few seconds ");
+                            + productInfoDto.getProductCode());
         }
     }
 
