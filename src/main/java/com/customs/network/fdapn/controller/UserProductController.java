@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.customs.network.fdapn.utils.ObjectValidations.validateCustomerProductInfoDto;
+
 @RestController
 @RequestMapping("/products")
 public class UserProductController {
@@ -17,6 +19,7 @@ public class UserProductController {
 
     @PostMapping("/save")
     public String save(@RequestBody UserProductInfoDto customerProductInfo) {
+        validateCustomerProductInfoDto(customerProductInfo);
         return customerProductInfoService.saveProduct(customerProductInfo);
     }
     @GetMapping("/get")
@@ -33,6 +36,7 @@ public class UserProductController {
 
     @PutMapping("/update")
     public String update(@RequestBody UserProductInfoDto customerProductInfo){
+        validateCustomerProductInfoDto(customerProductInfo);
         return customerProductInfoService.updateProductInfo(customerProductInfo);
     }
 

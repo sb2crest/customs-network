@@ -25,5 +25,8 @@ public class UserProductInfo {
     private String productCode;
     @JdbcTypeCode(SqlTypes.JSON)
     private JsonNode productInfo;
+    private boolean isValid;
+    @JdbcTypeCode(SqlTypes.JSON)
+    private JsonNode validationErrors;
 }
 

@@ -38,18 +38,18 @@ public class AuditSchedulers {
 
     @Scheduled(fixedRate = 30000)
     public void executeDailyAuditFunction() {
-        clearCacheEntriesForPeriod("today");
-        clearCacheEntriesForPeriod("week");
-        String functionName = "write_daily_audit_data";
-        String dateParam = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
-        log.info("Scanning schema for audit started");
-
-        jdbcTemplate.execute("SELECT " + functionName + "(?)", (PreparedStatementCallback<Void>) ps -> {
-            ps.setString(1, dateParam);
-            ps.execute();
-            return null;
-        });
-        log.info("Scanning schema completed and Daily audit table updated");
+//        clearCacheEntriesForPeriod("today");
+//        clearCacheEntriesForPeriod("week");
+//        String functionName = "write_daily_audit_data";
+//        String dateParam = LocalDate.now().format(DateTimeFormatter.ISO_DATE);
+//        log.info("Scanning schema for audit started");
+//
+//        jdbcTemplate.execute("SELECT " + functionName + "(?)", (PreparedStatementCallback<Void>) ps -> {
+//            ps.setString(1, dateParam);
+//            ps.execute();
+//            return null;
+//        });
+//        log.info("Scanning schema completed and Daily audit table updated");
     }
 
     @Scheduled(cron = "0 35 10 * * ?")

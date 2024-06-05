@@ -1,8 +1,6 @@
 package com.customs.network.fdapn.controller;
 
-import com.customs.network.fdapn.dto.FilterCriteriaDTO;
-import com.customs.network.fdapn.dto.PageDTO;
-import com.customs.network.fdapn.dto.ScanSchema;
+import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.model.CustomsFdapnSubmit;
 import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.repository.TransactionRepository;
@@ -28,6 +26,7 @@ public class ConverterController {
     private final FdaPnRecordSaver fdaPnRecordSaver;
     private final JsonToXmlService jsonToXmlService;
     private final TransactionRepository service;
+    private final MapProductInfo productInfo;
 
     @PostMapping("/excel-to-xml")
     public String convertExcelToXml(@RequestParam("file") MultipartFile file) {
@@ -38,10 +37,15 @@ public class ConverterController {
         log.info("Execution time: {} seconds", executionTimeSeconds);
         return result;
     }
+
+    @PostMapping("/excel-to-xml-product")
+    public String read(@RequestParam("file") MultipartFile file) throws Exception {
+        return productInfo.processExcel(file);
+    }
     @PostMapping("/json-to-xml")
     public String convertXmlFromJson(@RequestBody List<TrackingDetails> trackingDetails) {
         return jsonToXmlService.convertJsonToXml(trackingDetails);
-    }
+    } 
 
     @PostMapping("/json-file-to-xml")
     public String convertJsonToXml(@RequestParam("file") MultipartFile file) throws IOException {

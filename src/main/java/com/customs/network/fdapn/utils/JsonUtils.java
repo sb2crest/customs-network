@@ -1,5 +1,6 @@
 package com.customs.network.fdapn.utils;
 
+import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.dto.SuccessOrFailureResponse;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
@@ -17,6 +18,13 @@ public class JsonUtils {
     public static JsonNode convertCustomerDetailsToJson(TrackingDetails trackingDetails) {
         try {
             return objectMapper.valueToTree(trackingDetails);
+        } catch (Exception e) {
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting CustomerDetails to JsonNode, "+e);
+        }
+    }
+    public static JsonNode convertExcelResponse(ExcelTransactionInfo excelTransactionInfo) {
+        try {
+            return objectMapper.valueToTree(excelTransactionInfo);
         } catch (Exception e) {
             throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting CustomerDetails to JsonNode, "+e);
         }

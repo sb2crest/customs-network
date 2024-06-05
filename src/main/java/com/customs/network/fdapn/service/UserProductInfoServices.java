@@ -7,6 +7,8 @@ import java.util.List;
 public interface UserProductInfoServices {
     String saveProduct(UserProductInfoDto customerProductInfo);
 
+    void cacheProductInfo(String cacheKey, UserProductInfoDto productInfo);
+
     UserProductInfoDto getProductByProductCode(String uniqueUserIdentifier, String productCode);
 
     List<String> getProductCodeList(String uniqueUserIdentifier);
