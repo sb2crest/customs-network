@@ -11,7 +11,7 @@ public class DailyAudit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name="userId")
+    @Column(name="unique_user_identifier")
     private String userId;
 
     @Column(name="date")

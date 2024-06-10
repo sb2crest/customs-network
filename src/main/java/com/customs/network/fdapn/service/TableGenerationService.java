@@ -65,9 +65,9 @@ public class TableGenerationService implements TransactionRepository {
         Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
         Long lastId = utilMethods.getLastIdInTheTable(schema, tableName);
         int newMax = (lastId > numberOfRecords) ? (int) Math.ceil((double) lastId / max) * max : (int) Math.ceil((double) numberOfRecords / max) * max;
-        String refId = idGenerator.generator(request.getUserId(), lastId);
+        String refId = idGenerator.generate(request.getUserId(), lastId);
         request.setReferenceId(refId);
-        request.setSlNo(idGenerator.parseIdFromRefId(refId));
+        request.setSlNo(idGenerator.extractIdFromRefId(refId));
         if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
             Long missingRecords = (lastId == newMax) ? lastId - numberOfRecords : 0;
             createPartitionTable(schema, tableName, numberOfRecords + missingRecords);
@@ -89,10 +89,10 @@ public class TableGenerationService implements TransactionRepository {
                 .filter(Objects::nonNull)
                 .peek(request -> {
                     int newMax = (lastId[0] > numberOfRecords[0]) ? (int) Math.ceil((double) lastId[0] / max) * max : (int) Math.ceil((double) numberOfRecords[0] / max) * max;
-                    String refId = idGenerator.generator(request.getUserId(), lastId[0]);
+                    String refId = idGenerator.generate(request.getUserId(), lastId[0]);
                     lastId[0]++;
                     request.setReferenceId(refId);
-                    request.setSlNo(idGenerator.parseIdFromRefId(refId));
+                    request.setSlNo(idGenerator.extractIdFromRefId(refId));
                     if ((numberOfRecords[0] >= newMax && numberOfRecords[0] != 0) || (lastId[0] == newMax && lastId[0] > numberOfRecords[0])) {
                         Long missingRecords = (lastId[0] == newMax) ? lastId[0] - numberOfRecords[0] : 0;
                         createPartitionTable(schema, tableName, numberOfRecords[0] + missingRecords);
@@ -236,7 +236,7 @@ public class TableGenerationService implements TransactionRepository {
         List<String> location = utilMethods.validateRefId(refId);
         String schemaName = location.get(0);
         String tableName = location.get(1);
-        Long slNumber = idGenerator.parseIdFromRefId(refId);
+        Long slNumber = idGenerator.extractIdFromRefId(refId);
         Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
         int left = 1;
         int right = partitions;
@@ -261,7 +261,7 @@ public class TableGenerationService implements TransactionRepository {
         List<String> location = utilMethods.validateRefId(refId);
         String schemaName = location.get(0);
         String tableName = location.get(1);
-        Long slNumber = idGenerator.parseIdFromRefId(refId);
+        Long slNumber = idGenerator.extractIdFromRefId(refId);
         Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
         int left = 1;
         int right = partitions;

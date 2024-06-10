@@ -97,7 +97,7 @@ public class FdaPnRecordSaver {
         //CBP
         String referenceId = extractReferenceFromXml(xmlData);
         assert referenceId != null;
-        Long sNo=idGenerator.parseIdFromRefId(referenceId);
+        Long sNo=idGenerator.extractIdFromRefId(referenceId);
         if(sNo%17==0){
             saveToS3(xmlData);
         }

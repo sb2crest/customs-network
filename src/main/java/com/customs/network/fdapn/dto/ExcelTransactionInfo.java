@@ -18,6 +18,8 @@ public class ExcelTransactionInfo {
     @ExcelColumn(index = 1)
     private String uniqueUserIdentifier;
 
+    private String referenceId; //for internal use only
+
     @ExcelColumn(index = 2)
     private String actionCode;
 

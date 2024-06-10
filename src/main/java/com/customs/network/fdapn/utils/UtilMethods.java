@@ -100,8 +100,8 @@ public class UtilMethods {
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(query, Boolean.class, schemaName, tableName));
     }
     public List<String> validateRefId(String refId){
-        if(refId.length()!=26){
-            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID,"Length mismatch : Expected 26,Actual "+refId.length());
+        if(refId.length()!=31){
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID,"Length mismatch : Expected 31,Actual "+refId.length());
         }
         String schemaName=getSchemaName(refId);
         String tableName=getTableName(refId).toLowerCase();

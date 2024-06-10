@@ -1,10 +1,11 @@
-package com.customs.network.fdapn.service;
+package com.customs.network.fdapn.service.impl;
 
 import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.*;
+import com.customs.network.fdapn.service.AuditService;
 import com.customs.network.fdapn.utils.DateUtils;
 import com.customs.network.fdapn.utils.UtilMethods;
 import io.micrometer.common.util.StringUtils;
@@ -19,11 +20,10 @@ import java.time.LocalDate;
 import java.util.*;
 
 import static java.util.Objects.isNull;
-import static java.util.Objects.nonNull;
 
 @Service
 @Slf4j
-public class AuditServiceImpl implements AuditService{
+public class AuditServiceImpl implements AuditService {
 
     private final DailyAuditRepository dailyAuditRepository;
     private final PortInfoRepository portInfoRepository;

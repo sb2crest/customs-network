@@ -4,7 +4,7 @@ import com.customs.network.fdapn.config.AuthService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
 import com.customs.network.fdapn.dto.PGAIdentifierDto;
-import com.customs.network.fdapn.service.PGAIdentifierServiceImp;
+import com.customs.network.fdapn.service.impl.PGAIdentifierServiceImp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;

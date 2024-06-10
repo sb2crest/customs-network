@@ -11,7 +11,7 @@ public class YearlyAudit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id")
+    @Column(name = "unique_user_identifier")
     private String userId;
 
     @Column(name = "year")

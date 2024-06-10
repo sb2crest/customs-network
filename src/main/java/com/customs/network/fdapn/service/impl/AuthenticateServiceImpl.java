@@ -1,8 +1,9 @@
-package com.customs.network.fdapn.service;
+package com.customs.network.fdapn.service.impl;
 
 import com.customs.network.fdapn.dto.AuthenticationRequest;
 import com.customs.network.fdapn.model.AuthenticationResponse;
 import com.customs.network.fdapn.model.RegisterRequest;
+import com.customs.network.fdapn.service.AuthenticateService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;

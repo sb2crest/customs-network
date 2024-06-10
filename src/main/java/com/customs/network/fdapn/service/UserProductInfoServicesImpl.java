@@ -14,7 +14,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static com.customs.network.fdapn.exception.ErrorResCodes.*;
@@ -122,6 +122,28 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
         return userProductInfoRepository.findByUniqueUserIdentifierAndProductCode(uniqueUserIdentifier, productCode)
                 .orElseThrow(() -> new FdapnCustomExceptions(RECORD_NOT_FOUND,
                         "No data found with product code " + productCode + " for user " + uniqueUserIdentifier));
+    }
+    @Override
+    public Map<Boolean, List<UserProductInfoDto>> fetchAllProducts(List<String> productCodes, String uniqueUserIdentifier) {
+        Map<Boolean, List<UserProductInfoDto>> allProducts = new HashMap<>();
+        List<UserProductInfoDto> validProducts = new ArrayList<>();
+        List<UserProductInfoDto> invalidProducts = new ArrayList<>();
+        productCodes.stream()
+                .filter(Objects::nonNull)
+                .forEach(obj -> {
+                    UserProductInfoDto userProductInfoDto = getProductByProductCode(uniqueUserIdentifier, obj);
+                    if (userProductInfoDto.isValid()) {
+                        validProducts.add(userProductInfoDto);
+                    } else {
+                        invalidProducts.add(userProductInfoDto);
+                    }
+                });
+        if (!invalidProducts.isEmpty()) {
+            allProducts.put(false, invalidProducts);
+            return allProducts;
+        }
+        allProducts.put(true, validProducts);
+        return allProducts;
     }
 
     public static UserProductInfo getUserProductInfo(UserProductInfoDto dto) {

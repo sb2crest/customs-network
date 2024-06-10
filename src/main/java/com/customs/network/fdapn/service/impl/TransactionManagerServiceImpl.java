@@ -1,4 +1,4 @@
-package com.customs.network.fdapn.service;
+package com.customs.network.fdapn.service.impl;
 
 import com.customs.network.fdapn.dto.FilterCriteriaDTO;
 import com.customs.network.fdapn.dto.PageDTO;
@@ -23,7 +23,7 @@ import java.sql.Timestamp;
 import java.util.*;
 @Service
 @Slf4j
-public class TransactionManagerService implements TransactionManagerRepo {
+public class TransactionManagerServiceImpl implements TransactionManagerRepo {
     private final JdbcTemplate jdbcTemplate;
     private final CustomIdGenerator idGenerator;
     private final UtilMethods utilMethods;
@@ -34,11 +34,11 @@ public class TransactionManagerService implements TransactionManagerRepo {
     @Value("${partitionSize}")
     private Integer max;
 
-    public TransactionManagerService(JdbcTemplate jdbcTemplate,
-                                     CustomIdGenerator idGenerator,
-                                     UtilMethods utilMethods,
-                                     ObjectMapper objectMapper,
-                                     PostgresFunctionInit postgresFunctionInit) {
+    public TransactionManagerServiceImpl(JdbcTemplate jdbcTemplate,
+                                         CustomIdGenerator idGenerator,
+                                         UtilMethods utilMethods,
+                                         ObjectMapper objectMapper,
+                                         PostgresFunctionInit postgresFunctionInit) {
         this.jdbcTemplate = jdbcTemplate;
         this.idGenerator = idGenerator;
         this.utilMethods = utilMethods;
@@ -61,9 +61,9 @@ public class TransactionManagerService implements TransactionManagerRepo {
         Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
         Long lastId = utilMethods.getLastIdInTheTable(schema, tableName);
         int newMax = (lastId > numberOfRecords) ? (int) Math.ceil((double) lastId / max) * max : (int) Math.ceil((double) numberOfRecords / max) * max;
-        String refId = idGenerator.generator(request.getUniqueUserIdentifier(), lastId);
+        String refId = idGenerator.generate(request.getUniqueUserIdentifier(), lastId);
         request.setReferenceId(refId);
-        request.setSlNo(idGenerator.parseIdFromRefId(refId));
+        request.setSlNo(idGenerator.extractIdFromRefId(refId));
         if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
             Long missingRecords = (lastId == newMax) ? lastId - numberOfRecords : 0;
             createPartitionTable(schema, tableName, numberOfRecords + missingRecords);
@@ -86,10 +86,10 @@ public class TransactionManagerService implements TransactionManagerRepo {
                 .filter(Objects::nonNull)
                 .peek(request -> {
                     int newMax = (lastId[0] > numberOfRecords[0]) ? (int) Math.ceil((double) lastId[0] / max) * max : (int) Math.ceil((double) numberOfRecords[0] / max) * max;
-                    String refId = idGenerator.generator(request.getUniqueUserIdentifier(), lastId[0]);
+                    String refId = idGenerator.generate(request.getUniqueUserIdentifier(), lastId[0]);
                     lastId[0]++;
                     request.setReferenceId(refId);
-                    request.setSlNo(idGenerator.parseIdFromRefId(refId));
+                    request.setSlNo(idGenerator.extractIdFromRefId(refId));
                     if ((numberOfRecords[0] >= newMax && numberOfRecords[0] != 0) || (lastId[0] == newMax && lastId[0] > numberOfRecords[0])) {
                         Long missingRecords = (lastId[0] == newMax) ? lastId[0] - numberOfRecords[0] : 0;
                         createPartitionTable(schema, tableName, numberOfRecords[0] + missingRecords);
@@ -97,7 +97,7 @@ public class TransactionManagerService implements TransactionManagerRepo {
                     numberOfRecords[0] = lastId[0];
                 }).toList();
        long end = System.currentTimeMillis();
-       log.info("Time taken to assign id and managing partitions ->{}", (end - start) / 1000.0);
+        log.info("Time to assign the reference id to the batch -> {} ",(end-start)/1000);
         return saveToTransactionTable(list, schema, tableName);
     }
 
@@ -235,7 +235,7 @@ public class TransactionManagerService implements TransactionManagerRepo {
         List<String> location = utilMethods.validateRefId(refId);
         String schemaName = location.get(0);
         String tableName = location.get(1);
-        Long slNumber = idGenerator.parseIdFromRefId(refId);
+        Long slNumber = idGenerator.extractIdFromRefId(refId);
         Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
         int left = 1;
         int right = partitions;
@@ -260,7 +260,7 @@ public class TransactionManagerService implements TransactionManagerRepo {
         List<String> location = utilMethods.validateRefId(refId);
         String schemaName = location.get(0);
         String tableName = location.get(1);
-        Long slNumber = idGenerator.parseIdFromRefId(refId);
+        Long slNumber = idGenerator.extractIdFromRefId(refId);
         Integer partitions = utilMethods.getCountOfPartitionTables(schemaName, tableName);
         int left = 1;
         int right = partitions;
@@ -382,7 +382,10 @@ public class TransactionManagerService implements TransactionManagerRepo {
 
             return pageDTO;
         } catch (Exception e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG, "Error fetching records by filter\n " + e);
+            log.error("Exception while fetching records for user with id {} or similar. Cause :- {} ",
+                    filterRequest.getUserId(),e.getMessage());
+            throw new FdapnCustomExceptions(ErrorResCodes.SOMETHING_WENT_WRONG,
+                    "Error fetching records by filter.Check whether the filter criteria is valid and try again");
         }
     }
 

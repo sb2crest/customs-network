@@ -1,5 +1,8 @@
 package com.customs.network.fdapn.config;
 
+import com.converter.initializers.Positions;
+import com.converter.service.ConverterService;
+import com.converter.service.JsonToEdiPool;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -21,5 +24,10 @@ public class AppConfig {
                 .build();
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
         return new RestTemplate(factory);
+    }
+
+    @Bean
+    public ConverterService getConverterService() {
+       return new ConverterService(new JsonToEdiPool(new Positions()));
     }
 }

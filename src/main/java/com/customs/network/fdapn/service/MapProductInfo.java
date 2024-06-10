@@ -34,20 +34,18 @@ public class MapProductInfo {
     private final ObjectMapper objectMapper;
     private final UserProductInfoServices userInfoServices;
     private final ProcessExcelResponse processExcelResponse;
-    //    private final  ValidateProductDilip validateProductDilip;
     private final ValidateProduct validateProduct;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-
+    private long start=0;
 
     public MapProductInfo(ObjectMapper objectMapper, UserProductInfoServices userInfoServices, ValidateProductDilip validateProductDilip, ProcessExcelResponse processExcelResponse, ValidateProduct validateProduct) {
         this.objectMapper = objectMapper;
         this.userInfoServices = userInfoServices;
         this.processExcelResponse = processExcelResponse;
-        // this.validateProductDilip = validateProductDilip;
         this.validateProduct = validateProduct;
     }
 
     public String processExcel(MultipartFile file) throws Exception {
+        start = System.currentTimeMillis();
         long start = System.currentTimeMillis();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
         long end = System.currentTimeMillis();
@@ -89,7 +87,7 @@ public class MapProductInfo {
 
     public List<ValidationResponse> readSheetOne(Sheet sheet) throws Exception {
         List<ValidationResponse> transactionInfos = new ArrayList<>();
-        int chunkSize = 500;
+        int chunkSize = 900;
         int numRows = sheet.getLastRowNum();
         log.info("Total Rows :->{}", numRows);
         int numChunks = (int) Math.ceil((double) (numRows) / chunkSize);
@@ -116,6 +114,8 @@ public class MapProductInfo {
                 assert chunkTransactionInfos != null;
                 transactionInfos.addAll(chunkTransactionInfos);
             }
+            long end=System.currentTimeMillis();
+            log.info("Total Time taken for processing the excel :->{} seconds", (end - start) / 1000.0);
         });
         executorService.shutdown();
 
@@ -230,8 +230,6 @@ public class MapProductInfo {
             case "TU":
                 UserProductInfoDto tempDto = processUpdateAction(object);
                 tempDto.setValidationErrors(validate(object.getProductInfo()));
-                String cacheKey = tempDto.getUniqueUserIdentifier() + "_" + tempDto.getProductCode();
-                userInfoServices.cacheProductInfo(cacheKey, tempDto);
             default:
                 log.error("Invalid Action code");
         }

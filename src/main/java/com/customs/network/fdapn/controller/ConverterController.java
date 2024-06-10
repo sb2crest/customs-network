@@ -1,10 +1,9 @@
 package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.*;
-import com.customs.network.fdapn.model.CustomsFdapnSubmit;
 import com.customs.network.fdapn.model.TrackingDetails;
-import com.customs.network.fdapn.repository.TransactionRepository;
-import com.customs.network.fdapn.service.*;
+import com.customs.network.fdapn.model.TransactionInfo;
+import com.customs.network.fdapn.orchestrator.TransactionOrchestrator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -22,16 +21,12 @@ import java.util.List;
 @AllArgsConstructor
 @CrossOrigin("http://localhost:5173")
 public class ConverterController {
-    private final ExcelReaderService excelReaderService;
-    private final FdaPnRecordSaver fdaPnRecordSaver;
-    private final JsonToXmlService jsonToXmlService;
-    private final TransactionRepository service;
-    private final MapProductInfo productInfo;
+    private final TransactionOrchestrator orchestrator;
 
     @PostMapping("/excel-to-xml")
     public String convertExcelToXml(@RequestParam("file") MultipartFile file) {
         long startTime = System.currentTimeMillis();
-        String result = excelReaderService.processExcelFile(file);
+        String result = orchestrator.processExcelFile(file);
         long endTime = System.currentTimeMillis();
         double executionTimeSeconds = (endTime - startTime) / 1000.0;
         log.info("Execution time: {} seconds", executionTimeSeconds);
@@ -40,41 +35,40 @@ public class ConverterController {
 
     @PostMapping("/excel-to-xml-product")
     public String read(@RequestParam("file") MultipartFile file) throws Exception {
-        return productInfo.processExcel(file);
+        return orchestrator.processExcel(file);
     }
     @PostMapping("/json-to-xml")
     public String convertXmlFromJson(@RequestBody List<TrackingDetails> trackingDetails) {
-        return jsonToXmlService.convertJsonToXml(trackingDetails);
-    } 
+        return orchestrator.convertJsonToXml(trackingDetails);
+    }
 
     @PostMapping("/json-file-to-xml")
     public String convertJsonToXml(@RequestParam("file") MultipartFile file) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         TypeReference<List<TrackingDetails>> typeReference = new TypeReference<List<TrackingDetails>>() {};
         List<TrackingDetails> trackingDetailsList = objectMapper.readValue(file.getInputStream(), typeReference);
-        return jsonToXmlService.convertJsonToXml(trackingDetailsList);
+        return orchestrator.convertJsonToXml(trackingDetailsList);
     }
     @GetMapping("/getFdaPn-record")
-    public CustomsFdapnSubmit getFdaRecordByReferenceId(@RequestParam String referenceId) {
-        return fdaPnRecordSaver.getFdaPn(referenceId);
+    public TransactionInfo getFdaRecordByReferenceId(@RequestParam String referenceId) {
+        return orchestrator.getFdapnTransaction(referenceId);
     }
 
     @PostMapping("/getFdaPn-records")
-    public PageDTO<CustomsFdapnSubmit> filterByFdaPnRecords(@RequestBody FilterCriteriaDTO criteriaDTO) {
-        return service.fetchByFilter(criteriaDTO);
+    public PageDTO<TransactionInfo> filterByFdaPnRecords(@RequestBody FilterCriteriaDTO criteriaDTO) {
+        return orchestrator.fetchByFilter(criteriaDTO);
     }
     @PostMapping("/fetchDataByColValue")
-    public PageDTO<CustomsFdapnSubmit> fetchDataByCustomized(@RequestBody ScanSchema scan) {
-        return service.scanSchemaByColValue(scan.getFieldName(), scan.getValue(), scan.getStartDate(), scan.getEndDate(), scan.getUserId(),scan.getPage(),scan.getSize());
+    public PageDTO<TransactionInfo> fetchDataByCustomized(@RequestBody ScanSchema scan) {
+        return orchestrator.scanSchemaByColValue(scan);
     }
     @GetMapping("/execute")
     public List<String> getTextFilesInFolder(@RequestParam(required = false) String folderKey) {
-        return fdaPnRecordSaver.getTextFilesInFolder(folderKey);
+        return orchestrator.getTextFilesInFolder(folderKey);
     }
     @GetMapping("/s3-folders")
     public List<String> getFoldersInBucket() {
-        String bucketName = "fdapn-submit-cbp-down-records";
-        return fdaPnRecordSaver.getFoldersInBucket(bucketName);
+        return orchestrator.getFoldersInBucket();
     }
 
 }
