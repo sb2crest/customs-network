@@ -5,6 +5,7 @@ import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.dto.ValidationResponse;
 import com.customs.network.fdapn.exception.BatchInsertionException;
 
+import com.customs.network.fdapn.service.impl.UserProductInfoServicesImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

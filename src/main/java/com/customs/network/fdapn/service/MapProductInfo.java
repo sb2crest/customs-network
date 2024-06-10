@@ -160,7 +160,7 @@ public class MapProductInfo {
             UserProductInfoDto product = new UserProductInfoDto();
             Row row = sheet.getRow(i);
             mapFields(UserProductInfoDto.class.getDeclaredFields(), product, row);
-            if (product.getActionCode().equalsIgnoreCase("A") ||
+            if (!StringUtils.isBlank(product.getActionCode()) && product.getActionCode().equalsIgnoreCase("A") ||
                     product.getActionCode().equalsIgnoreCase("R") ||
                     product.getActionCode().equalsIgnoreCase("E") ||
                     product.getActionCode().equalsIgnoreCase("TU")) {
@@ -210,7 +210,7 @@ public class MapProductInfo {
     }
 
     private void accept(UserProductInfoDto object) {
-        switch (object.getActionCode()) {
+        switch (object.getActionCode().toUpperCase()) {
             case "A":
                 object.setValidationErrors(validate(object.getProductInfo()));
                 userInfoServices.saveProduct(object);
