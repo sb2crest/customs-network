@@ -2,7 +2,7 @@ package com.customs.network.fdapn.validations;
 
 import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.dto.PriorNoticeData;
-import com.customs.network.fdapn.dto.ValidationResponse;
+import com.customs.network.fdapn.dto.ExcelValidationResponse;
 import com.customs.network.fdapn.dto.productdto.Product;
 import com.customs.network.fdapn.model.ValidationError;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -129,11 +129,11 @@ public class ValidateProduct {
         //do validation
         return validationErrorList;
     }
-    public List<ValidationResponse> validateExcelTransactions(List<ExcelTransactionInfo> transactions){
+    public List<ExcelValidationResponse> validateExcelTransactions(List<ExcelTransactionInfo> transactions){
       return transactions.stream()
                 .filter(Objects::nonNull)
                 .map(obj->{
-                    ValidationResponse response = new ValidationResponse();
+                    ExcelValidationResponse response = new ExcelValidationResponse();
                     response.setExcelTransactionInfo(obj);
 
                     List<ValidationError> validationErrorList = new ArrayList<>();

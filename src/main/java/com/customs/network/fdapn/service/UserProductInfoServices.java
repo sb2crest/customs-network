@@ -1,9 +1,9 @@
 package com.customs.network.fdapn.service;
 
 import com.customs.network.fdapn.dto.UserProductInfoDto;
+import com.customs.network.fdapn.model.ValidationError;
 
 import java.util.List;
-import java.util.Map;
 
 public interface UserProductInfoServices {
     String saveProduct(UserProductInfoDto customerProductInfo);
@@ -18,5 +18,7 @@ public interface UserProductInfoServices {
 
     String updateProductInfo(UserProductInfoDto productInfoDto);
 
-    Map<Boolean, List<UserProductInfoDto>> fetchAllProducts(List<String> productCodes, String uniqueUserIdentifier);
+    List<UserProductInfoDto> fetchAllProducts(List<String> productCodes, String uniqueUserIdentifier);
+
+    List<ValidationError> getProductValidationErrors(List<String> productCodes, String uniqueUserIdentifier);
 }

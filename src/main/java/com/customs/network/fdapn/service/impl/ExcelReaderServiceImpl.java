@@ -1,12 +1,15 @@
-package com.customs.network.fdapn.service;
+package com.customs.network.fdapn.service.impl;
 
 import com.customs.network.fdapn.dto.CustomerFdaPnFailure;
 import com.customs.network.fdapn.dto.ExcelResponse;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.TrackingDetails;
-import com.customs.network.fdapn.model.ExcelColumn;
 import com.customs.network.fdapn.model.PartyDetails;
+import com.customs.network.fdapn.service.ExcelJsonProcessor;
+import com.customs.network.fdapn.service.ExcelProcessor;
+import com.customs.network.fdapn.service.ExcelWriter;
+import com.customs.network.fdapn.service.ValidationService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -14,10 +17,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.lang.reflect.Field;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -30,12 +29,12 @@ import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 @Component
 @AllArgsConstructor
 @Slf4j
-public class ExcelReaderService {
+public class ExcelReaderServiceImpl implements ExcelProcessor {
     private final ValidationService validationService;
     private final ExcelJsonProcessor excelJsonProcessor;
     private final ExcelWriter excelWriter;
 
-    public String processExcelFile(MultipartFile file) {
+    public String processExcel(MultipartFile file) {
         try {
             return readExcelFile(file);
         } catch (Exception e) {
@@ -44,7 +43,7 @@ public class ExcelReaderService {
         }
     }
 
-    public String readExcelFile(MultipartFile file) throws Exception {
+    private String readExcelFile(MultipartFile file) throws Exception {
         if (file.isEmpty()) {
             throw new FdapnCustomExceptions(ErrorResCodes.EMPTY_DETAILS, "The uploaded file is empty.");
         }

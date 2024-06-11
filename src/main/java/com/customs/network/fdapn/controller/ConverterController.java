@@ -45,7 +45,7 @@ public class ConverterController {
     @PostMapping("/json-file-to-xml")
     public String convertJsonToXml(@RequestParam("file") MultipartFile file) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
-        TypeReference<List<TrackingDetails>> typeReference = new TypeReference<List<TrackingDetails>>() {};
+        TypeReference<List<TrackingDetails>> typeReference = new TypeReference<>() {};
         List<TrackingDetails> trackingDetailsList = objectMapper.readValue(file.getInputStream(), typeReference);
         return orchestrator.convertJsonToXml(trackingDetailsList);
     }

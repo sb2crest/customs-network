@@ -46,8 +46,8 @@ public class FdapnRecordProcessor {
         this.cbpServiceImpl = cbpServiceImpl;
     }
 
-    public List<TransactionInfo> saveSuccessInfo(List<ValidationResponse> validationResponses) throws BatchInsertionException {
-        List<TransactionInfo> transactionInfos = validationResponses.stream()
+    public List<TransactionInfo> saveSuccessInfo(List<ExcelValidationResponse> excelValidationRespons) throws BatchInsertionException {
+        List<TransactionInfo> transactionInfos = excelValidationRespons.stream()
                 .filter(Objects::nonNull)
                 .map(obj -> {
                     TransactionInfo transactionInfo = new TransactionInfo();
@@ -71,41 +71,40 @@ public class FdapnRecordProcessor {
                     return transactionInfo;
                 })
                 .toList();
-
         List<TransactionInfo> records;
         log.info("Batch is Ready to save");
 
         lock.lock();
-        long start = System.currentTimeMillis();
         try {
             records = transactionManagerRepo.saveTransaction(transactionInfos);
-            long end = System.currentTimeMillis();
         } catch (BatchInsertionException e) {
             log.error("Error during batch insertion, resubmitting batch...");
             records = transactionManagerRepo.saveTransaction(transactionInfos);
         } finally {
             lock.unlock();
-            long end = System.currentTimeMillis();
-            log.info("Total Locking time for the batch ->{}", (end - start) / 1000.0);
         }
-        processEdi(records, validationResponses);
+        long now = System.currentTimeMillis();
+        processEdi(records, excelValidationRespons);
+        long end = System.currentTimeMillis();
+        log.info("Time taken to process EDI: " + (end - now)/100 + " seconds");
         return records;
     }
 
-    private void processEdi(List<TransactionInfo> savedRecords, List<ValidationResponse> validationResponses) {
-        IntStream.range(0, Math.min(savedRecords.size(), validationResponses.size()))
-                .forEach(i -> validationResponses.get(i).getExcelTransactionInfo()
+    private void processEdi(List<TransactionInfo> savedRecords, List<ExcelValidationResponse> excelValidationRespons) {
+        IntStream.range(0, Math.min(savedRecords.size(), excelValidationRespons.size()))
+                .forEach(i -> excelValidationRespons.get(i).getExcelTransactionInfo()
                         .setReferenceId(savedRecords.get(i).getReferenceId()));
 
 
-        validationResponses.stream()
+        excelValidationRespons.stream()
                 .filter(Objects::nonNull)
                 .forEach(
                         obj -> {
-                            Map<Boolean, List<UserProductInfoDto>> booleanListMap = userProductInfoServices.fetchAllProducts(obj.getExcelTransactionInfo().getProductCode(),
-                                    obj.getExcelTransactionInfo().getUniqueUserIdentifier());
-                            if (booleanListMap.size() == 1 && booleanListMap.containsKey(true)) {
-                                List<JsonNode> productInfo = booleanListMap.get(true)
+                            List<String> productCodes=obj.getExcelTransactionInfo().getProductCode();
+                            String uniqueUserIdentifier=obj.getExcelTransactionInfo().getUniqueUserIdentifier();
+                            List<UserProductInfoDto> productInfoList=userProductInfoServices.fetchAllProducts(productCodes,uniqueUserIdentifier);
+                            if (!productInfoList.isEmpty()) {
+                                List<JsonNode> productInfo = productInfoList
                                         .stream()
                                         .map(UserProductInfoDto::getProductInfo)
                                         .toList();
@@ -127,9 +126,9 @@ public class FdapnRecordProcessor {
     }
 
 
-    public List<CustomerFdaPnFailure> failureRecords(List<ValidationResponse> validationResponses) throws BatchInsertionException {
+    public List<CustomerFdaPnFailure> failureRecords(List<ExcelValidationResponse> excelValidationRespons) throws BatchInsertionException {
         List<CustomerFdaPnFailure> fdaPnFailures = new ArrayList<>();
-        List<TransactionInfo> failedList = validationResponses.stream()
+        List<TransactionInfo> failedList = excelValidationRespons.stream()
                 .filter(Objects::nonNull)
                 .map(
                         obj -> {
@@ -189,7 +188,7 @@ public class FdapnRecordProcessor {
         return String.valueOf(sequentialNumber.getAndIncrement());
     }
 
-    private SuccessOrFailureResponse getResponse(ValidationResponse excelResponse, boolean isSuccess) {
+    private SuccessOrFailureResponse getResponse(ExcelValidationResponse excelResponse, boolean isSuccess) {
         SuccessOrFailureResponse response = new SuccessOrFailureResponse();
         String messageCode = isSuccess ? MessageCode.SUCCESS_SUBMIT.getCode() : MessageCode.VALIDATION_ERRORS.getCode();
         String status = isSuccess ? MessageCode.SUCCESS_SUBMIT.getStatus() : MessageCode.VALIDATION_ERRORS.getStatus();

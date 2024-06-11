@@ -1,10 +1,13 @@
-package com.customs.network.fdapn.service;
+package com.customs.network.fdapn.service.impl;
 
 import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.dto.PriorNoticeData;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
-import com.customs.network.fdapn.dto.ValidationResponse;
+import com.customs.network.fdapn.dto.ExcelValidationResponse;
 import com.customs.network.fdapn.model.ValidationError;
+import com.customs.network.fdapn.service.ExcelProcessor;
+import com.customs.network.fdapn.service.TransactionSegregator;
+import com.customs.network.fdapn.service.UserProductInfoServices;
 import com.customs.network.fdapn.validations.ValidateProduct;
 import com.customs.network.fdapn.validations.ValidateProductDilip;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -16,6 +19,7 @@ import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,70 +34,43 @@ import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 
 @Service
 @Slf4j
-public class MapProductInfo {
+@Primary
+public class ExcelProcessorImpl implements ExcelProcessor {
     private final ObjectMapper objectMapper;
     private final UserProductInfoServices userInfoServices;
-    private final ProcessExcelResponse processExcelResponse;
+    private final TransactionSegregator transactionSegregator;
     private final ValidateProduct validateProduct;
-    private long start=0;
 
-    public MapProductInfo(ObjectMapper objectMapper, UserProductInfoServices userInfoServices, ValidateProductDilip validateProductDilip, ProcessExcelResponse processExcelResponse, ValidateProduct validateProduct) {
+    public ExcelProcessorImpl(ObjectMapper objectMapper, UserProductInfoServices userInfoServices, ValidateProductDilip validateProductDilip, TransactionSegregator transactionSegregator, ValidateProduct validateProduct) {
         this.objectMapper = objectMapper;
         this.userInfoServices = userInfoServices;
-        this.processExcelResponse = processExcelResponse;
+        this.transactionSegregator = transactionSegregator;
         this.validateProduct = validateProduct;
     }
 
+    @Override
     public String processExcel(MultipartFile file) throws Exception {
-        start = System.currentTimeMillis();
         long start = System.currentTimeMillis();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
         long end = System.currentTimeMillis();
         log.info("Time taken to load the excel  :->{} seconds", (end - start) / 1000.0);
         readSheetTwo(workbook.getSheetAt(1));
-        List<ValidationResponse> transactionInfos = readSheetOne(workbook.getSheetAt(0));
+        List<ExcelValidationResponse> transactionInfos = readSheetOne(workbook.getSheetAt(0));
         end = System.currentTimeMillis();
         log.info("Time taken by processExcel() :->{} seconds", (end - start) / 1000.0);
         return "Success";
     }
 
-    private List<ValidationResponse> readSheetOne(Sheet sheet, int startRow, int endRow) throws Exception {
-        List<ExcelTransactionInfo> transactionInfos = new ArrayList<>();
-        int total = 0;
-        for (int i = startRow; i <= endRow; i++) {
-            total++;
-            ExcelTransactionInfo transactionInfo = new ExcelTransactionInfo();
-            Row row = sheet.getRow(i);
-            mapFields(ExcelTransactionInfo.class.getDeclaredFields(), transactionInfo, row);
-            String priorNoticeString = row.getCell(3).getRichStringCellValue().getString();
-            String productCodeString = row.getCell(4).getRichStringCellValue().getString();
-            if (StringUtils.isBlank(priorNoticeString) || StringUtils.isBlank(productCodeString)) {
-                throw new RuntimeException("empty prior notice information or product code information");
-            }
-            List<String> productList = objectMapper.readValue(productCodeString, new TypeReference<>() {
-            });
-            PriorNoticeData priorNoticeData = objectMapper.treeToValue(objectMapper.readTree(priorNoticeString), PriorNoticeData.class);
-            priorNoticeData.setActionCode(transactionInfo.getActionCode());
-            priorNoticeData.setUniqueUserIdentifier(transactionInfo.getUniqueUserIdentifier());
-            transactionInfo.setPriorNoticeData(priorNoticeData);
-            transactionInfo.setProductCode(productList);
-            transactionInfos.add(transactionInfo);
-        }
-        log.info("Total Transaction read :->{}", total);
-        List<ValidationResponse> validationResponses = validateProduct.validateExcelTransactions(transactionInfos);
-        return processExcelResponse.processExcelData(validationResponses);
-
-    }
-
-    public List<ValidationResponse> readSheetOne(Sheet sheet) throws Exception {
-        List<ValidationResponse> transactionInfos = new ArrayList<>();
+    public List<ExcelValidationResponse> readSheetOne(Sheet sheet){
+        long start = System.currentTimeMillis();
+        List<ExcelValidationResponse> transactionInfos = new ArrayList<>();
         int chunkSize = 900;
         int numRows = sheet.getLastRowNum();
         log.info("Total Rows :->{}", numRows);
         int numChunks = (int) Math.ceil((double) (numRows) / chunkSize);
 
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        List<Future<List<ValidationResponse>>> futures = new ArrayList<>();
+        List<Future<List<ExcelValidationResponse>>> futures = new ArrayList<>();
 
         for (int i = 0; i < numChunks; i++) {
             final int startRow = i * chunkSize;
@@ -102,8 +79,8 @@ public class MapProductInfo {
         }
 
         new Thread(() -> {
-            for (Future<List<ValidationResponse>> future : futures) {
-                List<ValidationResponse> chunkTransactionInfos = null;
+            for (Future<List<ExcelValidationResponse>> future : futures) {
+                List<ExcelValidationResponse> chunkTransactionInfos = null;
                 try {
                     chunkTransactionInfos = future.get();
                 } catch (InterruptedException e) {
@@ -115,15 +92,14 @@ public class MapProductInfo {
                 transactionInfos.addAll(chunkTransactionInfos);
             }
             long end=System.currentTimeMillis();
-            log.info("Total Time taken for processing the excel :->{} seconds", (end - start) / 1000.0);
+            log.info("Time taken by the Request :->{} seconds", (end - start) / 1000.0);
         });
         executorService.shutdown();
 
         return transactionInfos;
     }
 
-    private List<ValidationResponse> readChunk(Sheet sheet, int startRow, int endRow) throws Exception {
-        long start = System.currentTimeMillis();
+    private List<ExcelValidationResponse> readChunk(Sheet sheet, int startRow, int endRow) throws Exception {
         List<ExcelTransactionInfo> transactionInfos = new ArrayList<>();
         for (int i = startRow; i <= endRow; i++) {
             ExcelTransactionInfo transactionInfo = new ExcelTransactionInfo();
@@ -147,10 +123,8 @@ public class MapProductInfo {
             transactionInfo.setProductCode(productList);
             transactionInfos.add(transactionInfo);
         }
-        List<ValidationResponse> validationResponses = validateProduct.validateExcelTransactions(transactionInfos);
-        List<ValidationResponse> res = processExcelResponse.processExcelData(validationResponses);
-        long end = System.currentTimeMillis();
-//        log.info("Time taken by readChunk() :->{} seconds", (end - start) / 1000.0);
+        List<ExcelValidationResponse> excelValidationRespons = validateProduct.validateExcelTransactions(transactionInfos);
+        List<ExcelValidationResponse> res = transactionSegregator.segregateExcelResponse(excelValidationRespons);
         return res;
     }
 

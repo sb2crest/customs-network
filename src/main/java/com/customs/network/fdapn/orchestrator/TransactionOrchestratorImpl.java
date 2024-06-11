@@ -7,9 +7,9 @@ import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.model.TransactionInfo;
 import com.customs.network.fdapn.repository.TransactionManagerRepo;
 import com.customs.network.fdapn.service.AWSS3Services;
-import com.customs.network.fdapn.service.ExcelReaderService;
+import com.customs.network.fdapn.service.ExcelProcessor;
+import com.customs.network.fdapn.service.impl.ExcelReaderServiceImpl;
 import com.customs.network.fdapn.service.JsonToXmlService;
-import com.customs.network.fdapn.service.MapProductInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,23 +20,23 @@ import java.util.List;
 public class TransactionOrchestratorImpl implements TransactionOrchestrator {
     @Value("${aws.bucketName}")
     private String cbpDownBucketName;
-    private final MapProductInfo mapProductInfo;
+    private final ExcelProcessor excelProcessor;
     private final AWSS3Services awss3Services;
     private final TransactionManagerRepo transactionManager;
-    private final ExcelReaderService excelReaderService;
+    private final ExcelReaderServiceImpl excelReaderServiceImpl;
     private final JsonToXmlService jsonToXmlService;
 
-    public TransactionOrchestratorImpl(MapProductInfo mapProductInfo, AWSS3Services awss3Services, TransactionManagerRepo transactionManager, ExcelReaderService excelReaderService, JsonToXmlService jsonToXmlService) {
-        this.mapProductInfo = mapProductInfo;
+    public TransactionOrchestratorImpl(ExcelProcessor excelProcessor, AWSS3Services awss3Services, TransactionManagerRepo transactionManager, ExcelReaderServiceImpl excelReaderServiceImpl, JsonToXmlService jsonToXmlService) {
+        this.excelProcessor = excelProcessor;
         this.awss3Services = awss3Services;
         this.transactionManager = transactionManager;
-        this.excelReaderService = excelReaderService;
+        this.excelReaderServiceImpl = excelReaderServiceImpl;
         this.jsonToXmlService = jsonToXmlService;
     }
 
     @Override
     public String processExcelFile(MultipartFile file) {
-        return excelReaderService.processExcelFile(file);
+        return excelReaderServiceImpl.processExcel(file);
     }
 
     @Override
@@ -47,7 +47,7 @@ public class TransactionOrchestratorImpl implements TransactionOrchestrator {
     @Override
     public String processExcel(MultipartFile file) {
         try {
-            return mapProductInfo.processExcel(file);
+            return excelProcessor.processExcel(file);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

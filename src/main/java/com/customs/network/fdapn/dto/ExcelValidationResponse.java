@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class ValidationResponse {
+public class ExcelValidationResponse {
     private ExcelTransactionInfo excelTransactionInfo;
     private List<ValidationError> validationErrorList;
 }

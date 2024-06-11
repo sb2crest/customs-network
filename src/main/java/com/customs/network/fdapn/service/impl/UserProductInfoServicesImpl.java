@@ -3,9 +3,11 @@
 import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.UserProductInfo;
+import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.repository.UserProductInfoRepository;
 import com.customs.network.fdapn.service.UserProductInfoServices;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -25,10 +28,12 @@ import static com.customs.network.fdapn.utils.ObjectValidations.validateCustomer
 @Service
 public class UserProductInfoServicesImpl implements UserProductInfoServices {
     private final UserProductInfoRepository userProductInfoRepository;
+    private final ObjectMapper mapper;
 
     @Autowired
-    public UserProductInfoServicesImpl(UserProductInfoRepository userProductInfoRepository) {
+    public UserProductInfoServicesImpl(UserProductInfoRepository userProductInfoRepository, ObjectMapper mapper) {
         this.userProductInfoRepository = userProductInfoRepository;
+        this.mapper = mapper;
     }
 
     Cache<String, UserProductInfoDto> productInfoCache = Caffeine.newBuilder()
@@ -38,14 +43,14 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
     @Override
     public String saveProduct(UserProductInfoDto userProductInfo) {
         validateCustomerProductInfoDto(userProductInfo);
-        String cacheKey = userProductInfo.getUniqueUserIdentifier() + "_" + userProductInfo.getProductCode();
-        cacheProductInfo(cacheKey, userProductInfo);
         if (userProductInfoRepository.existsByUniqueUserIdentifierAndProductCode(userProductInfo.getUniqueUserIdentifier(), userProductInfo.getProductCode())) {
             log.error("product with code {} already exists", userProductInfo.getProductCode());
             return "product with code {} already exists" + userProductInfo.getProductCode();
         }
         try {
-            userProductInfoRepository.save(getUserProductInfo(userProductInfo));
+            UserProductInfo save = userProductInfoRepository.save(getUserProductInfo(userProductInfo));
+            String cacheKey = userProductInfo.getUniqueUserIdentifier() + "_" + userProductInfo.getProductCode();
+            cacheProductInfo(cacheKey, getUserProductInfoDto(save));
             return "Save product with code " + userProductInfo.getProductCode();
         } catch (DataAccessException e) {
             log.error("fail to save product with code {} ,{} ",
@@ -60,7 +65,6 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
         }
     }
 
-    @Override
     public void cacheProductInfo(String cacheKey, UserProductInfoDto productInfo) {
         productInfoCache.put(cacheKey, productInfo);
     }
@@ -70,7 +74,10 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
     public UserProductInfoDto getProductByProductCode(String uniqueUserIdentifier, String productCode) {
         log.info("Fetching from database");
         UserProductInfo userProductInfo = supplyUserProductInfo(uniqueUserIdentifier, productCode);
-        return getUserProductInfoDto(userProductInfo);
+        UserProductInfoDto userProductInfoDto=getUserProductInfoDto(userProductInfo);
+        String cacheKey = userProductInfo.getUniqueUserIdentifier() + "_" + userProductInfo.getProductCode();
+        cacheProductInfo(cacheKey, userProductInfoDto);
+        return userProductInfoDto;
     }
 
     @Override
@@ -97,15 +104,15 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
 
     @Override
     public String updateProductInfo(UserProductInfoDto productInfoDto) {
-        String cacheKey = productInfoDto.getUniqueUserIdentifier() + "_" + productInfoDto.getProductCode();
-        cacheProductInfo(cacheKey, productInfoDto);
         UserProductInfo userProductInfo = supplyUserProductInfo(productInfoDto.getUniqueUserIdentifier(),
                 productInfoDto.getProductCode());
         try {
             userProductInfo.setProductInfo(productInfoDto.getProductInfo());
             userProductInfo.setValidationErrors(productInfoDto.getValidationErrors());
             userProductInfo.setValid(isValid(productInfoDto.getValidationErrors()));
-            userProductInfoRepository.save(userProductInfo);
+            UserProductInfo save = userProductInfoRepository.save(userProductInfo);
+            String cacheKey = userProductInfo.getUniqueUserIdentifier() + "_" + userProductInfo.getProductCode();
+            cacheProductInfo(cacheKey, getUserProductInfoDto(save));
             return "Product updated successfully";
         } catch (DataAccessException e) {
             log.error("fail to update product with code {} for the user {} ,{} ",
@@ -125,26 +132,50 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
                         "No data found with product code " + productCode + " for user " + uniqueUserIdentifier));
     }
     @Override
-    public Map<Boolean, List<UserProductInfoDto>> fetchAllProducts(List<String> productCodes, String uniqueUserIdentifier) {
-        Map<Boolean, List<UserProductInfoDto>> allProducts = new HashMap<>();
-        List<UserProductInfoDto> validProducts = new ArrayList<>();
-        List<UserProductInfoDto> invalidProducts = new ArrayList<>();
-        productCodes.stream()
+    public List<UserProductInfoDto> fetchAllProducts(List<String> productCodes, String uniqueUserIdentifier) {
+       return productCodes.parallelStream()
+                .filter(Objects::nonNull)
+                .map(obj -> {
+                    String cacheKey = uniqueUserIdentifier + "_" + obj;
+                    UserProductInfoDto userProductInfoDto = productInfoCache.getIfPresent(cacheKey);
+                    if (userProductInfoDto == null) {
+                        userProductInfoDto = getProductByProductCode(uniqueUserIdentifier, obj);
+                    }
+                  return userProductInfoDto;
+                }).toList();
+    }
+    @Override
+    public List<ValidationError> getProductValidationErrors(List<String> productCodes, String uniqueUserIdentifier){
+        List<ValidationError> validationErrors = new ArrayList<>();
+        if (uniqueUserIdentifier == null) {
+            return validationErrors;
+        }
+        productCodes.parallelStream()
                 .filter(Objects::nonNull)
                 .forEach(obj -> {
-                    UserProductInfoDto userProductInfoDto = getProductByProductCode(uniqueUserIdentifier, obj);
-                    if (userProductInfoDto.isValid()) {
-                        validProducts.add(userProductInfoDto);
-                    } else {
-                        invalidProducts.add(userProductInfoDto);
+                    String cacheKey = uniqueUserIdentifier + "_" + obj;
+                    UserProductInfoDto userProductInfoDto = productInfoCache.getIfPresent(cacheKey);
+                    if (userProductInfoDto == null) {
+                        try {
+                            userProductInfoDto = getProductByProductCode(uniqueUserIdentifier, obj);
+                        } catch (FdapnCustomExceptions e) {
+                            log.error("Failed to fetch product with code {} for the user {} due to database access error: {}", obj, uniqueUserIdentifier, e.getMessage());
+                            validationErrors.add(new ValidationError("productCode","Product not found",e.getMessage()));
+                        }
+                    }
+                    if (userProductInfoDto != null && userProductInfoDto.getValidationErrors() != null) {
+                        try {
+                            List<ValidationError> convertedErrors = mapper.readValue(
+                                    userProductInfoDto.getValidationErrors().traverse(),
+                                    mapper.getTypeFactory().constructCollectionType(List.class, ValidationError.class)
+                            );
+                            validationErrors.addAll(convertedErrors);
+                        } catch (IOException e) {
+                            log.error("Error converting validation errors to collection type", e);
+                        }
                     }
                 });
-        if (!invalidProducts.isEmpty()) {
-            allProducts.put(false, invalidProducts);
-            return allProducts;
-        }
-        allProducts.put(true, validProducts);
-        return allProducts;
+        return validationErrors;
     }
 
     public static UserProductInfo getUserProductInfo(UserProductInfoDto dto) {
