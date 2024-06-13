@@ -36,6 +36,13 @@ public class JsonUtils {
             throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting JsonNode to CustomerDetails , "+e);
         }
     }
+    public static ExcelTransactionInfo convertJsonNodeToExcelResponseInfo(JsonNode jsonNode) {
+        try {
+            return objectMapper.treeToValue(jsonNode, ExcelTransactionInfo.class);
+        } catch (JsonProcessingException e) {
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting JsonNode to CustomerDetails , "+e);
+        }
+    }
     public static JsonNode convertValidationErrorListToJson(List<ValidationError> validationErrors) {
         try {
             return objectMapper.valueToTree(validationErrors);

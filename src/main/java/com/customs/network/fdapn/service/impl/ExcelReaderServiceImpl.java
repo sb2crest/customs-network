@@ -8,7 +8,6 @@ import com.customs.network.fdapn.model.TrackingDetails;
 import com.customs.network.fdapn.model.PartyDetails;
 import com.customs.network.fdapn.service.ExcelJsonProcessor;
 import com.customs.network.fdapn.service.ExcelProcessor;
-import com.customs.network.fdapn.service.ExcelWriter;
 import com.customs.network.fdapn.service.ValidationService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +31,6 @@ import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 public class ExcelReaderServiceImpl implements ExcelProcessor {
     private final ValidationService validationService;
     private final ExcelJsonProcessor excelJsonProcessor;
-    private final ExcelWriter excelWriter;
 
     public String processExcel(MultipartFile file) {
         try {
@@ -104,7 +102,6 @@ public class ExcelReaderServiceImpl implements ExcelProcessor {
 
                 if (!excelResponseList.isEmpty()) {
                     log.info("Validation errors are found");
-                    excelWriter.writeExcel(excelResponseList);
                 }
             } catch (InterruptedException | ExecutionException e) {
                 log.error(e.toString());

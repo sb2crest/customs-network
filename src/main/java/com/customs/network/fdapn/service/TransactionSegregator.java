@@ -1,7 +1,8 @@
 package com.customs.network.fdapn.service;
 
+import com.customs.network.fdapn.dto.ExcelBatchResponse;
 import com.customs.network.fdapn.dto.ExcelValidationResponse;
-import com.customs.network.fdapn.exception.BatchInsertionException;
+import com.customs.network.fdapn.dto.TransactionFailureResponse;
 
 import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.service.impl.UserProductInfoServicesImpl;
@@ -22,15 +23,18 @@ public class TransactionSegregator {
         this.fdapnRecordProcessor = fdapnRecordProcessor;
     }
 
-    public List<ExcelValidationResponse> segregateExcelResponse(List<ExcelValidationResponse> excelValidationResponseList) throws BatchInsertionException {
+    public ExcelBatchResponse segregateExcelResponse(List<ExcelValidationResponse> excelValidationResponseList) {
         List<ExcelValidationResponse> successfulTransaction = new ArrayList<>();
         List<ExcelValidationResponse> failedTransaction = new ArrayList<>();
+        List<ExcelValidationResponse> successResponse = new ArrayList<>();
+        List<TransactionFailureResponse> failureResponse = new ArrayList<>();
+
         excelValidationResponseList.stream()
                 .filter(Objects::nonNull)
                 .forEach(obj -> {
-                    List<String> productCodes=obj.getExcelTransactionInfo().getProductCode();
-                    String uniqueUserIdentifier=obj.getExcelTransactionInfo().getUniqueUserIdentifier();
-                    List<ValidationError> productValidationErrors=userInfoServices.getProductValidationErrors(productCodes,uniqueUserIdentifier);
+                    List<String> productCodes = obj.getExcelTransactionInfo().getProductCode();
+                    String uniqueUserIdentifier = obj.getExcelTransactionInfo().getUniqueUserIdentifier();
+                    List<ValidationError> productValidationErrors = userInfoServices.getProductValidationErrors(productCodes, uniqueUserIdentifier);
                     if (productValidationErrors.isEmpty() && obj.getValidationErrorList().isEmpty()) {
                         successfulTransaction.add(obj);
                     } else {
@@ -39,12 +43,13 @@ public class TransactionSegregator {
                     }
                 });
         if (!successfulTransaction.isEmpty()) {
-            fdapnRecordProcessor.saveSuccessInfo(successfulTransaction);
+            successResponse.addAll(fdapnRecordProcessor.saveSuccessInfo(successfulTransaction));
             successfulTransaction.clear();
         }
         if (!failedTransaction.isEmpty()) {
-            fdapnRecordProcessor.failureRecords(failedTransaction);
+            failureResponse.addAll(fdapnRecordProcessor.failureRecords(failedTransaction));
+            failedTransaction.clear();
         }
-        return failedTransaction;
+        return new ExcelBatchResponse(successResponse, failureResponse);
     }
 }

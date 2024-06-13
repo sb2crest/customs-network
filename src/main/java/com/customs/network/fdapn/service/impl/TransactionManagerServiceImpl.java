@@ -33,6 +33,9 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
     private final PostgresFunctionInit postgresFunctionInit;
     @Value("${partitionSize}")
     private Integer max;
+    private static final String FDAPN_PREFIX ="fdapn_";
+
+    private static final String SELECT_QUERY = "SELECT * FROM ";
 
     public TransactionManagerServiceImpl(JdbcTemplate jdbcTemplate,
                                          CustomIdGenerator idGenerator,
@@ -53,9 +56,9 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
 
     @Override
     public TransactionInfo saveTransaction(TransactionInfo request) {
-        String schema = "fdapn_" + utilMethods.getFormattedDate();
+        String schema = FDAPN_PREFIX + utilMethods.getFormattedDate();
         String userIdLowerCase = request.getUniqueUserIdentifier().toLowerCase();
-        String tableName = "fdapn_" + userIdLowerCase;
+        String tableName = FDAPN_PREFIX + userIdLowerCase;
         if (!isTableExist(schema, tableName))
             createTable(schema, tableName);
         Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
@@ -73,10 +76,9 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
 
    @Override
     public List<TransactionInfo> saveTransaction(List<TransactionInfo> requestList) throws BatchInsertionException {
-        long start = System.currentTimeMillis();
-        String schema = "fdapn_" + utilMethods.getFormattedDate();
+        String schema = FDAPN_PREFIX + utilMethods.getFormattedDate();
         String userIdLowerCase = requestList.get(0).getUniqueUserIdentifier().toLowerCase();
-        String tableName = "fdapn_" + userIdLowerCase;
+        String tableName = FDAPN_PREFIX + userIdLowerCase;
         if (!isTableExist(schema, tableName))
             createTable(schema, tableName);
 
@@ -84,7 +86,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
         final Long[] numberOfRecords = {utilMethods.getLastIdInTheTable(schema, tableName)};
         List<TransactionInfo> list = requestList.stream()
                 .filter(Objects::nonNull)
-                .peek(request -> {
+                .map(request -> {
                     int newMax = (lastId[0] > numberOfRecords[0]) ? (int) Math.ceil((double) lastId[0] / max) * max : (int) Math.ceil((double) numberOfRecords[0] / max) * max;
                     String refId = idGenerator.generate(request.getUniqueUserIdentifier(), lastId[0]);
                     lastId[0]++;
@@ -95,9 +97,8 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
                         createPartitionTable(schema, tableName, numberOfRecords[0] + missingRecords);
                     }
                     numberOfRecords[0] = lastId[0];
+                    return request;
                 }).toList();
-       long end = System.currentTimeMillis();
-        log.info("Time to assign the reference id to the batch -> {} ",(end-start)/1000);
         return saveToTransactionTable(list, schema, tableName);
     }
 
@@ -188,7 +189,6 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
     }
 
     private synchronized List<TransactionInfo> saveToTransactionTable(List<TransactionInfo> requests, String schemaName, String tableName) throws BatchInsertionException {
-       long start = System.currentTimeMillis();
         try {
             String insertSql = "INSERT INTO " + schemaName + "." + tableName + " (serial, batch_id, created_on, envelop_number, reference_id, request_json, response_json, status, trace_id, updated_on, unique_user_identifier) "
                     + "VALUES (?, ?, ?, ?, ?, CAST(? AS jsonb), CAST(? AS jsonb), ?, ?, ?, ?)";
@@ -224,8 +224,6 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
             throw new BatchInsertionException("Duplicate key error occurred", keyException);
 
         }
-        long end = System.currentTimeMillis();
-        log.info("Time taken to save the batch in the table ->{}", (end - start) / 1000.0);
         return requests;
     }
 
@@ -293,7 +291,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
     }
 
     private TransactionInfo fetchTask(String position, Long slNumber) {
-        String sql = "SELECT * FROM " + position + " WHERE serial = ?";
+        String sql = SELECT_QUERY + position + " WHERE serial = ?";
         Object[] args = {slNumber};
         List<TransactionInfo> results = jdbcTemplate.query(sql, new ExtractTransactions(objectMapper), args);
         assert results != null;
@@ -307,7 +305,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
     public PageDTO<TransactionInfo> fetchTransactionPages(FilterCriteriaDTO filterRequest) {
         try {
             String schemaName = utilMethods.getSchemaNameFromDate(DateUtils.formatterDate(filterRequest.getCreatedOn()));
-            String tableName = "fdapn_" + filterRequest.getUserId();
+            String tableName = FDAPN_PREFIX + filterRequest.getUserId();
             int partitionSize = max;
             Long totalRecords = utilMethods.getNumberOfRecords(schemaName, tableName);
             Long lastId = utilMethods.getLastIdInTheTable(schemaName, tableName);
@@ -334,7 +332,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
 
                 if (recordsToFetch > 0) {
                     String partitionTableName = tableName + "_" + partition;
-                    String sql = "SELECT * FROM " + schemaName + "." + partitionTableName + " ORDER BY serial desc LIMIT ? OFFSET ?";
+                    String sql = SELECT_QUERY + schemaName + "." + partitionTableName + " ORDER BY serial desc LIMIT ? OFFSET ?";
                     Object[] args = {recordsToFetch, offSet};
                     List<TransactionInfo> partitionResults = jdbcTemplate.query(sql, new ExtractTransactions(objectMapper), args);
                     assert partitionResults != null;
@@ -364,11 +362,11 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
             }
 
             String schemaName = utilMethods.getSchemaNameFromDate(DateUtils.formatterDate(filterRequest.getCreatedOn()));
-            String tableName = "fdapn_" + filterRequest.getUserId();
+            String tableName = FDAPN_PREFIX + filterRequest.getUserId();
             int offSet = (filterRequest.getPage() - 1) * filterRequest.getSize();
 
             String numberOfRecordsSql = "SELECT COUNT(*) FROM " + schemaName + "." + tableName + " WHERE status = ?;";
-            String sql = "SELECT * FROM " + schemaName + "." + tableName + " WHERE status = ? ORDER BY serial DESC LIMIT ? OFFSET ?;";
+            String sql = SELECT_QUERY + schemaName + "." + tableName + " WHERE status = ? ORDER BY serial DESC LIMIT ? OFFSET ?;";
             Object[] args = {filterRequest.getStatus(), filterRequest.getSize(), offSet};
 
             Long totalRecords = jdbcTemplate.queryForObject(numberOfRecordsSql, Long.class, filterRequest.getStatus());

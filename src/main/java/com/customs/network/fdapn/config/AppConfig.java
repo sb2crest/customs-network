@@ -28,6 +28,7 @@ public class AppConfig {
 
     @Bean
     public ConverterService getConverterService() {
-       return new ConverterService(new JsonToEdiPool(new Positions()));
+        JsonToEdiPool jsonToEdiPool = new JsonToEdiPool(new Positions(),20);
+       return new ConverterService(jsonToEdiPool);
     }
 }

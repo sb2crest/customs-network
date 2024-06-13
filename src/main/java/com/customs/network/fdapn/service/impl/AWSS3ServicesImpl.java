@@ -40,16 +40,16 @@ public class AWSS3ServicesImpl implements AWSS3Services {
         String key = folderKey + refID + ".txt" ;
         transactionRepository.changeTransactionStatus(refID, MessageCode.CBP_DOWN.getStatus());
         log.info("Changed status to CBP DOWN for ref-> {}" , refID);
-        try {
-            byte[] contentBytes = ediContent.getBytes();
-            ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentLength(contentBytes.length);
-            s3Client.putObject(new PutObjectRequest("fdapn-submit-cbp-down-records", key, new ByteArrayInputStream(contentBytes), metadata));
-            log.info("EDI content saved to S3 bucket: {}/{}", "fdapn-submit-cbp-down-records", key);
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("Error occurred while saving EDI content to S3: " + e.getMessage());
-        }
+//        try {
+//            byte[] contentBytes = ediContent.getBytes();
+//            ObjectMetadata metadata = new ObjectMetadata();
+//            metadata.setContentLength(contentBytes.length);
+//            s3Client.putObject(new PutObjectRequest("fdapn-submit-cbp-down-records", key, new ByteArrayInputStream(contentBytes), metadata));
+//            log.info("EDI content saved to S3 bucket: {}/{}", "fdapn-submit-cbp-down-records", key);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            System.out.println("Error occurred while saving EDI content to S3: " + e.getMessage());
+//        }
     }
     @Override
     public List<String> getTextFilesInFolder(String folderKey) {

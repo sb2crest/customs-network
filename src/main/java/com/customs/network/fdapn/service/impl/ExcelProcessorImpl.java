@@ -1,15 +1,12 @@
 package com.customs.network.fdapn.service.impl;
 
-import com.customs.network.fdapn.dto.ExcelTransactionInfo;
-import com.customs.network.fdapn.dto.PriorNoticeData;
-import com.customs.network.fdapn.dto.UserProductInfoDto;
-import com.customs.network.fdapn.dto.ExcelValidationResponse;
+import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.model.ValidationError;
+import com.customs.network.fdapn.service.AnalyzeFuture;
 import com.customs.network.fdapn.service.ExcelProcessor;
 import com.customs.network.fdapn.service.TransactionSegregator;
 import com.customs.network.fdapn.service.UserProductInfoServices;
 import com.customs.network.fdapn.validations.ValidateProduct;
-import com.customs.network.fdapn.validations.ValidateProductDilip;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -40,12 +36,17 @@ public class ExcelProcessorImpl implements ExcelProcessor {
     private final UserProductInfoServices userInfoServices;
     private final TransactionSegregator transactionSegregator;
     private final ValidateProduct validateProduct;
+    private final AnalyzeFuture analyzeFuture;
 
-    public ExcelProcessorImpl(ObjectMapper objectMapper, UserProductInfoServices userInfoServices, ValidateProductDilip validateProductDilip, TransactionSegregator transactionSegregator, ValidateProduct validateProduct) {
+    public ExcelProcessorImpl(ObjectMapper objectMapper,
+                              UserProductInfoServices userInfoServices,
+                              TransactionSegregator transactionSegregator,
+                              ValidateProduct validateProduct, AnalyzeFuture analyzeFuture) {
         this.objectMapper = objectMapper;
         this.userInfoServices = userInfoServices;
         this.transactionSegregator = transactionSegregator;
         this.validateProduct = validateProduct;
+        this.analyzeFuture = analyzeFuture;
     }
 
     @Override
@@ -55,51 +56,32 @@ public class ExcelProcessorImpl implements ExcelProcessor {
         long end = System.currentTimeMillis();
         log.info("Time taken to load the excel  :->{} seconds", (end - start) / 1000.0);
         readSheetTwo(workbook.getSheetAt(1));
-        List<ExcelValidationResponse> transactionInfos = readSheetOne(workbook.getSheetAt(0));
+        String res = readSheetOne(workbook.getSheetAt(0));
         end = System.currentTimeMillis();
         log.info("Time taken by processExcel() :->{} seconds", (end - start) / 1000.0);
-        return "Success";
+        return res;
     }
 
-    public List<ExcelValidationResponse> readSheetOne(Sheet sheet){
-        long start = System.currentTimeMillis();
-        List<ExcelValidationResponse> transactionInfos = new ArrayList<>();
+    public String readSheetOne(Sheet sheet) {
         int chunkSize = 900;
         int numRows = sheet.getLastRowNum();
         log.info("Total Rows :->{}", numRows);
         int numChunks = (int) Math.ceil((double) (numRows) / chunkSize);
 
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        List<Future<List<ExcelValidationResponse>>> futures = new ArrayList<>();
+        List<Future<ExcelBatchResponse>> futures = new ArrayList<>();
 
         for (int i = 0; i < numChunks; i++) {
             final int startRow = i * chunkSize;
             final int endRow = Math.min(startRow + chunkSize - 1, numRows);
             futures.add(executorService.submit(() -> readChunk(sheet, startRow, endRow)));
         }
-
-        new Thread(() -> {
-            for (Future<List<ExcelValidationResponse>> future : futures) {
-                List<ExcelValidationResponse> chunkTransactionInfos = null;
-                try {
-                    chunkTransactionInfos = future.get();
-                } catch (InterruptedException e) {
-                    log.info("Exception while getting chunk transaction ");
-                } catch (ExecutionException e) {
-                    log.info("Exception while executing chunk transaction info ");
-                }
-                assert chunkTransactionInfos != null;
-                transactionInfos.addAll(chunkTransactionInfos);
-            }
-            long end=System.currentTimeMillis();
-            log.info("Time taken by the Request :->{} seconds", (end - start) / 1000.0);
-        });
         executorService.shutdown();
-
-        return transactionInfos;
+        new Thread(() -> analyzeFuture.ofExcelBatchResponse(futures)).start();
+        return "Excel Uploaded Successfully";
     }
 
-    private List<ExcelValidationResponse> readChunk(Sheet sheet, int startRow, int endRow) throws Exception {
+    private ExcelBatchResponse readChunk(Sheet sheet, int startRow, int endRow) throws Exception {
         List<ExcelTransactionInfo> transactionInfos = new ArrayList<>();
         for (int i = startRow; i <= endRow; i++) {
             ExcelTransactionInfo transactionInfo = new ExcelTransactionInfo();
@@ -124,8 +106,8 @@ public class ExcelProcessorImpl implements ExcelProcessor {
             transactionInfos.add(transactionInfo);
         }
         List<ExcelValidationResponse> excelValidationRespons = validateProduct.validateExcelTransactions(transactionInfos);
-        List<ExcelValidationResponse> res = transactionSegregator.segregateExcelResponse(excelValidationRespons);
-        return res;
+        return transactionSegregator.segregateExcelResponse(excelValidationRespons);
+
     }
 
     private void readSheetTwo(Sheet sheet) throws Exception {
@@ -204,6 +186,7 @@ public class ExcelProcessorImpl implements ExcelProcessor {
             case "TU":
                 UserProductInfoDto tempDto = processUpdateAction(object);
                 tempDto.setValidationErrors(validate(object.getProductInfo()));
+                break;
             default:
                 log.error("Invalid Action code");
         }
@@ -218,9 +201,11 @@ public class ExcelProcessorImpl implements ExcelProcessor {
                 return convertValidationErrorsToJson(validationErrors);
             }
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            log.error("Exception while converting validation errors to json: - " + e.getMessage());
+            return null;
         }
     }
+
 
     public JsonNode convertValidationErrorsToJson(List<ValidationError> validationErrors) {
         return validationErrors.stream()

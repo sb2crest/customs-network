@@ -110,7 +110,7 @@ public class UtilMethods {
         return List.of(schemaName,tableName);
     }
     public List<String> getNotificationEmailsByUserIdentifier(String userIdentifier) {
-        Query query = entityManager.createNativeQuery("SELECT notification_emails FROM public._user WHERE user_identifier = :userIdentifier");
+        Query query = entityManager.createNativeQuery("SELECT notification_emails FROM public._user WHERE unique_user_identifier = :userIdentifier");
         query.setParameter("userIdentifier", userIdentifier);
         List<String> resultList = query.getResultList();
         if (resultList.isEmpty()) {
@@ -126,7 +126,7 @@ public class UtilMethods {
     }
 
     public String getEmailByUserIdentifier(String userIdentifier) {
-        Query query = entityManager.createNativeQuery("SELECT email FROM public._user WHERE user_identifier = :userIdentifier");
+        Query query = entityManager.createNativeQuery("SELECT email FROM public._user WHERE unique_user_identifier = :userIdentifier");
         query.setParameter("userIdentifier", userIdentifier);
         List<String> resultList = query.getResultList();
         if (resultList.isEmpty()) {

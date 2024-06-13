@@ -1,26 +1,21 @@
 package com.customs.network.fdapn.service;
 
-import com.converter.exceptions.InvalidDataException;
-import com.converter.service.*;
 import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.BatchInsertionException;
 import com.customs.network.fdapn.model.MessageCode;
 import com.customs.network.fdapn.model.TransactionInfo;
 import com.customs.network.fdapn.repository.TransactionManagerRepo;
-import com.customs.network.fdapn.service.impl.CBPServiceImpl;
 import com.customs.network.fdapn.utils.DateUtils;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
+
 import java.util.stream.IntStream;
 
 import static com.customs.network.fdapn.model.MessageCode.SUCCESS_SUBMIT;
@@ -31,23 +26,15 @@ import static com.customs.network.fdapn.utils.JsonUtils.*;
 public class FdapnRecordProcessor {
     private final AtomicInteger sequentialNumber = new AtomicInteger(0);
     private final TransactionManagerRepo transactionManagerRepo;
-    private final UserProductInfoServices userProductInfoServices;
-    private final ConverterService converterService;
     private final Lock lock = new ReentrantLock();
 
-    private final ObjectMapper objectMapper;
-    private final CBPServiceImpl cbpServiceImpl;
 
-    public FdapnRecordProcessor(TransactionManagerRepo transactionManagerRepo, UserProductInfoServices userProductInfoServices, JsonToEdi jsonToEdi, ConverterService converterService, ObjectMapper objectMapper, CBPServiceImpl cbpServiceImpl) {
+    public FdapnRecordProcessor(TransactionManagerRepo transactionManagerRepo) {
         this.transactionManagerRepo = transactionManagerRepo;
-        this.userProductInfoServices = userProductInfoServices;
-        this.converterService = converterService;
-        this.objectMapper = objectMapper;
-        this.cbpServiceImpl = cbpServiceImpl;
     }
 
-    public List<TransactionInfo> saveSuccessInfo(List<ExcelValidationResponse> excelValidationRespons) throws BatchInsertionException {
-        List<TransactionInfo> transactionInfos = excelValidationRespons.stream()
+    public List<ExcelValidationResponse> saveSuccessInfo(List<ExcelValidationResponse> excelValidationResponse){
+        List<TransactionInfo> successList = excelValidationResponse.stream()
                 .filter(Objects::nonNull)
                 .map(obj -> {
                     TransactionInfo transactionInfo = new TransactionInfo();
@@ -71,71 +58,24 @@ public class FdapnRecordProcessor {
                     return transactionInfo;
                 })
                 .toList();
-        List<TransactionInfo> records;
-        log.info("Batch is Ready to save");
-
-        lock.lock();
-        try {
-            records = transactionManagerRepo.saveTransaction(transactionInfos);
-        } catch (BatchInsertionException e) {
-            log.error("Error during batch insertion, resubmitting batch...");
-            records = transactionManagerRepo.saveTransaction(transactionInfos);
-        } finally {
-            lock.unlock();
+        List<TransactionInfo> transactionInfos = submitToDbProcessing(successList);
+        if(!transactionInfos.isEmpty()){
+             assignProcessedRefIDs(transactionInfos,excelValidationResponse);
         }
-        long now = System.currentTimeMillis();
-        processEdi(records, excelValidationRespons);
-        long end = System.currentTimeMillis();
-        log.info("Time taken to process EDI: " + (end - now)/100 + " seconds");
-        return records;
-    }
-
-    private void processEdi(List<TransactionInfo> savedRecords, List<ExcelValidationResponse> excelValidationRespons) {
-        IntStream.range(0, Math.min(savedRecords.size(), excelValidationRespons.size()))
-                .forEach(i -> excelValidationRespons.get(i).getExcelTransactionInfo()
-                        .setReferenceId(savedRecords.get(i).getReferenceId()));
-
-
-        excelValidationRespons.stream()
-                .filter(Objects::nonNull)
-                .forEach(
-                        obj -> {
-                            List<String> productCodes=obj.getExcelTransactionInfo().getProductCode();
-                            String uniqueUserIdentifier=obj.getExcelTransactionInfo().getUniqueUserIdentifier();
-                            List<UserProductInfoDto> productInfoList=userProductInfoServices.fetchAllProducts(productCodes,uniqueUserIdentifier);
-                            if (!productInfoList.isEmpty()) {
-                                List<JsonNode> productInfo = productInfoList
-                                        .stream()
-                                        .map(UserProductInfoDto::getProductInfo)
-                                        .toList();
-                                obj.getExcelTransactionInfo().getPriorNoticeData().setProducts(productInfo);
-                                JsonNode edi = objectMapper.valueToTree(obj.getExcelTransactionInfo().getPriorNoticeData());
-                                try {
-                                    String ediFile = converterService.convertToEdi(edi, "FDA");
-                                    String refID = obj.getExcelTransactionInfo().getReferenceId();
-                                    cbpServiceImpl.hitCbp(ediFile, refID);
-
-                                    obj.getExcelTransactionInfo().getPriorNoticeData().setProducts(new ArrayList<>());
-                                } catch (InvalidDataException | ExecutionException | InterruptedException e) {
-                                    log.error(e.getMessage());
-                                }
-
-                            }
-                        }
-                );
+        return excelValidationResponse;
     }
 
 
-    public List<CustomerFdaPnFailure> failureRecords(List<ExcelValidationResponse> excelValidationRespons) throws BatchInsertionException {
-        List<CustomerFdaPnFailure> fdaPnFailures = new ArrayList<>();
-        List<TransactionInfo> failedList = excelValidationRespons.stream()
+    public List<TransactionFailureResponse> failureRecords(List<ExcelValidationResponse> excelValidationResponse) {
+        List<TransactionFailureResponse> fdaPnFailures = new ArrayList<>();
+        List<TransactionInfo> failedList = excelValidationResponse.stream()
                 .filter(Objects::nonNull)
                 .map(
                         obj -> {
                             TransactionInfo transactionInfos = new TransactionInfo();
-                            CustomerFdaPnFailure dto = new CustomerFdaPnFailure();
+                            TransactionFailureResponse dto = new TransactionFailureResponse();
                             dto.setResponseJson(getResponse(obj, false));
-                            fdaPnFailures.add(dto);
+
                             Date date = new Date();
                             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
                             String formattedDate = dateFormat.format(date);
@@ -147,41 +87,44 @@ public class FdapnRecordProcessor {
                             transactionInfos.setUniqueUserIdentifier(uuid);
                             transactionInfos.setEnvelopNumber("ENV003");
                             transactionInfos.setCreatedOn(new Date());
+
                             transactionInfos.setUpdatedOn(new Date());
                             transactionInfos.setStatus(MessageCode.VALIDATION_ERRORS.getStatus());
                             JsonNode jsonNode = convertExcelResponse(obj.getExcelTransactionInfo());
                             transactionInfos.setRequestJson(jsonNode);
                             JsonNode saveResponse = convertResponseToJson(getResponse(obj, false));
                             transactionInfos.setResponseJson(saveResponse);
+                            fdaPnFailures.add(dto);
                             return transactionInfos;
                         }
                 ).toList();
-
-        List<TransactionInfo> records = null;
-        lock.lock();
-        try {
-            records = transactionManagerRepo.saveTransaction(failedList);
-        } catch (BatchInsertionException e) {
-            log.error("Error during batch insertion, resubmitting batch...");
-            records = transactionManagerRepo.saveTransaction(failedList);
-        } finally {
-            lock.unlock();
+        List<TransactionInfo> transactionInfos = submitToDbProcessing(failedList);
+        if(!transactionInfos.isEmpty()){
+          return generateFailureRespose(transactionInfos,fdaPnFailures);
         }
-        List<TransactionInfo> finalRecords = records;
+        return new ArrayList<>();
+    }
 
-        return IntStream.range(0, Math.min(fdaPnFailures.size(), records.size()))
-                .mapToObj(i -> {
-                    CustomerFdaPnFailure dto = fdaPnFailures.get(i);
-                    TransactionInfo record = finalRecords.get(i);
-                    dto.setBatchId(record.getBatchId());
-                    dto.setUserId(record.getUniqueUserIdentifier());
-                    dto.setReferenceIdentifierNo(record.getReferenceId());
-                    dto.setCreatedOn(DateUtils.formatDate(record.getCreatedOn()));
-                    dto.setStatus(record.getStatus());
-                    dto.setRequestJson(convertJsonNodeToCustomerDetails(record.getRequestJson()));
-                    return dto;
-                })
-                .collect(Collectors.toList());
+    private List<TransactionInfo> submitToDbProcessing(List<TransactionInfo> processedDate) {
+        List<TransactionInfo> records=new ArrayList<>();
+        int retryCount = 0;
+        while (retryCount < 3) {
+            lock.lock();
+            try {
+                records = transactionManagerRepo.saveTransaction(processedDate);
+                break;
+            } catch (BatchInsertionException e) {
+                retryCount++;
+                if (retryCount < 3) {
+                    log.error("Error during batch insertion, retrying...");
+                } else {
+                    log.error("Error during batch insertion after 3 attempts, giving up.");
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+        return records;
     }
 
     private String generateSequentialNumber() {
@@ -201,6 +144,28 @@ public class FdapnRecordProcessor {
             response.setMessage(validationError);
         }
         return response;
+    }
+
+    private void assignProcessedRefIDs(List<TransactionInfo> savedRecords, List<ExcelValidationResponse> excelValidationResponse) {
+        IntStream.range(0, Math.min(savedRecords.size(), excelValidationResponse.size()))
+                .forEach(i -> excelValidationResponse.get(i).getExcelTransactionInfo()
+                        .setReferenceId(savedRecords.get(i).getReferenceId()));
+    }
+
+    private List<TransactionFailureResponse> generateFailureRespose(List<TransactionInfo> savedRecords, List<TransactionFailureResponse> fdaPnFailures) {
+       return IntStream.range(0, fdaPnFailures.size())
+                .mapToObj(i -> {
+                    TransactionFailureResponse dto = fdaPnFailures.get(i);
+                    TransactionInfo savedInfo = savedRecords.get(i);
+                    dto.setBatchId(savedInfo.getBatchId());
+                    dto.setUniqueUserIdentifier(savedInfo.getUniqueUserIdentifier());
+                    dto.setReferenceIdentifierNo(savedInfo.getReferenceId());
+                    dto.setCreatedOn(DateUtils.formatDate(savedInfo.getCreatedOn()));
+                    dto.setStatus(savedInfo.getStatus());
+                    dto.setRequestInfo(convertJsonNodeToExcelResponseInfo(savedInfo.getRequestJson()));
+                    return dto;
+                })
+                .toList();
     }
 
 }
