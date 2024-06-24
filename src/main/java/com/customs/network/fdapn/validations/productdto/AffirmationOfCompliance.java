@@ -1,4 +1,4 @@
-package com.customs.network.fdapn.dto.productdto;
+package com.customs.network.fdapn.validations.productdto;
 
 import lombok.Data;
 
@@ -6,6 +6,4 @@ import lombok.Data;
 public class AffirmationOfCompliance {
     private String affirmationComplianceCode;
     private String affirmationComplianceQualifier;
-
-    // Getters and setters
 }
