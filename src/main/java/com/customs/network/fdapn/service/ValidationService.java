@@ -28,7 +28,8 @@ public class ValidationService {
     private static final String REGEX_PATTERN_FOR_ALL = "^.{%d}$";
 
     private static final String REGEX_PATTERN_FOR_ALL_WITH_RANGE = "^.{%d,%d}$";
-    private static final String fillerPattern = "^\\s{4}$";
+    private static final String FILLER_PATTERN = "^\\s{4}$";
+    private static final String PRODUCT_NUMBER = "Product Number";
 
     private static final Set<String> Mode_Of_Transportation_Codes = Set.of("10", "11", "12", "20", "21", "30", "31", "32", "33", "34", "40", "41", "50", "60", "70");
 
@@ -168,7 +169,7 @@ public class ValidationService {
         String filer = trackingDetails.getFiler();
         if (filer == null || !filer.matches(String.format(REGEX_PATTERN_FOR_ALL,4))) {
             validationErrorList.add(createValidationError("Filer", "Invalid Filer. The field should contain 4 alphanumeric character.", filer));
-        } else if (!filer.matches(fillerPattern)) {
+        } else if (!filer.matches(FILLER_PATTERN)) {
             validationErrorList.add(createValidationError("Filer", "Invalid Filer. The field should contain valid filler.", filer));
 
         }
@@ -209,7 +210,7 @@ public class ValidationService {
 
         String productNumber = trackingDetails.getProductNumber();
         if (productNumber.isBlank() || !productNumber.matches(String.format(REGEX_PATTERN_FOR_ALL_WITH_RANGE, 1, 19))) {
-            validationErrorList.add(createValidationError("Product Number", "Invalid Product Number. The field should have a length between 1 to 19", productNumber));
+            validationErrorList.add(createValidationError(PRODUCT_NUMBER, "Invalid Product Number. The field should have a length between 1 to 19", productNumber));
         } else {
             switch (trackingDetails.getGovernmentAgencyProcessingCode().toUpperCase()) {
                 case "PHN":

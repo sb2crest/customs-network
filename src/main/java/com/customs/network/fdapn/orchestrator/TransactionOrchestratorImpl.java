@@ -3,13 +3,13 @@ package com.customs.network.fdapn.orchestrator;
 import com.customs.network.fdapn.dto.FilterCriteriaDTO;
 import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.dto.ScanSchema;
-import com.customs.network.fdapn.model.TrackingDetails;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.TransactionInfo;
 import com.customs.network.fdapn.repository.TransactionManagerRepo;
 import com.customs.network.fdapn.service.AWSS3Services;
 import com.customs.network.fdapn.service.ExcelProcessor;
-import com.customs.network.fdapn.service.impl.ExcelReaderServiceImpl;
-import com.customs.network.fdapn.service.JsonToXmlService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,33 +23,23 @@ public class TransactionOrchestratorImpl implements TransactionOrchestrator {
     private final ExcelProcessor excelProcessor;
     private final AWSS3Services awss3Services;
     private final TransactionManagerRepo transactionManager;
-    private final ExcelReaderServiceImpl excelReaderServiceImpl;
-    private final JsonToXmlService jsonToXmlService;
 
-    public TransactionOrchestratorImpl(ExcelProcessor excelProcessor, AWSS3Services awss3Services, TransactionManagerRepo transactionManager, ExcelReaderServiceImpl excelReaderServiceImpl, JsonToXmlService jsonToXmlService) {
+    @Autowired
+    public TransactionOrchestratorImpl(ExcelProcessor excelProcessor,
+                                       AWSS3Services awss3Services,
+                                       TransactionManagerRepo transactionManager) {
         this.excelProcessor = excelProcessor;
         this.awss3Services = awss3Services;
         this.transactionManager = transactionManager;
-        this.excelReaderServiceImpl = excelReaderServiceImpl;
-        this.jsonToXmlService = jsonToXmlService;
     }
 
-    @Override
-    public String processExcelFile(MultipartFile file) {
-        return excelReaderServiceImpl.processExcel(file);
-    }
-
-    @Override
-    public String convertJsonToXml(List<TrackingDetails> trackingDetails) {
-        return jsonToXmlService.convertJsonToXml(trackingDetails);
-    }
 
     @Override
     public String processExcel(MultipartFile file) {
         try {
             return excelProcessor.processExcel(file);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new FdapnCustomExceptions(ErrorResCodes.EXECUTION_FAILURE,e.getMessage());
         }
     }
 

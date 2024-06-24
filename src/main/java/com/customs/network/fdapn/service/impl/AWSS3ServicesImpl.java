@@ -3,7 +3,7 @@ package com.customs.network.fdapn.service.impl;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.*;
 import com.customs.network.fdapn.model.MessageCode;
-import com.customs.network.fdapn.repository.TransactionRepository;
+import com.customs.network.fdapn.repository.TransactionManagerRepo;
 import com.customs.network.fdapn.service.AWSS3Services;
 import com.customs.network.fdapn.utils.CustomIdGenerator;
 import com.customs.network.fdapn.utils.UtilMethods;
@@ -11,7 +11,6 @@ import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayInputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -20,12 +19,15 @@ import java.util.List;
 @Service
 @Slf4j
 public class AWSS3ServicesImpl implements AWSS3Services {
-    private final TransactionRepository transactionRepository;
+    private final TransactionManagerRepo transactionRepository;
     private final CustomIdGenerator idGenerator;
     private final UtilMethods utilMethods;
     private final AmazonS3 s3Client;
 
-    public AWSS3ServicesImpl(TransactionRepository transactionRepository, CustomIdGenerator idGenerator, UtilMethods utilMethods, AmazonS3 s3Client) {
+    public AWSS3ServicesImpl(TransactionManagerRepo transactionRepository,
+                             CustomIdGenerator idGenerator,
+                             UtilMethods utilMethods,
+                             AmazonS3 s3Client) {
         this.transactionRepository = transactionRepository;
         this.idGenerator = idGenerator;
         this.utilMethods = utilMethods;
@@ -40,16 +42,15 @@ public class AWSS3ServicesImpl implements AWSS3Services {
         String key = folderKey + refID + ".txt" ;
         transactionRepository.changeTransactionStatus(refID, MessageCode.CBP_DOWN.getStatus());
         log.info("Changed status to CBP DOWN for ref-> {}" , refID);
-//        try {
-//            byte[] contentBytes = ediContent.getBytes();
-//            ObjectMetadata metadata = new ObjectMetadata();
-//            metadata.setContentLength(contentBytes.length);
-//            s3Client.putObject(new PutObjectRequest("fdapn-submit-cbp-down-records", key, new ByteArrayInputStream(contentBytes), metadata));
-//            log.info("EDI content saved to S3 bucket: {}/{}", "fdapn-submit-cbp-down-records", key);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            System.out.println("Error occurred while saving EDI content to S3: " + e.getMessage());
-//        }
+        try {
+         //   byte[] contentBytes = ediContent.getBytes();
+           // ObjectMetadata metadata = new ObjectMetadata();
+           // metadata.setContentLength(contentBytes.length);
+          //  s3Client.putObject(new PutObjectRequest("fdapn-submit-cbp-down-records", key, new ByteArrayInputStream(contentBytes), metadata));
+           // log.info("EDI content saved to S3 bucket: {}/{}", "fdapn-submit-cbp-down-records", key);
+        } catch (Exception e) {
+            log.error("Error occurred while saving EDI content to S3: " + e.getMessage());
+        }
     }
     @Override
     public List<String> getTextFilesInFolder(String folderKey) {

@@ -1,8 +1,7 @@
 package com.customs.network.fdapn.config;
 
-import com.converter.initializers.Positions;
 import com.converter.service.ConverterService;
-import com.converter.service.JsonToEdiPool;
+import com.converter.service.JsonToEdi;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -13,7 +12,8 @@ import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class AppConfig {
-    
+    private static final String organization = "FDA";
+
     @Bean
     public RestTemplate restTemplate() {
         RequestConfig requestConfig = RequestConfig.custom()
@@ -28,7 +28,7 @@ public class AppConfig {
 
     @Bean
     public ConverterService getConverterService() {
-        JsonToEdiPool jsonToEdiPool = new JsonToEdiPool(new Positions(),20);
-       return new ConverterService(jsonToEdiPool);
+        JsonToEdi jsonToEdi = new JsonToEdi(organization);
+        return new ConverterService(jsonToEdi);
     }
 }

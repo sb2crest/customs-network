@@ -1,17 +1,13 @@
 package com.customs.network.fdapn.service.impl;
 
 import com.customs.network.fdapn.dto.*;
-import com.customs.network.fdapn.model.ValidationError;
-import com.customs.network.fdapn.service.AnalyzeFuture;
-import com.customs.network.fdapn.service.ExcelProcessor;
-import com.customs.network.fdapn.service.TransactionSegregator;
-import com.customs.network.fdapn.service.UserProductInfoServices;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
+import com.customs.network.fdapn.service.*;
 import com.customs.network.fdapn.validations.ValidateProduct;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -24,7 +20,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 
@@ -33,24 +29,26 @@ import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 @Primary
 public class ExcelProcessorImpl implements ExcelProcessor {
     private final ObjectMapper objectMapper;
-    private final UserProductInfoServices userInfoServices;
     private final TransactionSegregator transactionSegregator;
     private final ValidateProduct validateProduct;
+    private final ProductServicePreProcessor productServicePreProcessor;
     private final AnalyzeFuture analyzeFuture;
+    public long processStartTime;
 
     public ExcelProcessorImpl(ObjectMapper objectMapper,
-                              UserProductInfoServices userInfoServices,
                               TransactionSegregator transactionSegregator,
-                              ValidateProduct validateProduct, AnalyzeFuture analyzeFuture) {
+                              ValidateProduct validateProduct, ProductServicePreProcessor productServicePreProcessor,
+                              AnalyzeFuture analyzeFuture) {
         this.objectMapper = objectMapper;
-        this.userInfoServices = userInfoServices;
         this.transactionSegregator = transactionSegregator;
         this.validateProduct = validateProduct;
+        this.productServicePreProcessor = productServicePreProcessor;
         this.analyzeFuture = analyzeFuture;
     }
 
     @Override
     public String processExcel(MultipartFile file) throws Exception {
+        processStartTime=System.currentTimeMillis();
         long start = System.currentTimeMillis();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
         long end = System.currentTimeMillis();
@@ -65,19 +63,19 @@ public class ExcelProcessorImpl implements ExcelProcessor {
     public String readSheetOne(Sheet sheet) {
         int chunkSize = 900;
         int numRows = sheet.getLastRowNum();
-        log.info("Total Rows :->{}", numRows);
-        int numChunks = (int) Math.ceil((double) (numRows) / chunkSize);
+        log.info("Total Rows: {}", numRows);
+        int numChunks = (int) Math.ceil((double) numRows / chunkSize);
 
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         List<Future<ExcelBatchResponse>> futures = new ArrayList<>();
-
+        // Submit tasks for each chunk
         for (int i = 0; i < numChunks; i++) {
             final int startRow = i * chunkSize;
             final int endRow = Math.min(startRow + chunkSize - 1, numRows);
             futures.add(executorService.submit(() -> readChunk(sheet, startRow, endRow)));
         }
-        executorService.shutdown();
         new Thread(() -> analyzeFuture.ofExcelBatchResponse(futures)).start();
+
         return "Excel Uploaded Successfully";
     }
 
@@ -122,97 +120,13 @@ public class ExcelProcessorImpl implements ExcelProcessor {
                     product.getActionCode().equalsIgnoreCase("TU")) {
                 String jsonString = row.getCell(4).getRichStringCellValue().getString();
                 if (StringUtils.isBlank(jsonString)) {
-                    throw new RuntimeException("For action code A or E ,the field Product Information is mandatory");
+                    throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"For action code A or E ,the field Product Information is mandatory");
                 }
                 JsonNode jsonNode = objectMapper.readTree(jsonString);
                 product.setProductInfo(jsonNode);
             }
             userProductInfoDtos.add(product);
         }
-        process(userProductInfoDtos);
-    }
-
-    private void process(List<UserProductInfoDto> data) {
-        data.parallelStream()
-                .filter(Objects::nonNull)
-                .forEach(this::accept);
-    }
-
-    private UserProductInfoDto processUpdateAction(UserProductInfoDto object) {
-        long startTime = System.currentTimeMillis();
-        JsonNode update = object.getProductInfo();
-        UserProductInfoDto originalProductInfo = userInfoServices.getProductByProductCode(object.getUniqueUserIdentifier(),
-                object.getProductCode());
-        ObjectNode original = (ObjectNode) originalProductInfo.getProductInfo();
-        log.info("Original Product Info: {}", original);
-        log.info("Update Product Info: {}", update);
-        Iterator<Map.Entry<String, JsonNode>> fields = update.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> entry = fields.next();
-            String fieldName = entry.getKey();
-            JsonNode newValue = entry.getValue();
-            if (original.has(fieldName) && !original.get(fieldName).equals(newValue)) {
-                original.set(fieldName, newValue);
-            } else if (!original.has(fieldName)) {
-                log.error("Field '{}' not found in original product info for user '{}', product code '{}'",
-                        fieldName, object.getUniqueUserIdentifier(), object.getProductCode());
-            }
-        }
-        log.info("Modified Product Info: {}", original);
-        originalProductInfo.setProductInfo(original);
-        long endTime = System.currentTimeMillis();
-        log.info("Time taken by processUpdateAction() :->{} seconds", (endTime - startTime) / 1000.0);
-        return originalProductInfo;
-    }
-
-    private void accept(UserProductInfoDto object) {
-        switch (object.getActionCode().toUpperCase()) {
-            case "A":
-                object.setValidationErrors(validate(object.getProductInfo()));
-                userInfoServices.saveProduct(object);
-                break;
-            case "R":
-                object.setValidationErrors(validate(object.getProductInfo()));
-                userInfoServices.updateProductInfo(object);
-                break;
-            case "D":
-                userInfoServices.deleteProduct(object.getUniqueUserIdentifier(), object.getProductCode());
-                break;
-            case "E":
-                UserProductInfoDto userProductInfoDto = processUpdateAction(object);
-                userProductInfoDto.setValidationErrors(validate(userProductInfoDto.getProductInfo()));
-                userInfoServices.updateProductInfo(userProductInfoDto);
-                break;
-            case "TU":
-                UserProductInfoDto tempDto = processUpdateAction(object);
-                tempDto.setValidationErrors(validate(object.getProductInfo()));
-                break;
-            default:
-                log.error("Invalid Action code");
-        }
-    }
-
-    private JsonNode validate(JsonNode productInfo) {
-        try {
-            List<ValidationError> validationErrors = validateProduct.validateProduct(productInfo);
-            if (validationErrors.isEmpty()) {
-                return null;
-            } else {
-                return convertValidationErrorsToJson(validationErrors);
-            }
-        } catch (JsonProcessingException e) {
-            log.error("Exception while converting validation errors to json: - " + e.getMessage());
-            return null;
-        }
-    }
-
-
-    public JsonNode convertValidationErrorsToJson(List<ValidationError> validationErrors) {
-        return validationErrors.stream()
-                .map(error -> objectMapper.createObjectNode()
-                        .put("fieldName", error.getFieldName())
-                        .put("message", error.getMessage())
-                        .set("actual", objectMapper.valueToTree(error.getActual())))
-                .collect(Collectors.collectingAndThen(Collectors.toList(), objectMapper::valueToTree));
+        productServicePreProcessor.processProductInfo(userProductInfoDtos);
     }
 }

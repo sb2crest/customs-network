@@ -15,7 +15,8 @@ public enum ErrorResCodes{
     EMPTY_NOTIFICATION_EMAIL_LIST("1008","Empty notification email list"),
     SERVER_ERROR("1009","Server error"),
     SERVICE_UNAVAILABLE("1010","Service Unavailable: FDA API is currently unavailable"),
-    ALREADY_EXISTING("1011","Already Existing");
+    ALREADY_EXISTING("1011","Already Existing"),
+    EXECUTION_FAILURE("1012","Execution Failed");
     private final String errorCode;
     private final String errorMsg;
 

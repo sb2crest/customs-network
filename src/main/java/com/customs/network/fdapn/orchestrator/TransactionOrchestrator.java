@@ -10,11 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 public interface TransactionOrchestrator {
-
-    String processExcelFile(MultipartFile file);
-
-    String convertJsonToXml(List<TrackingDetails> trackingDetails);
-
     String processExcel(MultipartFile file);
 
     TransactionInfo getFdapnTransaction(String refId);

@@ -3,11 +3,17 @@ package com.customs.network.fdapn.validations;
 import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.dto.PriorNoticeData;
 import com.customs.network.fdapn.dto.ExcelValidationResponse;
-import com.customs.network.fdapn.dto.productdto.Product;
+import com.customs.network.fdapn.validations.productdto.Product;
 import com.customs.network.fdapn.model.ValidationError;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.common.util.StringUtils;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -15,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
+@Slf4j
 public class ValidateProduct {
     private final ObjectMapper objectMapper;
     private static final String REGEX_PATTERN_FOR_ALPHANUMERIC = "^[a-zA-Z0-9]{%d}$";
@@ -38,38 +45,6 @@ public class ValidateProduct {
 
     private static final Set<String> Bill_Type_Indicator = Set.of("R", "M", "T", "H", "S", "I");
 
-    private static final Set<String> COUNTRY_CODES = Set.of(
-            "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ", "BS", "BH",
-            "BD", "BB", "BY", "BE", "BZ", "BJ", "BM", "BT", "BO", "BA", "BW", "BV", "BR", "IO", "BN", "BG", "BF", "BI",
-            "KH", "CM", "CA", "CV", "KY", "CF", "TD", "CL", "CN", "CX", "CC", "CO", "KM", "CG", "CD", "CK", "CR", "CI",
-            "HR", "CU", "CY", "CZ", "DK", "DJ", "DM", "DO", "TP", "EC", "EG", "SV", "GQ", "ER", "EE", "ET", "FK", "FO",
-            "FJ", "FI", "FR", "GF", "PF", "TF", "GA", "GM", "GE", "DE", "GH", "GI", "GR", "GL", "GD", "GP", "GU", "GT",
-            "GG", "GN", "GW", "GY", "HT", "HM", "VA", "HN", "HK", "HU", "IS", "IN", "ID", "IR", "IQ", "IE", "IM", "IL",
-            "IT", "JM", "JP", "JE", "JO", "KZ", "KE", "KI", "KP", "KR", "KW", "KG", "LA", "LV", "LB", "LS", "LR", "LY",
-            "LI", "LT", "LU", "MO", "MK", "MG", "MW", "MY", "MV", "ML", "MT", "MH", "MQ", "MR", "MU", "YT", "MX", "FM",
-            "MD", "MC", "MN", "ME", "MS", "MA", "MZ", "MM", "NA", "NR", "NP", "NL", "AN", "NC", "NZ", "NI", "NE", "NG",
-            "NU", "NF", "MP", "NO", "OM", "PK", "PW", "PS", "PA", "PG", "PY", "PE", "PH", "PN", "PL", "PT", "PR", "QA",
-            "RE", "RO", "RU", "RW", "SH", "KN", "LC", "PM", "VC", "WS", "SM", "ST", "SA", "SN", "RS", "SC", "SL", "SG",
-            "SK", "SI", "SB", "SO", "ZA", "GS", "ES", "LK", "SD", "SR", "SJ", "SZ", "SE", "CH", "SY", "TW", "TJ", "TZ",
-            "TH", "TL", "TG", "TK", "TO", "TT", "TN", "TR", "TM", "TC", "TV", "UG", "UA", "AE", "GB", "US", "UM", "UY",
-            "UZ", "VU", "VE", "VN", "VG", "VI", "WF", "EH", "YE", "YU", "ZM", "ZW"
-    );
-
-    private static final Set<String> US_STATE_CODES = Set.of(
-            "AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS",
-            "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV",
-            "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"
-    );
-
-    private static final Set<String> MEXICO_STATE_CODES = Set.of(
-            "AGU", "BCN", "BCS", "CAM", "CHH", "CHP", "COA", "COL", "DIF", "DUR", "GRO", "GUA", "HID", "JAL", "MEX",
-            "MIC", "MOR", "NAY", "NLE", "OAX", "PUE", "QUE", "ROO", "SIN", "SLP", "SON", "TAB", "TAM", "TLA", "VER",
-            "YUC", "ZAC"
-    );
-
-    private static final Set<String> CANADA_STATE_CODES = Set.of(
-            "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"
-    );
     private static final Map<String, List<String>> governmentAgencyProcessingCode = new HashMap<>();
     private static final Map<String, List<String>> productNumber = new HashMap<>();
     private static final Map<String, List<String>> countryOfProduction = new HashMap<>();
@@ -124,11 +99,15 @@ public class ValidateProduct {
     }
 
     public List<ValidationError> validateProduct(JsonNode productInfo) throws JsonProcessingException {
-        List<ValidationError> validationErrorList = new ArrayList<>();
+        long start = System.currentTimeMillis();
         Product product = objectMapper.treeToValue(productInfo, Product.class);
-        //do validation
+        List<ValidationError> validationErrorList = new ArrayList<>(checkInitialViolations(product));
+        validationErrorList.addAll(validateProgramCodeBeforeFurtherValidation(product));
+        long end = System.currentTimeMillis();
+        log.info("Validation for product completed in {} seconds ",(end-start)/1000);
         return validationErrorList;
     }
+
     public List<ExcelValidationResponse> validateExcelTransactions(List<ExcelTransactionInfo> transactions){
       return transactions.stream()
                 .filter(Objects::nonNull)
@@ -146,79 +125,44 @@ public class ValidateProduct {
                 }).toList();
     }
 
-    private boolean isValidDateFormat(String dateStr) {
-        Pattern pattern = Pattern.compile(DATE_FORMAT_REGEX);
-        Matcher matcher = pattern.matcher(dateStr);
-        return matcher.matches();
+    private <T> List<ValidationError> checkInitialViolations(T obj){
+        List<ValidationError> validationErrorList = new ArrayList<>();
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        Set<ConstraintViolation<T>> violations = validator.validate(obj);
+        for (ConstraintViolation<T> violation : violations) {
+            String fieldName = violation.getPropertyPath().toString();
+            String message = violation.getMessage();
+            Object actual = violation.getInvalidValue();
+            ValidationError validationError = new ValidationError();
+            validationError.setFieldName(fieldName);
+            validationError.setMessage(message);
+            validationError.setActual(actual);
+            validationErrorList.add(validationError);
+        }
+        return validationErrorList;
     }
-
+    private List<ValidationError> validateProgramCodeBeforeFurtherValidation(Product product){
+        String programCode = product.getGovernmentAgencyProgramCode();
+        if(StringUtils.isBlank(programCode))
+            return Collections.emptyList();
+        List<ValidationError> validationErrorList = new ArrayList<>();
+        if(ValidationConstants.isValidProgramCode(programCode)){
+            //party details validation
+            validationErrorList.addAll(DataValidator.validatePartyDetails(product.getPartyDetails(),programCode));
+            //affirmation of compliance  validation
+            validationErrorList.addAll(DataValidator.validateAffirmationOfCompliance(product.getAffirmationOfCompliance(),programCode));
+        }else{
+            validationErrorList.add(createValidationError("governmentAgencyProgramCode", "Invalid Program Code", programCode));
+        }
+        return validationErrorList;
+    }
     private ValidationError createValidationError(String fieldName, String message, Object actual) {
         ValidationError validationError = new ValidationError();
         validationError.setFieldName(fieldName);
         validationError.setMessage(message);
         validationError.setActual(actual);
         return validationError;
-    }
-
-    private static boolean isValidProcessingCode(String processingCode) {
-        for (List<String> codes : governmentAgencyProcessingCode.values()) {
-            if (codes.contains(processingCode.toUpperCase())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isValidProductCode(String productCode) {
-        for (List<String> codes : productNumber.values()) {
-            if (codes.contains(productCode)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isValidCountryOfProductionCode(String copCode) {
-        for (List<String> codes : countryOfProduction.values()) {
-            if (codes.contains(copCode)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isValidUomCode(String uomCode) {
-        for (List<String> codes : uom.values()) {
-            if (codes.contains(uomCode.toUpperCase())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isValidBaseUomCode(String baseUomCode) {
-        for (List<String> codes : baseUom.values()) {
-            if (codes.contains(baseUomCode.toUpperCase())) {
-                return true;
-            }
-        }
-        return false;
-    }
-    private boolean isValidArrivalTime(String time) {
-        String pattern = "^(?:(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])|(?:(0[0-9]|1[0-9]|2[0-3])[0-5][0-9])|(?:(0[1-9]|1[0-2]):[0-5][0-9]\\s?(AM|PM|am|pm))$";
-
-        if (!time.matches(pattern)) {
-            return false;
-        }
-        if (time.matches("^(0[1-9]|1[0-2]):[0-5][0-9]\\s?(AM|PM|am|pm)?$")) {
-            String[] parts = time.split("\\s+");
-            String ampm = parts[1].toUpperCase();
-            if (!ampm.equals("AM") && !ampm.equals("PM")) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
 }

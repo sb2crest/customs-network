@@ -1,5 +1,6 @@
 package com.customs.network.fdapn.service;
 
+import com.converter.exceptions.MaxRetriesReachedException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
@@ -60,7 +61,7 @@ public class MailService {
                 retryCount++;
                 if (retryCount >= maxRetries) {
                     log.error("Maximum retries reached, aborting.");
-                    throw new RuntimeException(e);
+                    throw new MaxRetriesReachedException(e.getMessage());
                 }
             }
         }

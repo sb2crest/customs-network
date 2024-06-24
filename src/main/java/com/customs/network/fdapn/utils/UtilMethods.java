@@ -5,14 +5,10 @@ import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -21,19 +17,19 @@ import java.util.List;
 @Component
 public class UtilMethods {
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+
+    private final JdbcTemplate jdbcTemplate;
+    private static final String FDAPN_PREFIX="fdapn_";
     @PersistenceContext
     private EntityManager entityManager;
+
+    public UtilMethods(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
     public String getFormattedDate() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         return sdf.format(new Date());
-    }
-    public Long getFormattedDateInLong(){
-        LocalDate today = LocalDate.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyMMdd");
-        String formattedDate = today.format(formatter);
-        return Long.parseLong(formattedDate);
     }
 
     public String getFormattedDate(String date){
@@ -49,7 +45,7 @@ public class UtilMethods {
     public synchronized Long getNumberOfRecords(String schemaName,String tableName){
         String sql="SELECT COUNT(*) FROM "+schemaName+"."+tableName+";";
         return jdbcTemplate.queryForObject(sql, Long.class);
-    };
+    }
 
     public synchronized Integer getCountOfPartitionTables(String schemaName, String tableNamePrefix) {
         String sql = "SELECT COUNT(*) " +
@@ -75,17 +71,17 @@ public class UtilMethods {
         return jdbcTemplate.queryForObject(sql, Long.class);
     }
     public String getSchemaNameFromDate(String date){
-        return "fdapn_"+getFormattedDate(date);
+        return FDAPN_PREFIX+getFormattedDate(date);
     }
     public String getSchemaName(String refId){
         String datePart = refId.substring(refId.length() - 16, refId.length() - 8);
-        return "fdapn_"+datePart;
+        return FDAPN_PREFIX+datePart;
     }
     public String getTableName(String refNum){
         if (refNum.length() <= 6) {
             return "";
         }
-        return "fdapn_"+refNum.substring(0, refNum.length() - 16);
+        return FDAPN_PREFIX+refNum.substring(0, refNum.length() - 16);
     }
     public void deletePartitionTable(String schemaName, String tableName, Integer partition) {
         String sql = "DROP TABLE IF EXISTS " + schemaName + "." + tableName + "_" + partition;
@@ -95,7 +91,7 @@ public class UtilMethods {
         String query = "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?)";
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(query, Boolean.class, schemaName));
     }
-    public boolean isTableExist(String tableName,String schemaName){
+    public boolean isTableExist(String schemaName,String tableName){
         String query = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?)";
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(query, Boolean.class, schemaName, tableName));
     }
@@ -109,6 +105,7 @@ public class UtilMethods {
             throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID);
         return List.of(schemaName,tableName);
     }
+    @SuppressWarnings("unchecked") // Suppress unchecked warning for casting
     public List<String> getNotificationEmailsByUserIdentifier(String userIdentifier) {
         Query query = entityManager.createNativeQuery("SELECT notification_emails FROM public._user WHERE unique_user_identifier = :userIdentifier");
         query.setParameter("userIdentifier", userIdentifier);
@@ -125,15 +122,17 @@ public class UtilMethods {
         }
     }
 
+    @SuppressWarnings("unchecked") // Suppress unchecked warning for casting
     public String getEmailByUserIdentifier(String userIdentifier) {
         Query query = entityManager.createNativeQuery("SELECT email FROM public._user WHERE unique_user_identifier = :userIdentifier");
         query.setParameter("userIdentifier", userIdentifier);
-        List<String> resultList = query.getResultList();
+        List<Object> resultList = query.getResultList();
         if (resultList.isEmpty()) {
-            return null; // or throw an exception
+            return null;
         } else {
-            return resultList.get(0);
+            return (String) resultList.get(0); // Cast to String
         }
     }
+
 
 }

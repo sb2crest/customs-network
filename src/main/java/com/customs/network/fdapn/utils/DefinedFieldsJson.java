@@ -4,7 +4,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class DefinedFieldsJson {
-    private  static Set<String> definedFields = new HashSet<>();
+    private  static final Set<String> definedFields = new HashSet<>();
+    private  static final Set<String> definedRootFields = new HashSet<>();
     static {
         definedFields.add("commercialDesc");
         definedFields.add("pgaLineNumber");
@@ -84,9 +85,47 @@ public class DefinedFieldsJson {
         definedFields.add("additionalInformation");
         definedFields.add("substitutionIndicator");
         definedFields.add("substitutionNumber");
-
+        //defined root fields
+        definedRootFields.add("baseUOM");
+        definedRootFields.add("itemType");
+        definedRootFields.add("disclaimer");
+        definedRootFields.add("remarksText");
+        definedRootFields.add("baseQuantity");
+        definedRootFields.add("partyDetails");
+        definedRootFields.add("commodityDesc");
+        definedRootFields.add("pgaLineNumber");
+        definedRootFields.add("productOrigin");
+        definedRootFields.add("commercialDesc");
+        definedRootFields.add("intendedUseCode");
+        definedRootFields.add("remarksTypeCode");
+        definedRootFields.add("productCondition");
+        definedRootFields.add("productPackaging");
+        definedRootFields.add("tradeOrBrandName");
+        definedRootFields.add("countryOfShipment");
+        definedRootFields.add("priorNoticeNumber");
+        definedRootFields.add("productCodeNumber");
+        definedRootFields.add("correctionIndicator");
+        definedRootFields.add("packageTrackingCode");
+        definedRootFields.add("containerInformation");
+        definedRootFields.add("governmentAgencyCode");
+        definedRootFields.add("productCodeQualifier");
+        definedRootFields.add("packageTrackingNumber");
+        definedRootFields.add("additionalInformations");
+        definedRootFields.add("affirmationOfCompliance");
+        definedRootFields.add("intendedUseDescription");
+        definedRootFields.add("productConstituentElements");
+        definedRootFields.add("governmentAgencyProgramCode");
+        definedRootFields.add("anticipatedArrivalInformations");
+        definedRootFields.add("governmentAgencyProcessingCode");
     }
-    public static boolean isValidField(String fieldName){
+
+    private DefinedFieldsJson() {
+    }
+
+    public static boolean isValidDefinedField(String fieldName){
         return definedFields.contains(fieldName);
+    }
+    public static boolean isValidDefinedRootField(String fieldName){
+        return definedRootFields.contains(fieldName);
     }
 }

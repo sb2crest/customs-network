@@ -10,10 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 @Service
 @Slf4j
@@ -49,27 +46,15 @@ public class AnalyzeFutureImpl implements AnalyzeFuture {
     }
 
     private void executeSuccessRecords(List<Future<ExcelBatchResponse>> futures) {
-        ExecutorService executor = null;
-        try {
-            executor = Executors.newFixedThreadPool(10);
-            if (executor != null) {
-                for (Future<ExcelBatchResponse> future : futures) {
-                    ExcelBatchResponse response = getExcelBatchResponseFromFuture(future);
-                    if (!response.getSuccessList().isEmpty()) {
-                        executor.execute(() -> cbpservice.executeFinalProcessingAndSendToCBP(response.getSuccessList()));
-                    }
-                }
-            } else {
-                log.error("Failed to initialize ExecutorService");
-                throw new IllegalStateException("Failed to initialize ExecutorService");
-            }
-        } catch (Exception e) {
-            log.error("Error during ExecutorService initialization: {}", e.getMessage(), e);
-        } finally {
-            if (executor != null) {
-                executor.shutdown();
-            }
-        }
+        log.info("Total number of processors available: {}", Runtime.getRuntime().availableProcessors());
+        List<CompletableFuture<Void>> tasks = futures.stream()
+                .map(this::getExcelBatchResponseFromFuture)
+                .filter(response -> !response.getSuccessList().isEmpty())
+                .map(response -> CompletableFuture.runAsync(() -> cbpservice.executeFinalProcessingAndSendToCBP(response.getSuccessList())))
+                .toList();
+
+        CompletableFuture.allOf(tasks.toArray(new CompletableFuture[0]))
+                .join();
     }
 
     private ExcelBatchResponse getExcelBatchResponseFromFuture(Future<ExcelBatchResponse> future) {

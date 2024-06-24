@@ -7,7 +7,6 @@ import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.repository.UserProductInfoRepository;
 import com.customs.network.fdapn.service.UserProductInfoServices;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
@@ -17,23 +16,20 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static com.customs.network.fdapn.exception.ErrorResCodes.*;
+import static com.customs.network.fdapn.utils.JsonUtils.convertJsonToValidationErrorList;
 import static com.customs.network.fdapn.utils.ObjectValidations.validateCustomerProductInfoDto;
 
 @Slf4j
 @Service
 public class UserProductInfoServicesImpl implements UserProductInfoServices {
     private final UserProductInfoRepository userProductInfoRepository;
-    private final ObjectMapper mapper;
-
     @Autowired
-    public UserProductInfoServicesImpl(UserProductInfoRepository userProductInfoRepository, ObjectMapper mapper) {
+    public UserProductInfoServicesImpl(UserProductInfoRepository userProductInfoRepository) {
         this.userProductInfoRepository = userProductInfoRepository;
-        this.mapper = mapper;
     }
 
     Cache<String, UserProductInfoDto> productInfoCache = Caffeine.newBuilder()
@@ -160,19 +156,16 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
                             userProductInfoDto = getProductByProductCode(uniqueUserIdentifier, obj);
                         } catch (FdapnCustomExceptions e) {
                             log.error("Failed to fetch product with code {} for the user {} due to database access error: {}", obj, uniqueUserIdentifier, e.getMessage());
-                            validationErrors.add(new ValidationError("productCode","Product not found",e.getMessage()));
+                            ValidationError validationError = new ValidationError();
+                            validationError.setFieldName("productCode");
+                            validationError.setMessage("Product not found");
+                            validationError.setActual(e.getMessage());
+                            validationErrors.add(validationError);
                         }
                     }
                     if (userProductInfoDto != null && userProductInfoDto.getValidationErrors() != null) {
-                        try {
-                            List<ValidationError> convertedErrors = mapper.readValue(
-                                    userProductInfoDto.getValidationErrors().traverse(),
-                                    mapper.getTypeFactory().constructCollectionType(List.class, ValidationError.class)
-                            );
+                            List<ValidationError> convertedErrors = convertJsonToValidationErrorList(userProductInfoDto.getValidationErrors());
                             validationErrors.addAll(convertedErrors);
-                        } catch (IOException e) {
-                            log.error("Error converting validation errors to collection type", e);
-                        }
                     }
                 });
         return validationErrors;

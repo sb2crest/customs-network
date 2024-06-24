@@ -1,4 +1,4 @@
-package com.customs.network.fdapn.dto.productdto;
+package com.customs.network.fdapn.validations.productdto;
 
 import lombok.Data;
 

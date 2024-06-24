@@ -7,7 +7,6 @@ import com.customs.network.fdapn.model.*;
 import com.customs.network.fdapn.repository.*;
 import com.customs.network.fdapn.service.AuditService;
 import com.customs.network.fdapn.utils.DateUtils;
-import com.customs.network.fdapn.utils.UtilMethods;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,8 +29,13 @@ public class AuditServiceImpl implements AuditService {
     private final MonthlyAuditRepository monthlyAuditRepository;
     private final PortCodeDetailsRepository portCodeDetailsRepository;
     private final YearlyAuditRepository yearlyAuditRepository;
+
     @Autowired
-    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository, PortInfoRepository portInfoRepository, MonthlyAuditRepository monthlyAuditRepository, PortCodeDetailsRepository portCodeDetailsRepository, YearlyAuditRepository yearlyAuditRepository, UtilMethods utilMethods) {
+    public AuditServiceImpl(DailyAuditRepository dailyAuditRepository,
+                            PortInfoRepository portInfoRepository,
+                            MonthlyAuditRepository monthlyAuditRepository,
+                            PortCodeDetailsRepository portCodeDetailsRepository,
+                            YearlyAuditRepository yearlyAuditRepository) {
         this.dailyAuditRepository = dailyAuditRepository;
         this.portInfoRepository = portInfoRepository;
         this.monthlyAuditRepository = monthlyAuditRepository;
@@ -41,9 +45,9 @@ public class AuditServiceImpl implements AuditService {
 
     @Override
     public FinalCount<TotalTransactionCountDto<?>> getUserTransactionsForPeriod(String userId, String period) {
-        FinalCount<TotalTransactionCountDto<?>> finalCount = new FinalCount<TotalTransactionCountDto<?>>();
-        if(StringUtils.isEmpty(userId)){
-            throw new FdapnCustomExceptions(ErrorResCodes.NOT_FOUND,"userId is not provided");
+        FinalCount<TotalTransactionCountDto<?>> finalCount = new FinalCount<>();
+        if (StringUtils.isEmpty(userId)) {
+            throw new FdapnCustomExceptions(ErrorResCodes.NOT_FOUND, "userId is not provided");
         }
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -53,22 +57,23 @@ public class AuditServiceImpl implements AuditService {
             transactions = Collections.singletonList(getDailyAuditByUserIdAndDate(userId, endDate));
         } else {
             switch (period) {
-                case "today" -> {
-                    transactions = fetchLastThreeDaysAuditTrends(userId);
-                }
-                case "week" -> {
-                    transactions = fetchWeeklyAuditTrends(userId);
-                }
-                case "month"->{
+                case "today" -> transactions = fetchLastThreeDaysAuditTrends(userId);
+                case "week" -> transactions = fetchWeeklyAuditTrends(userId);
+                case "month" -> {
                     return fetchMonthlyAuditTrends(userId);
                 }
-                case "year"->{
+                case "year" -> {
                     return fetchYearlyAuditTrends(userId);
                 }
-                default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid Option "+period);
+                default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "Invalid Option " + period);
             }
         }
-        long validationErrorCount = 0, acceptedTotal = 0, rejectedTotal = 0, pendingTotal = 0, cbpDownTotal = 0, overallTotal = 0;
+        long validationErrorCount = 0;
+        long acceptedTotal = 0;
+        long rejectedTotal = 0;
+        long pendingTotal = 0;
+        long cbpDownTotal = 0;
+        long overallTotal = 0;
         for (DailyAuditDTO dto : transactions) {
             validationErrorCount += dto.getValidationErrorCount();
             acceptedTotal += dto.getAcceptedCount();
@@ -101,6 +106,7 @@ public class AuditServiceImpl implements AuditService {
         dailyAuditList.sort(Comparator.comparing(DailyAuditDTO::getDate).reversed());
         return dailyAuditList;
     }
+
     private DailyAuditDTO getDailyAuditByUserIdAndDate(String userId, Date date) {
         Optional<DailyAudit> userDailyAudit = dailyAuditRepository.findByUserIdAndDate(userId, date);
         if (userDailyAudit.isPresent()) {
@@ -112,6 +118,7 @@ public class AuditServiceImpl implements AuditService {
             return auditDTO;
         }
     }
+
     public List<DailyAuditDTO> fetchLastThreeDaysAuditTrends(String userId) {
         List<DailyAuditDTO> dailyAuditList = new ArrayList<>();
         LocalDate currentDate = LocalDate.now();
@@ -125,6 +132,7 @@ public class AuditServiceImpl implements AuditService {
         dailyAuditList.sort(Comparator.comparing(DailyAuditDTO::getDate).reversed());
         return dailyAuditList;
     }
+
     public List<DailyAuditDTO> getDailyAuditBasedOnDayBack(String userId, Date date) {
         Optional<DailyAudit> userDailyAudit = dailyAuditRepository.findByUserIdAndDate(userId, date);
         List<DailyAuditDTO> dailyAuditList = new ArrayList<>();
@@ -141,33 +149,34 @@ public class AuditServiceImpl implements AuditService {
         }
         return dailyAuditList;
     }
+
     @Override
     @Cacheable(value = "transactionsCache", key = "#userId + '_' + #period")
     public FinalCount<TotalTransactionCountDto<?>> getAllTransactionsCounts(String userId, String period) {
         log.info("Fetching from database");
-        List<TotalTransactionCountDto<?>> totalTransactionCountDtos = new ArrayList<>();
+        List<TotalTransactionCountDto<?>> totalTransactionCountList = new ArrayList<>();
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
 
         if (StringUtils.isBlank(userId) && StringUtils.isBlank(period)) {
-            iterateOverDates(calendar, 0, 3, userId, totalTransactionCountDtos);
+            iterateOverDates(calendar, 3, userId, totalTransactionCountList);
         } else if (StringUtils.isNotBlank(userId) && StringUtils.isBlank(period)) {
-            iterateOverDates(calendar, 0,3, userId, totalTransactionCountDtos);
+            iterateOverDates(calendar, 3, userId, totalTransactionCountList);
         } else {
             switch (period) {
-                case "today" -> iterateOverDates(calendar, 0,3, userId, totalTransactionCountDtos);
-                case "week" -> iterateOverDates(calendar, 0,7, userId, totalTransactionCountDtos);
-                case "month"-> {
+                case "today" -> iterateOverDates(calendar, 3, userId, totalTransactionCountList);
+                case "week" -> iterateOverDates(calendar, 7, userId, totalTransactionCountList);
+                case "month" -> {
                     return fetchMonthlyAuditTrends(userId);
                 }
-                case "year"->{
+                case "year" -> {
                     return fetchYearlyAuditTrends(userId);
                 }
-                default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"Invalid Option "+period);
+                default -> throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "Invalid Option " + period);
             }
         }
-        FinalCount<TotalTransactionCountDto<?>> finalCount=calculateFinalCount(totalTransactionCountDtos);
-        finalCount.setTotalTransactionCountDtos(totalTransactionCountDtos);
+        FinalCount<TotalTransactionCountDto<?>> finalCount = calculateFinalCount(totalTransactionCountList);
+        finalCount.setTotalTransactionCountDtos(totalTransactionCountList);
         return finalCount;
     }
 
@@ -186,9 +195,10 @@ public class AuditServiceImpl implements AuditService {
             return Collections.emptyList();
         }
     }
+
     private List<PortInfoDto> getByPortCode(String userId, String portCode) {
-        List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId,portCode);
-        if(portInfoList.isEmpty())
+        List<PortInfo> portInfoList = portInfoRepository.findByUserIdAndPortNumberOrderByDateDesc(userId, portCode);
+        if (portInfoList.isEmpty())
             return Collections.emptyList();
         return mapToPortInfoDtoList(portInfoList);
     }
@@ -211,15 +221,15 @@ public class AuditServiceImpl implements AuditService {
                 .toList();
     }
 
-    private void iterateOverDates(Calendar calendar,int start, int daysToIterate, String userId, List<TotalTransactionCountDto<?>> totalTransactionCountDtos) {
-        for (int i = start; i < daysToIterate; i++) {
+    private void iterateOverDates(Calendar calendar, int daysToIterate, String userId, List<TotalTransactionCountDto<?>> totalTransactionCountList) {
+        for (int i = 0; i < daysToIterate; i++) {
             calendar.setTime(new Date());
             calendar.add(Calendar.DATE, -i);
             Date startDate = calendar.getTime();
             List<DailyAudit> dailyAudits = dailyAuditRepository.findByUserIdAndDateRange(userId, startDate, startDate);
             TotalTransactionCountDto<DailyAuditDTO> transactions = getAllTransactionsWithCountForDaily(dailyAudits);
             transactions.setDate(DateUtils.formatterDate(startDate));
-            totalTransactionCountDtos.add(transactions);
+            totalTransactionCountList.add(transactions);
         }
     }
 
@@ -270,9 +280,9 @@ public class AuditServiceImpl implements AuditService {
                     String[] monthYearArray = monthlyAudit.getMonth().split(" ");
                     String year = monthYearArray[1];
                     Optional<YearlyAudit> yearlyAuditOptional = yearlyAuditRepository.findByYearAndUserId(year, monthlyAudit.getUserId());
-                    YearlyAudit yearlyAudit=null;
+                    YearlyAudit yearlyAudit;
                     if (yearlyAuditOptional.isPresent()) {
-                         yearlyAudit = yearlyAuditOptional.get();
+                        yearlyAudit = yearlyAuditOptional.get();
                         yearlyAudit.setAcceptedCount(yearlyAudit.getAcceptedCount() + monthlyAudit.getAcceptedCount());
                         yearlyAudit.setRejectedCount(yearlyAudit.getRejectedCount() + monthlyAudit.getRejectedCount());
                         yearlyAudit.setPendingCount(yearlyAudit.getPendingCount() + monthlyAudit.getPendingCount());
@@ -281,7 +291,7 @@ public class AuditServiceImpl implements AuditService {
                         yearlyAudit.setTotalTransactions(yearlyAudit.getTotalTransactions() + monthlyAudit.getTotalTransactions());
                         yearlyAuditRepository.save(yearlyAudit);
                     } else {
-                         yearlyAudit = new YearlyAudit();
+                        yearlyAudit = new YearlyAudit();
                         yearlyAudit.setUserId(monthlyAudit.getUserId());
                         yearlyAudit.setYear(year);
                         yearlyAudit.setAcceptedCount(monthlyAudit.getAcceptedCount());
@@ -298,29 +308,32 @@ public class AuditServiceImpl implements AuditService {
 
     private FinalCount<TotalTransactionCountDto<?>> fetchMonthlyAuditTrends(String userId) {
         Map<String, TotalTransactionCountDto<?>> trendsData = new LinkedHashMap<>();
-        List<TotalTransactionCountDto<?>> transactionCountDtoList=new ArrayList<>();
+        List<TotalTransactionCountDto<?>> transactionCountDtoList = new ArrayList<>();
         LocalDate now = LocalDate.now();
-            for (int i = 0; i <6; i++) {
-                LocalDate month = now.minusMonths(i);
-                String monthYear = month.getMonth().name() + " " + month.getYear();
-                List<MonthlyAudit> monthlyAudits = monthlyAuditRepository.findAllByMonthAndUserId(monthYear, userId);
-                TotalTransactionCountDto<MonthlyAuditDto> totalTransactionCountDto = calculateTotalTransactionCountsForMonth(monthlyAudits);
-                String[] parts = monthYear.split(" ");
-                String formattedMonth= (parts[0].substring(0, 1).toUpperCase() + parts[0].substring(1).toLowerCase()).substring(0,3);
-                String year = parts[1];
-                String formattedMonthYear = formattedMonth + " " + year;
-                trendsData.put(formattedMonthYear, totalTransactionCountDto);
-                transactionCountDtoList.add(totalTransactionCountDto);
-            }
-        FinalCount<TotalTransactionCountDto<?>> finalCount=calculateFinalCount(transactionCountDtoList);
+        for (int i = 0; i < 6; i++) {
+            LocalDate month = now.minusMonths(i);
+            String monthYear = month.getMonth().name() + " " + month.getYear();
+            List<MonthlyAudit> monthlyAudits = monthlyAuditRepository.findAllByMonthAndUserId(monthYear, userId);
+            TotalTransactionCountDto<MonthlyAuditDto> totalTransactionCountDto = calculateTotalTransactionCountsForMonth(monthlyAudits);
+            String[] parts = monthYear.split(" ");
+            String formattedMonth = (parts[0].substring(0, 1).toUpperCase() + parts[0].substring(1).toLowerCase()).substring(0, 3);
+            String year = parts[1];
+            String formattedMonthYear = formattedMonth + " " + year;
+            trendsData.put(formattedMonthYear, totalTransactionCountDto);
+            transactionCountDtoList.add(totalTransactionCountDto);
+        }
+        FinalCount<TotalTransactionCountDto<?>> finalCount = calculateFinalCount(transactionCountDtoList);
         finalCount.setTrendsData(trendsData);
         return finalCount;
     }
+
     private FinalCount<TotalTransactionCountDto<?>> fetchYearlyAuditTrends(String userId) {
         Map<String, TotalTransactionCountDto<?>> trendsData = new LinkedHashMap<>();
         List<TotalTransactionCountDto<?>> transactionCountDtoList = new ArrayList<>();
         LocalDate now = LocalDate.now();
-        for (int i = 0; i < 5; i++) {
+        int start=0;
+        int end =5;
+        for (int i = start; i < end; i++) {
             int year = now.minusYears(i).getYear();
             List<YearlyAudit> yearlyAudits = yearlyAuditRepository.findAllByYearAndUserId(String.valueOf(year), userId);
             TotalTransactionCountDto<YearlyAuditDto> totalTransactionCountDto = calculateTotalTransactionCountsForYear(yearlyAudits);
@@ -332,7 +345,7 @@ public class AuditServiceImpl implements AuditService {
         return finalCount;
     }
 
-    private FinalCount<TotalTransactionCountDto<?>> calculateFinalCount(List<TotalTransactionCountDto<?>> totalTransactionCountDtoList){
+    private FinalCount<TotalTransactionCountDto<?>> calculateFinalCount(List<TotalTransactionCountDto<?>> totalTransactionCountDtoList) {
         FinalCount<TotalTransactionCountDto<?>> finalCount = new FinalCount<>();
         long totalValidationErrorCount = 0;
         long totalAcceptedCount = 0;
@@ -340,7 +353,7 @@ public class AuditServiceImpl implements AuditService {
         long totalPendingCount = 0;
         long totalCbpDownCount = 0;
         long allTransactions = 0;
-        for (TotalTransactionCountDto<?> transactions:totalTransactionCountDtoList) {
+        for (TotalTransactionCountDto<?> transactions : totalTransactionCountDtoList) {
             totalValidationErrorCount += transactions.getValidationErrorCount();
             totalAcceptedCount += transactions.getAcceptedCount();
             totalRejectedCount += transactions.getRejectedCount();
@@ -367,9 +380,11 @@ public class AuditServiceImpl implements AuditService {
             totalTransactionCountDto.setCbpDownCount(totalTransactionCountDto.getCbpDownCount() + monthlyAudit.getCbpDownCount());
             totalTransactionCountDto.setTotalTransactions(totalTransactionCountDto.getTotalTransactions() + monthlyAudit.getTotalTransactions());
             totalTransactionCountDto.setMonth(monthlyAudit.getMonth());
-        }   totalTransactionCountDto.setAuditData(monthlyAudits.stream().map(this::convertToMonthlyAuditDto).toList());
+        }
+        totalTransactionCountDto.setAuditData(monthlyAudits.stream().map(this::convertToMonthlyAuditDto).toList());
         return totalTransactionCountDto;
     }
+
     private TotalTransactionCountDto<DailyAuditDTO> getAllTransactionsWithCountForDaily(List<DailyAudit> dailyAudits) {
         TotalTransactionCountDto<DailyAuditDTO> totalTransactionCountDto = new TotalTransactionCountDto<>();
         for (DailyAudit audit : dailyAudits) {
@@ -414,6 +429,7 @@ public class AuditServiceImpl implements AuditService {
         monthlyAuditDto.setTotalTransactions(monthlyAudit.getTotalTransactions());
         return monthlyAuditDto;
     }
+
     public YearlyAuditDto convertYearlyAuditToDto(YearlyAudit yearlyAudit) {
         YearlyAuditDto yearlyAuditDto = new YearlyAuditDto();
         yearlyAuditDto.setId(yearlyAudit.getId());
@@ -427,6 +443,7 @@ public class AuditServiceImpl implements AuditService {
         yearlyAuditDto.setTotalTransactions(yearlyAudit.getTotalTransactions());
         return yearlyAuditDto;
     }
+
     private DailyAuditDTO convertToMonthlyAuditDto(DailyAudit dailyAudit) {
         DailyAuditDTO dto = new DailyAuditDTO();
         dto.setId(dailyAudit.getId());

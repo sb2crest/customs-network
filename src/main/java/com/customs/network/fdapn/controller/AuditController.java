@@ -25,7 +25,6 @@ public class AuditController {
     @GetMapping("/user-transaction")
     public ResponseEntity<FinalCount<TotalTransactionCountDto<?>>> getUserTransactionsForWeek(@RequestParam String userId,
                                                                          @RequestParam(required = false) String period) {
-
         FinalCount<TotalTransactionCountDto<?>> transactions = auditService.getUserTransactionsForPeriod(userId, period);
         return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
