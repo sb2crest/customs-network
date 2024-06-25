@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @AllArgsConstructor
 public class DrugValidationRules {
-    private String fieldName;
+//    private String fieldName;
     private int minLength;
     private int maxLength;
     private boolean mandatory;
