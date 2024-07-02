@@ -1,21 +1,20 @@
 package com.customs.network.fdapn.service.impl;
 
-import com.customs.network.fdapn.dto.ExcelValidationResponse;
 import com.customs.network.fdapn.dto.ProductValidationResponse;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.service.ProductServicePreProcessor;
 import com.customs.network.fdapn.service.UserProductInfoServices;
 import com.customs.network.fdapn.validations.ValidateProduct;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.customs.network.fdapn.utils.DefinedFieldsJson.isValidDefinedRootField;
 import static com.customs.network.fdapn.utils.JsonUtils.convertJsonToValidationErrorList;
@@ -43,11 +42,13 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
     private void performAction(UserProductInfoDto object) {
         switch (object.getActionCode().toUpperCase()) {
             case "A":
-                object.setValidationErrors(validate(object.getProductInfo()));
+                object.setValidationErrors(validate(object.getProductInfo(), object.getProductCode()));
+                traverseAndModify(object.getProductInfo());
                 userInfoServices.saveProduct(object);
                 break;
             case "R":
-                object.setValidationErrors(validate(object.getProductInfo()));
+                object.setValidationErrors(validate(object.getProductInfo(),object.getProductCode()));
+                traverseAndModify(object.getProductInfo());
                 userInfoServices.updateProductInfo(object);
                 break;
             case "D":
@@ -56,12 +57,13 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
             case "E":
                 ProductValidationResponse response = processUpdateAction(object);
                 UserProductInfoDto userInfo=response.getUserProductInfo();
-                userInfo.setValidationErrors(validate(response.getUserProductInfo().getProductInfo()));
+                userInfo.setValidationErrors(validate(response.getUserProductInfo().getProductInfo(),object.getProductCode()));
                 if(!response.getValidationErrors().isEmpty()) {
                     List<ValidationError> existingErrors=convertJsonToValidationErrorList(userInfo.getValidationErrors());
                     existingErrors.addAll(response.getValidationErrors());
                     userInfo.setValidationErrors(convertValidationErrorsToJson(existingErrors));
                 }
+                traverseAndModify(userInfo.getProductInfo());
                 userInfoServices.updateProductInfo(userInfo);
                 break;
             default:
@@ -112,7 +114,37 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
         return response;
     }
 
-    private JsonNode validate(JsonNode productInfo) {
+    private void traverseAndModify(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+
+        if (node.isObject()) {
+            handleObjectNode((ObjectNode) node);
+        } else if (node.isArray()) {
+            handleArrayNode(node);
+        }
+    }
+
+    private void handleObjectNode(ObjectNode objectNode) {
+        if (objectNode.has("pointOfContact")) {
+            JsonNode pointOfContacts = objectNode.get("pointOfContact");
+            if (pointOfContacts != null && pointOfContacts.isArray()) {
+                pointOfContacts.forEach(pointOfContact -> {
+                    if (!pointOfContact.has("additionalInformations")) {
+                        ((ObjectNode) pointOfContact).putArray("additionalInformations");
+                    }
+                });
+            }
+        }
+        objectNode.fields().forEachRemaining(entry -> traverseAndModify(entry.getValue()));
+    }
+    private void handleArrayNode(JsonNode arrayNode) {
+        arrayNode.forEach(this::traverseAndModify);
+    }
+
+
+    private JsonNode validate(JsonNode productInfo,String productCode) {
         try {
             List<ValidationError> validationErrors = validateProduct.validateProduct(productInfo);
             if (validationErrors.isEmpty()) {
@@ -122,7 +154,7 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
             }
         } catch (JsonProcessingException e) {
             log.error("Exception while converting validation errors to json: - " + e.getMessage());
-            return null;
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Please re-check the json structure provided for the product "+productCode+", reason : "+e.getMessage());
         }
     }
 

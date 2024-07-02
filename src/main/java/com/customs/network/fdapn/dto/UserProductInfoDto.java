@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
+import java.util.List;
 
 @Data
 @Builder
@@ -26,7 +27,11 @@ public class UserProductInfoDto {
     @JsonIgnore
     @ExcelColumn(index = 3)
     private String actionCode;
+    private List<String> productCodeList;
     private JsonNode productInfo;
     private boolean isValid;
     private JsonNode validationErrors;
+    private int pageNumber;
+    private int pageSize;
+
 }

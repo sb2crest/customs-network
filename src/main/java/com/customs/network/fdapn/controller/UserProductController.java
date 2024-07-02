@@ -1,7 +1,9 @@
 package com.customs.network.fdapn.controller;
 
+import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.service.UserProductInfoServices;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,6 +40,11 @@ public class UserProductController {
     public String update(@RequestBody UserProductInfoDto customerProductInfo){
         validateCustomerProductInfoDto(customerProductInfo);
         return customerProductInfoService.updateProductInfo(customerProductInfo);
+    }
+
+    @PostMapping("/list-all-user-products")
+    public PageDTO<JsonNode> getMultipleProductInfo(@RequestBody UserProductInfoDto userProductInfoDto){
+        return customerProductInfoService.getMultipleProductInfo(userProductInfoDto);
     }
 
     @DeleteMapping("/delete")

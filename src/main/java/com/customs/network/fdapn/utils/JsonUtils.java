@@ -63,6 +63,7 @@ public class JsonUtils {
                     validationErrorNode.traverse(),
                     objectMapper.getTypeFactory().constructCollectionType(List.class, ValidationError.class)
             );
+
         } catch (IOException e) {
             throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,e.getMessage());
         }
@@ -71,6 +72,11 @@ public class JsonUtils {
         return objectMapper.valueToTree(validationErrors.stream()
                 .map(JsonUtils::convertToJsonObject)
                 .toArray());
+    }
+    public static List<JsonNode> convertProductInfoObjectArrayToList(List<Object[]> productInfoList){
+       return productInfoList.stream()
+                .map(row -> objectMapper.convertValue(row[0], JsonNode.class))
+                .toList();
     }
 
     private static ObjectNode convertToJsonObject(ValidationError error) {

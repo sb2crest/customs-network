@@ -1,5 +1,6 @@
  package com.customs.network.fdapn.service.impl;
 
+import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.UserProductInfo;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.customs.network.fdapn.exception.ErrorResCodes.*;
 import static com.customs.network.fdapn.utils.JsonUtils.convertJsonToValidationErrorList;
+import static com.customs.network.fdapn.utils.JsonUtils.convertProductInfoObjectArrayToList;
 import static com.customs.network.fdapn.utils.ObjectValidations.validateCustomerProductInfoDto;
 
 @Slf4j
@@ -120,6 +122,27 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
             return "Error while updating product with code "
                     + productInfoDto.getProductCode();
         }
+    }
+    @Override
+    public PageDTO<JsonNode> getMultipleProductInfo(UserProductInfoDto userProductInfoDto) {
+        String uniqueUserIdentifier = userProductInfoDto.getUniqueUserIdentifier();
+        List<String> productCodeList = userProductInfoDto.getProductCodeList();
+        int pageNumber = userProductInfoDto.getPageNumber();
+        int pageSize = userProductInfoDto.getPageSize();
+        int offset = pageNumber * pageSize;
+        List<Object[]> productInfoList = userProductInfoRepository.findProductInfoByUniqueUserIdentifierAndProductCodeList(
+                uniqueUserIdentifier, productCodeList, pageSize, offset
+        );
+        List<JsonNode> productInfo = convertProductInfoObjectArrayToList(productInfoList);
+        Long totalRecords = userProductInfoRepository.countProductInfoByUniqueUserIdentifierAndProductCodeList(
+                uniqueUserIdentifier, productCodeList
+        );
+        PageDTO<JsonNode> pageDTO = new PageDTO<>();
+        pageDTO.setPage(pageNumber);
+        pageDTO.setPageSize(productInfo.size());
+        pageDTO.setTotalRecords(totalRecords);
+        pageDTO.setData(productInfo);
+        return pageDTO;
     }
 
     private UserProductInfo supplyUserProductInfo(String uniqueUserIdentifier, String productCode) {

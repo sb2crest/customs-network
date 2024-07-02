@@ -1,7 +1,9 @@
 package com.customs.network.fdapn.service;
 
+import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.model.ValidationError;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.List;
 
@@ -17,6 +19,8 @@ public interface UserProductInfoServices {
     String deleteProduct(String uniqueUserIdentifier, String productCode);
 
     String updateProductInfo(UserProductInfoDto productInfoDto);
+
+    PageDTO<JsonNode> getMultipleProductInfo(UserProductInfoDto userProductInfoDto);
 
     List<UserProductInfoDto> fetchAllProducts(List<String> productCodes, String uniqueUserIdentifier);
 
