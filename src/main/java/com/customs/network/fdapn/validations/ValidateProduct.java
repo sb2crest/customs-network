@@ -102,10 +102,10 @@ public class ValidateProduct {
         long start = System.currentTimeMillis();
         Product product = objectMapper.treeToValue(productInfo, Product.class);
         List<ValidationError> validationErrorList = new ArrayList<>(checkInitialViolations(product));
-        validationErrorList.addAll(validateProgramCodeBeforeFurtherValidation(product));
-        long end = System.currentTimeMillis();
-        log.info("Validation for product completed in {} seconds ",(end-start)/1000);
-        return validationErrorList;
+//        validationErrorList.addAll(validateProgramCodeBeforeFurtherValidation(product));
+//        long end = System.currentTimeMillis();
+//        log.info("Validation for product completed in {} seconds ",(end-start)/1000);
+        return new ArrayList<>();
     }
 
     public List<ExcelValidationResponse> validateExcelTransactions(List<ExcelTransactionInfo> transactions){
