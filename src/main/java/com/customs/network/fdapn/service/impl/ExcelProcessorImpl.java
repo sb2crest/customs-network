@@ -5,6 +5,7 @@ import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.service.*;
 import com.customs.network.fdapn.validations.ValidateProduct;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +21,6 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 
@@ -122,8 +122,12 @@ public class ExcelProcessorImpl implements ExcelProcessor {
                 if (StringUtils.isBlank(jsonString)) {
                     throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"For action code A or E ,the field Product Information is mandatory");
                 }
-                JsonNode jsonNode = objectMapper.readTree(jsonString);
-                product.setProductInfo(jsonNode);
+                try{
+                    JsonNode jsonNode = objectMapper.readTree(jsonString);
+                    product.setProductInfo(jsonNode);
+                } catch (JsonProcessingException e) {
+                    throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Please re-check the json structure provided for the product "+product.getProductCode()+", reason : "+e.getMessage());
+                }
             }
             userProductInfoDtos.add(product);
         }

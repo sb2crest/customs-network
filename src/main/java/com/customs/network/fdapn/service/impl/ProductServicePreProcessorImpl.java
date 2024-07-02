@@ -10,6 +10,7 @@ import com.customs.network.fdapn.service.UserProductInfoServices;
 import com.customs.network.fdapn.validations.ValidateProduct;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,13 +43,13 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
     private void performAction(UserProductInfoDto object) {
         switch (object.getActionCode().toUpperCase()) {
             case "A":
+                updateRequiredJsonFields(object.getProductInfo(),object.getProductCode());
                 object.setValidationErrors(validate(object.getProductInfo(), object.getProductCode()));
-                traverseAndModify(object.getProductInfo());
                 userInfoServices.saveProduct(object);
                 break;
             case "R":
+                updateRequiredJsonFields(object.getProductInfo(),object.getProductCode());
                 object.setValidationErrors(validate(object.getProductInfo(),object.getProductCode()));
-                traverseAndModify(object.getProductInfo());
                 userInfoServices.updateProductInfo(object);
                 break;
             case "D":
@@ -57,13 +58,14 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
             case "E":
                 ProductValidationResponse response = processUpdateAction(object);
                 UserProductInfoDto userInfo=response.getUserProductInfo();
+                updateRequiredJsonFields(userInfo.getProductInfo(),object.getProductCode());
                 userInfo.setValidationErrors(validate(response.getUserProductInfo().getProductInfo(),object.getProductCode()));
                 if(!response.getValidationErrors().isEmpty()) {
                     List<ValidationError> existingErrors=convertJsonToValidationErrorList(userInfo.getValidationErrors());
                     existingErrors.addAll(response.getValidationErrors());
                     userInfo.setValidationErrors(convertValidationErrorsToJson(existingErrors));
                 }
-                traverseAndModify(userInfo.getProductInfo());
+
                 userInfoServices.updateProductInfo(userInfo);
                 break;
             default:
@@ -114,6 +116,12 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
         return response;
     }
 
+    private void updateRequiredJsonFields(JsonNode info,String productCode){
+        ((ObjectNode) info).put("productCodeNumber", productCode);
+        ((ObjectNode) info).put("governmentAgencyCode", "FDA");
+        ((ObjectNode) info).put("productCodeQualifier", "FDP");
+        traverseAndModify(info);
+    }
     private void traverseAndModify(JsonNode node) {
         if (node == null || node.isNull()) {
             return;
@@ -122,13 +130,13 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
         if (node.isObject()) {
             handleObjectNode((ObjectNode) node);
         } else if (node.isArray()) {
-            handleArrayNode(node);
+            handleArrayNode((ArrayNode) node);
         }
     }
 
     private void handleObjectNode(ObjectNode objectNode) {
-        if (objectNode.has("pointOfContact")) {
-            JsonNode pointOfContacts = objectNode.get("pointOfContact");
+        if (objectNode.has("pointOfContacts")) {
+            ArrayNode pointOfContacts = (ArrayNode) objectNode.get("pointOfContacts");
             if (pointOfContacts != null && pointOfContacts.isArray()) {
                 pointOfContacts.forEach(pointOfContact -> {
                     if (!pointOfContact.has("additionalInformations")) {
@@ -139,7 +147,8 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
         }
         objectNode.fields().forEachRemaining(entry -> traverseAndModify(entry.getValue()));
     }
-    private void handleArrayNode(JsonNode arrayNode) {
+
+    private void handleArrayNode(ArrayNode arrayNode) {
         arrayNode.forEach(this::traverseAndModify);
     }
 
