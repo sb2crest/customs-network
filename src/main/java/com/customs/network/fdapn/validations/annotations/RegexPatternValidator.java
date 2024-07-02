@@ -1,6 +1,5 @@
-package com.customs.network.fdapn.validations.customvalidations;
+package com.customs.network.fdapn.validations.annotations;
 
-import com.customs.network.fdapn.validations.annotations.Regex;
 import com.customs.network.fdapn.validations.enums.RegexType;
 
 import jakarta.validation.ConstraintValidator;
