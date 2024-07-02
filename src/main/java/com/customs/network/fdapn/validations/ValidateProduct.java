@@ -4,7 +4,6 @@ import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.dto.PriorNoticeData;
 import com.customs.network.fdapn.dto.ExcelValidationResponse;
 import com.customs.network.fdapn.validations.objects.ProductDetails;
-import com.customs.network.fdapn.validations.productdto.Product;
 import com.customs.network.fdapn.model.ValidationError;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,6 +20,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
+
 @Service
 @Slf4j
 public class ValidateProduct {
@@ -35,6 +36,7 @@ public class ValidateProduct {
     }
 
     public List<ValidationError> validateProduct(JsonNode productInfo) throws JsonProcessingException {
+        long start = System.currentTimeMillis();
         List<ValidationError> errors = new ArrayList<>();
         ProductDetails product = objectMapper.treeToValue(productInfo, ProductDetails.class);
         String programCode=product.getGovernmentAgencyProgramCode();
@@ -46,9 +48,11 @@ public class ValidateProduct {
                errors.addAll(validationErrors);
              }
         }else{
-            errors.add(createValidationError(product.getProductCodeNumber(),"productCodeNumber","Invalid product code number",programCode));
+            errors.add(createValidationError(product.getProductCodeNumber(),"governmentAgencyProgramCode","Invalid governmentAgencyProgramCode",programCode));
         }
-        return new ArrayList<>();
+        long endTime = System.currentTimeMillis();
+        log.info("Validation took {} to complete", (endTime - start)/1000);
+        return errors;
     }
 
     public List<ExcelValidationResponse> validateExcelTransactions(List<ExcelTransactionInfo> transactions){
@@ -84,31 +88,6 @@ public class ValidateProduct {
             validationErrorList.add(validationError);
         }
         return validationErrorList;
-    }
-    private ValidationError createValidationError(String fieldName, String message, Object actual) {
-        ValidationError validationError = new ValidationError();
-        validationError.setFieldName(fieldName);
-        validationError.setMessage(message);
-        validationError.setActual(actual);
-        return validationError;
-    }
-    private ValidationError createValidationError(String productCode,String fieldName, String message, Object actual) {
-        ValidationError validationError = new ValidationError();
-        validationError.setFieldName(fieldName);
-        validationError.setMessage(message);
-        validationError.setActual(actual);
-        validationError.setProductCode(productCode);
-        return validationError;
-
-    }
-    private ValidationError createValidationError(String productCode,String fieldName, String message, Object actual,Object expected) {
-        ValidationError validationError = new ValidationError();
-        validationError.setFieldName(fieldName);
-        validationError.setMessage(message);
-        validationError.setActual(actual);
-        validationError.setProductCode(productCode);
-        validationError.setExpected(expected);
-        return validationError;
     }
 
 }

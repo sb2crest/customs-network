@@ -5,8 +5,7 @@ import io.micrometer.common.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.customs.network.fdapn.validations.DataValidator.createValidationError;
+import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
 public class Helper {
     private Helper(){}
