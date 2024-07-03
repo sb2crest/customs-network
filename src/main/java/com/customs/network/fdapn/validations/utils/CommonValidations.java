@@ -13,14 +13,14 @@ import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValid
 public class CommonValidations {
     public  void validatePGAIdentifier(ProductDetails productDetails, List<ValidationError> errors, ConditionalValidator conditionalValidator,String programCode) {
         String productCode=productDetails.getProductCodeNumber();
-        String agancyCode=productDetails.getGovernmentAgencyCode();
+        String agencyCode=productDetails.getGovernmentAgencyCode();
         String processingCode=productDetails.getGovernmentAgencyProcessingCode();
         String intendedUseCode=productDetails.getIntendedUseCode();
         String disclaimer = productDetails.getDisclaimer();
         if(StringUtils.isBlank(disclaimer)){
             ifNotDisclaimed(productCode,processingCode,intendedUseCode,programCode,conditionalValidator,errors);
-        }else if("A".equalsIgnoreCase(disclaimer) || "F".equalsIgnoreCase(disclaimer)){
-            ifDisclaimed(productCode,processingCode,intendedUseCode,agancyCode,errors);
+        }else if(conditionalValidator.isValidDisclaimer(disclaimer.toUpperCase())){
+            ifDisclaimed(productCode,processingCode,intendedUseCode,agencyCode,errors);
         }else{
             errors.add(createValidationError(productCode,"disclaimer","Invalid disclaimer provided ",disclaimer,"A/F/' '"));
         }
