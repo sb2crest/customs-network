@@ -14,6 +14,7 @@ public interface ConditionalValidator {
     boolean isValidPartyIdentifierType(String partyIdentifierType);
     boolean isValidPartyIdentifierNumberSyntax(String partyIdentifierType, String partyIdentifierNumber);
     boolean isValidIntendedUseCode(String intendedUseCode);
+    boolean isValidDisclaimer(String disclaimer);
     String getAOCQSynatx(String aoc);
     Set<String> getMandatoryPartyTypes();
     Set<String> getConditionalPartyTypes();

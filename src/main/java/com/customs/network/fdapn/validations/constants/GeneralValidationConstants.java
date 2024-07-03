@@ -53,6 +53,7 @@ public class GeneralValidationConstants {
     );
     private static final Set<String> VALID_PARTY_IDENTIFIER_TYPES = Set.of("16", "47");
     private static final Map<String, String> PARTY_IDENTIFIER_NUMBER_SYNTAX = new HashMap<>();
+    private static final Set<String> VALID_DISCLAIMER=Set.of("A","F");
 
 
     static {
@@ -88,5 +89,8 @@ public class GeneralValidationConstants {
 
     public boolean isValidPartyIdentifierNumberSyntax(String partyIdentifierType, String partyIdentifierNumber){
         return partyIdentifierNumber.matches(PARTY_IDENTIFIER_NUMBER_SYNTAX.get(partyIdentifierType));
+    }
+    public boolean isValidDisclaimer(String disclaimer){
+        return VALID_DISCLAIMER.contains(disclaimer.toUpperCase());
     }
 }
