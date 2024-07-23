@@ -38,8 +38,10 @@ public class TransactionOrchestratorImpl implements TransactionOrchestrator {
     public String processExcel(MultipartFile file) {
         try {
             return excelProcessor.processExcel(file);
+        } catch (FdapnCustomExceptions e) {
+            throw e;
         } catch (Exception e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.EXECUTION_FAILURE,e.getMessage());
+            throw new FdapnCustomExceptions(ErrorResCodes.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 

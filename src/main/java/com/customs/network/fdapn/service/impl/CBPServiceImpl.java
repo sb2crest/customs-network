@@ -7,8 +7,9 @@ import com.converter.service.ConverterService;
 import com.customs.network.fdapn.dto.ExcelValidationResponse;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.service.AWSS3Services;
-import com.customs.network.fdapn.service.UserProductInfoServices;
+import com.customs.network.fdapn.service.ProductServicePreProcessor;
 import com.customs.network.fdapn.utils.CustomIdGenerator;
+import com.customs.network.fdapn.validations.objects.TransactionProductData;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +20,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.*;
+
+import static com.customs.network.fdapn.utils.JsonUtils.convertObjectToJson;
 
 @Service
 @Slf4j
@@ -30,20 +31,19 @@ public class CBPServiceImpl {
     private final CustomIdGenerator idGenerator;
     private final AWSS3Services s3Services;
     private final ObjectMapper objectMapper;
-    private final UserProductInfoServices userProductInfoServices;
     private final ConverterService converterService;
+    private final ProductServicePreProcessor preProcessor;
     Random random = new Random();
 
     public CBPServiceImpl(CustomIdGenerator idGenerator,
                           AWSS3Services s3Services,
                           ObjectMapper objectMapper,
-                          UserProductInfoServices userProductInfoServices,
-                          ConverterService converterService) {
+                          ConverterService converterService, ProductServicePreProcessor preProcessor) {
         this.idGenerator = idGenerator;
         this.s3Services = s3Services;
         this.objectMapper = objectMapper;
-        this.userProductInfoServices = userProductInfoServices;
         this.converterService = converterService;
+        this.preProcessor = preProcessor;
     }
 
     private void hitCbp(EdiResponse response) {
@@ -54,10 +54,10 @@ public class CBPServiceImpl {
             log.info("CBP Server Down");
             s3Services.saveCbpDownFiles(ediData, refID);
         }
-        if (sNo % 25000 == 0) {
-            Path path = getFilePath(refID);
-            downloadRandomSampleEdiFile(ediData, path);
-        }
+//        if (sNo % 25000 == 0) {
+        Path path = getFilePath(refID);
+        downloadRandomSampleEdiFile(ediData, path);
+//        }
     }
 
     private Path getFilePath(String refId) {
@@ -87,27 +87,36 @@ public class CBPServiceImpl {
 
     private void processAndSendToCBP(ExcelValidationResponse obj) {
         EdiRequest ediRequest = new EdiRequest();
-        List<String> productCodes = obj.getExcelTransactionInfo().getProductCode();
         String uniqueUserIdentifier = obj.getExcelTransactionInfo().getUniqueUserIdentifier();
-        List<UserProductInfoDto> productInfoList = userProductInfoServices.fetchAllProducts(productCodes, uniqueUserIdentifier);
+        List<TransactionProductData> transactionProductData = obj.getExcelTransactionInfo().getTransactionProductData();
 
-        if (!productInfoList.isEmpty()) {
-            List<JsonNode> productInfo = productInfoList.stream()
-                    .map(UserProductInfoDto::getProductInfo)
-                    .toList();
+        List<JsonNode> productInfo = getUpdatedJsonNode(uniqueUserIdentifier,transactionProductData);
 
-            obj.getExcelTransactionInfo().getPriorNoticeData().setProducts(productInfo);
-            JsonNode edi = objectMapper.valueToTree(obj.getExcelTransactionInfo().getPriorNoticeData());
-            String refId = obj.getExcelTransactionInfo().getReferenceId();
-            ediRequest.setRefId(refId);
-            ediRequest.setSubject(edi);
-            try {
-                EdiResponse response = converterService.convertToEdi(ediRequest);
-                hitCbp(response);
-            } catch (InvalidDataException e) {
-                log.error("Error converting to EDI: {}", e.getMessage());
-            }
+        obj.getExcelTransactionInfo().getPriorNoticeData().setProducts(productInfo);
+        JsonNode edi = objectMapper.valueToTree(obj.getExcelTransactionInfo().getPriorNoticeData());
+        String refId = obj.getExcelTransactionInfo().getReferenceId();
+        ediRequest.setRefId(refId);
+        ediRequest.setSubject(edi);
+        try {
+            EdiResponse response = converterService.convertToEdi(ediRequest);
+            hitCbp(response);
+        } catch (InvalidDataException e) {
+            log.error("Error converting to EDI: {}", e.getMessage());
         }
+    }
+
+    private List<JsonNode> getUpdatedJsonNode(String uniqueUserIdentifier, List<TransactionProductData> transactionProductData) {
+        return transactionProductData.stream()
+                .filter(Objects::nonNull)
+                .map(obj -> {
+                    String productIdentifier = obj.getProductIdentifier();
+                    JsonNode additionalProductInfo = convertObjectToJson(obj);
+                    return preProcessor.editAction(UserProductInfoDto.builder()
+                            .productCode(productIdentifier)
+                            .uniqueUserIdentifier(uniqueUserIdentifier)
+                            .productInfo(additionalProductInfo)
+                            .build()).getProductInfo();
+                }).toList();
     }
 
 

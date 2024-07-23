@@ -70,7 +70,7 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
     @Override
     @Cacheable(value = "productInfoCache", key = "#uniqueUserIdentifier + '_' + #productCode")
     public UserProductInfoDto getProductByProductCode(String uniqueUserIdentifier, String productCode) {
-        log.info("Fetching from database");
+        log.info("Product {} not found in cache , Fetching from database",productCode);
         UserProductInfo userProductInfo = supplyUserProductInfo(uniqueUserIdentifier, productCode);
         UserProductInfoDto userProductInfoDto=getUserProductInfoDto(userProductInfo);
         String cacheKey = userProductInfo.getUniqueUserIdentifier() + "_" + userProductInfo.getProductCode();
@@ -179,11 +179,6 @@ public class UserProductInfoServicesImpl implements UserProductInfoServices {
                             userProductInfoDto = getProductByProductCode(uniqueUserIdentifier, obj);
                         } catch (FdapnCustomExceptions e) {
                             log.error("Failed to fetch product with code {} for the user {} due to database access error: {}", obj, uniqueUserIdentifier, e.getMessage());
-                            ValidationError validationError = new ValidationError();
-                            validationError.setFieldName("productCode");
-                            validationError.setMessage("Product not found");
-                            validationError.setActual(e.getMessage());
-                            validationErrors.add(validationError);
                         }
                     }
                     if (userProductInfoDto != null && userProductInfoDto.getValidationErrors() != null) {

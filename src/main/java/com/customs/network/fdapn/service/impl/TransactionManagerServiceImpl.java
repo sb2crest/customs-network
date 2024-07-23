@@ -64,7 +64,7 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
         Long numberOfRecords = utilMethods.getNumberOfRecords(schema, tableName);
         Long lastId = utilMethods.getLastIdInTheTable(schema, tableName);
         int newMax = (lastId > numberOfRecords) ? (int) Math.ceil((double) lastId / max) * max : (int) Math.ceil((double) numberOfRecords / max) * max;
-        String refId = idGenerator.generate(request.getUniqueUserIdentifier(), lastId);
+        String refId = idGenerator.generateRefId(request.getUniqueUserIdentifier(), lastId);
         request.setReferenceId(refId);
         request.setSlNo(idGenerator.extractIdFromRefId(refId));
         if ((numberOfRecords >= newMax && numberOfRecords != 0) || (lastId == newMax && lastId > numberOfRecords)) {
@@ -87,8 +87,8 @@ public class TransactionManagerServiceImpl implements TransactionManagerRepo {
         List<TransactionInfo> list = requestList.stream()
                 .filter(Objects::nonNull)
                 .map(request -> {
-                    int newMax = (lastId[0] > numberOfRecords[0]) ? (int) Math.ceil((double) lastId[0] / max) * max : (int) Math.ceil((double) numberOfRecords[0] / max) * max;
-                    String refId = idGenerator.generate(request.getUniqueUserIdentifier(), lastId[0]);
+                     int newMax = (lastId[0] > numberOfRecords[0]) ? (int) Math.ceil((double) lastId[0] / max) * max : (int) Math.ceil((double) numberOfRecords[0] / max) * max;
+                    String refId = idGenerator.generateRefId(request.getUniqueUserIdentifier(), lastId[0]);
                     lastId[0]++;
                     request.setReferenceId(refId);
                     request.setSlNo(idGenerator.extractIdFromRefId(refId));

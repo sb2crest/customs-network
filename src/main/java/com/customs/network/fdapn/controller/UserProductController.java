@@ -3,6 +3,7 @@ package com.customs.network.fdapn.controller;
 import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.service.UserProductInfoServices;
+import com.customs.network.fdapn.service.impl.ProductServicePreProcessorImpl;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,15 +15,17 @@ import static com.customs.network.fdapn.utils.ObjectValidations.validateCustomer
 @RequestMapping("/products")
 public class UserProductController {
     private final UserProductInfoServices customerProductInfoService;
+    private final ProductServicePreProcessorImpl preProcessor;
 
-    public UserProductController(UserProductInfoServices customerProductInfoService) {
+    public UserProductController(UserProductInfoServices customerProductInfoService, ProductServicePreProcessorImpl preProcessor) {
         this.customerProductInfoService = customerProductInfoService;
+        this.preProcessor = preProcessor;
     }
 
     @PostMapping("/save")
     public String save(@RequestBody UserProductInfoDto customerProductInfo) {
         validateCustomerProductInfoDto(customerProductInfo);
-        return customerProductInfoService.saveProduct(customerProductInfo);
+        return preProcessor.saveAction(customerProductInfo);
     }
     @GetMapping("/get")
     public UserProductInfoDto get(@RequestParam("code") String productCode,
@@ -39,7 +42,7 @@ public class UserProductController {
     @PutMapping("/update")
     public String update(@RequestBody UserProductInfoDto customerProductInfo){
         validateCustomerProductInfoDto(customerProductInfo);
-        return customerProductInfoService.updateProductInfo(customerProductInfo);
+        return preProcessor.updateAction(customerProductInfo);
     }
 
     @PostMapping("/list-all-user-products")

@@ -1,24 +1,55 @@
 package com.customs.network.fdapn.validations.constants;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public interface ConditionalValidator {
     boolean isValidCountryCode(String countryCode);
     boolean isValidStateCode(String countryCode,String stateCode);
-    boolean isValidProgramCode(String productCode);
+    boolean isValidItemType(String itemType);
     boolean isValidIndividualQualifierCode(String individualQualifierCode);
     boolean isValidAOCCode(String aocCode);
-    boolean isValidateAOCQSyntax(String aoc, String aocq);
+    boolean isValidAOCQSyntax(String aoc, String aocq);
     boolean isValidProcessingCode(String processingCode);
     boolean isValidPartyType(String partyType);
+    boolean isPartyTypeRepeatable(String partyType);
+    boolean isValueExcluded(String key1, String key2, String val);
     boolean isValidPartyIdentifierType(String partyIdentifierType);
     boolean isValidPartyIdentifierNumberSyntax(String partyIdentifierType, String partyIdentifierNumber);
     boolean isValidIntendedUseCode(String intendedUseCode);
+    boolean isValidIntendedUseCode(String processingCode,String intendedUseCode);
+    boolean isRequiredIntendedUseCode(String processingCode);
     boolean isValidDisclaimer(String disclaimer);
+    boolean isValidProductCodeStructure(String productCode, String processingCode);
+    boolean isValidProductCodeStructure(String productCode);
+    boolean isValidUOMCode(String uomCode);
+    boolean isValidBaseUom(String baseUom);
+    boolean isValidSourceCodeType(String sourceCodeType);
+    boolean isTBNRequired(String processingCode);
+    boolean isValidConstituentActiveIngredient(String constituentActiveIngredient);
+    boolean isConstituentElementRequired(String processingCode);
+    boolean isRequiredEveryConstituentElementFields(String code);
+    boolean isStateAndPostalCodeRequired(String countryCode);
+    boolean isValidAdditionalInfoQualifierCode(String pgSegment, String additionalInfoQualifierCode);
+    boolean isValidTemperatureQualifierCode(String temperatureQualifierCode);
+    boolean isValidLotNumberQualifier(String lotNumberQualifier);
+    boolean isValidDegreeType(String degreeType);
+    boolean isValidLocationOfTemperatureRecording(String locationOfTemperatureRecording);
+    boolean isValidTemperatureIndicator(String temperatureIndicator);
+    boolean isLotNumberRequired(String processingCode);
     String getAOCQSynatx(String aoc);
+    String getValidLotNumberQualifier();
+    String getProductCodeStructure();
     Set<String> getMandatoryPartyTypes();
-    Set<String> getConditionalPartyTypes();
+    Set<String> getConditionalPartyTypes(String processingCode);
     Set<String> getOptionalPartyTypes();
     String getPartyIdentifierNumberSyntax(String partyIdentifierType);
-
+    Set<String> getMandatorySourceCode();
+    Set<String> getRequiredIndividualQualifier();
+    List<String> getAdditionalInfoQualifierCode(String pgSegment);
+    List<String> getValidPackagingQualifierCode();
+    Map<String,Set<String>> getScenarioBasedAocCode(String processingCode, String intendedUseCode);
+    Map<String,Set<String>> getAocDependencies(String processingCode);
+    Map<String, Set<String>> getAocDependencies();
 }

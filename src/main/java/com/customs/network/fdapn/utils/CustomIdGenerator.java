@@ -2,11 +2,18 @@ package com.customs.network.fdapn.utils;
 
 import org.springframework.stereotype.Component;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+
 @Component
 public class CustomIdGenerator {
-    public String generate(String userId, Long lastIndex){
+    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final int MAX_LENGTH  = 7;
+
+
+    public String generateRefId(String userId, Long lastIndex){
         LocalDate today = LocalDate.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
         String currentDate=today.format(formatter);
@@ -20,5 +27,13 @@ public class CustomIdGenerator {
     }
     public String extractUserIdFromRefId(String refId){
         return refId.substring(0, 15);
+    }
+
+    public static String generatePartyIdentifierId(){
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < MAX_LENGTH; i++) {
+            sb.append(CHARACTERS.charAt(SECURE_RANDOM.nextInt(CHARACTERS.length())));
+        }
+        return sb.toString();
     }
 }

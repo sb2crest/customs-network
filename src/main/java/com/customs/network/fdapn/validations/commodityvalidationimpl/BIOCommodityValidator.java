@@ -4,18 +4,20 @@ import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.constants.BIOCommodityConstants;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
+import com.customs.network.fdapn.validations.objects.ProductConstituentElement;
 import com.customs.network.fdapn.validations.objects.ProductDetails;
-import com.customs.network.fdapn.validations.utils.CommonValidations;
+import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
+import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
 
 @Component
 @Slf4j
-public class BIOCommodityValidator extends CommonValidations implements CommodityValidator,SegmentValidator {
+public class BIOCommodityValidator extends CommonValidations implements CommodityValidator, SegmentValidator {
     private static final String PROGRAMME_CODE = "BIO";
     private final ConditionalValidator conditionalValidator;
 
@@ -26,11 +28,55 @@ public class BIOCommodityValidator extends CommonValidations implements Commodit
     @Override
     public List<ValidationError> validate(ProductDetails productDetails) {
         List<ValidationError> errors = new ArrayList<>();
-        validatePGAIdentifier(productDetails,errors,conditionalValidator,PROGRAMME_CODE);
+        String productCode = productDetails.getProductCodeNumber();
+        ValidationContext context =new ValidationContext(productCode,errors,conditionalValidator,PROGRAMME_CODE,productDetails);
+        validateRequiredFields(context);
+        validatePGAIdentifier(context);
+        validateProductIdentifier(context);
+        validateProductConstituentElement(context);
+        validateProductOrigin(context);
+        validateProductTradeNames(context);
+        validatePartyDetails(context);
+        validateAffirmationOfCompliance(context);
+        validateProductCondition(context);
+        validateProductPackaging(context);
         return errors;
     }
     @Override
     public void initialize() {
-
+        // Initialize any necessary resources or configurations
     }
+
+    //constituentElementValidation----------------------------------------------------------------
+    @Override
+    public void validateProductConstituentElement(ValidationContext context) {
+        List<ProductConstituentElement> constituentElementsList = context.productDetails().getProductConstituentElements();
+        if (constituentElementsList == null || constituentElementsList.isEmpty())
+            return;
+        for (ProductConstituentElement element : constituentElementsList) {
+            String constituentActiveIngredientQualifier = element.getConstituentActiveIngredientQualifier();
+            String constituentElementUnitOfMeasure = element.getConstituentElementUnitOfMeasure();
+            String percentOfConstituentElement = element.getPercentOfConstituentElement();
+            validateConstituentElementFields(constituentActiveIngredientQualifier, constituentElementUnitOfMeasure, percentOfConstituentElement,context);
+        }
+    }
+
+
+    private void validateConstituentElementFields(
+                                                  String constituentActiveIngredientQualifier,
+                                                  String constituentElementUnitOfMeasure,
+                                                  String percentOfConstituentElement,
+                                                  ValidationContext context) {
+        if (StringUtils.isNotBlank(constituentActiveIngredientQualifier) && !context.conditionalValidator().isValidConstituentActiveIngredient(constituentActiveIngredientQualifier)) {
+            context.errors().add(createValidationError(context.productCode(), "constituentActiveIngredientQualifier", "If active ingredient is present then this field value should be Y", constituentActiveIngredientQualifier, "Y"));
+        }
+        if (StringUtils.isBlank(constituentElementUnitOfMeasure) && StringUtils.isBlank(percentOfConstituentElement)) {
+            context.errors().add(createValidationError(context.productCode(), "constituentElementUnitOfMeasure", "Either the unit of measure or percent of constituent element should be present", constituentElementUnitOfMeasure, percentOfConstituentElement));
+        }
+        if (StringUtils.isNotBlank(constituentElementUnitOfMeasure) && !conditionalValidator.isValidUOMCode(constituentElementUnitOfMeasure)) {
+            context.errors().add(createValidationError(context.productCode(), "constituentElementUnitOfMeasure", "Provided unit of measure is not valid", constituentElementUnitOfMeasure));
+        }
+    }
+
+
 }

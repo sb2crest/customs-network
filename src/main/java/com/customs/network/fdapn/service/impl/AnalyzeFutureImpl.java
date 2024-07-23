@@ -46,7 +46,6 @@ public class AnalyzeFutureImpl implements AnalyzeFuture {
     }
 
     private void executeSuccessRecords(List<Future<ExcelBatchResponse>> futures) {
-        log.info("Total number of processors available: {}", Runtime.getRuntime().availableProcessors());
         List<CompletableFuture<Void>> tasks = futures.stream()
                 .map(this::getExcelBatchResponseFromFuture)
                 .filter(response -> !response.getSuccessList().isEmpty())

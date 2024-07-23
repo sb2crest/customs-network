@@ -29,7 +29,7 @@ public class GlobalExceptionHandler {
         details.setErrorCause(ex.getMessage());
         details.setErrorDesc(resCodes.getErrorMsg());
         details.setErrorList(ex.getErrorList());
-        return ResponseEntity.status(HttpStatus.OK).body(details);
+        return ResponseEntity.status(resCodes.getHttpStatus()).body(details);
     }
 
 

@@ -1,10 +1,11 @@
 package com.customs.network.fdapn.utils;
 
 import com.customs.network.fdapn.dto.ExcelTransactionInfo;
-import com.customs.network.fdapn.dto.SuccessOrFailureResponse;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.ValidationError;
+import com.customs.network.fdapn.validations.objects.EntityDetails;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +17,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -26,55 +26,55 @@ public class JsonUtils {
     private JsonUtils() {
     }
 
-    public static JsonNode convertExcelResponse(ExcelTransactionInfo excelTransactionInfo) {
-        try {
-            return objectMapper.valueToTree(excelTransactionInfo);
-        } catch (Exception e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting CustomerDetails to JsonNode, "+e);
-        }
-    }
     public static ExcelTransactionInfo convertJsonNodeToExcelResponseInfo(JsonNode jsonNode) {
         try {
             return objectMapper.treeToValue(jsonNode, ExcelTransactionInfo.class);
         } catch (JsonProcessingException e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting JsonNode to CustomerDetails , "+e);
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Error converting JsonNode to CustomerDetails , " + e);
         }
     }
-    public static JsonNode convertValidationErrorListToJson(List<ValidationError> validationErrors) {
+
+    public static EntityDetails convertJsonNodeToEntityDetails(JsonNode jsonNode) {
         try {
-            return objectMapper.valueToTree(validationErrors);
-        } catch (Exception e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting List<ValidationError> to JsonNode "+e);
+            return objectMapper.treeToValue(jsonNode, EntityDetails.class);
+        } catch (JsonProcessingException e) {
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Error converting JsonNode to CustomerDetails , " + e);
         }
     }
-    public static JsonNode convertResponseToJson(SuccessOrFailureResponse response) {
+
+    public static <T> JsonNode convertObjectToJson(T response) {
         try {
-            return objectMapper.valueToTree(response);
+            ObjectMapper copyMapper = objectMapper.copy();
+            copyMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+            return copyMapper.valueToTree(response);
         } catch (Exception e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error converting SuccessOrFailureResponse to JsonNode ,"+e);
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Error converting SuccessOrFailureResponse to JsonNode ," + e);
         }
     }
-    public static List<ValidationError> convertJsonToValidationErrorList(JsonNode validationErrorNode){
-        if(validationErrorNode==null){
+
+    public static List<ValidationError> convertJsonToValidationErrorList(JsonNode validationErrorNode) {
+        if (validationErrorNode == null) {
             return new ArrayList<>();
         }
-        try{
+        try {
             return objectMapper.readValue(
                     validationErrorNode.traverse(),
                     objectMapper.getTypeFactory().constructCollectionType(List.class, ValidationError.class)
             );
 
         } catch (IOException e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,e.getMessage());
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, e.getMessage());
         }
     }
+
     public static JsonNode convertValidationErrorsToJson(List<ValidationError> validationErrors) {
         return objectMapper.valueToTree(validationErrors.stream()
                 .map(JsonUtils::convertToJsonObject)
                 .toArray());
     }
-    public static List<JsonNode> convertProductInfoObjectArrayToList(List<Object[]> productInfoList){
-       return productInfoList.stream()
+
+    public static List<JsonNode> convertProductInfoObjectArrayToList(List<Object[]> productInfoList) {
+        return productInfoList.stream()
                 .map(row -> objectMapper.convertValue(row[0], JsonNode.class))
                 .toList();
     }

@@ -4,9 +4,8 @@ import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.service.*;
-import com.customs.network.fdapn.validations.ValidateProduct;
+import com.customs.network.fdapn.validations.ValidationEntryPoint;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.common.util.StringUtils;
@@ -22,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static com.customs.network.fdapn.utils.ObjectValidations.validateUserPartyInfoDto;
 import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 
 @Service
@@ -30,29 +30,32 @@ import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 public class ExcelProcessorImpl implements ExcelProcessor {
     private final ObjectMapper objectMapper;
     private final TransactionSegregator transactionSegregator;
-    private final ValidateProduct validateProduct;
+    private final ValidationEntryPoint validationEntryPoint;
     private final ProductServicePreProcessor productServicePreProcessor;
     private final AnalyzeFuture analyzeFuture;
+    private final PartyDetailsService partyDetailsService;
     public long processStartTime;
 
     public ExcelProcessorImpl(ObjectMapper objectMapper,
                               TransactionSegregator transactionSegregator,
-                              ValidateProduct validateProduct, ProductServicePreProcessor productServicePreProcessor,
-                              AnalyzeFuture analyzeFuture) {
+                              ValidationEntryPoint validationEntryPoint, ProductServicePreProcessor productServicePreProcessor,
+                              AnalyzeFuture analyzeFuture, PartyDetailsService partyDetailsService) {
         this.objectMapper = objectMapper;
         this.transactionSegregator = transactionSegregator;
-        this.validateProduct = validateProduct;
+        this.validationEntryPoint = validationEntryPoint;
         this.productServicePreProcessor = productServicePreProcessor;
         this.analyzeFuture = analyzeFuture;
+        this.partyDetailsService = partyDetailsService;
     }
 
     @Override
     public String processExcel(MultipartFile file) throws Exception {
-        processStartTime=System.currentTimeMillis();
+        processStartTime = System.currentTimeMillis();
         long start = System.currentTimeMillis();
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
         long end = System.currentTimeMillis();
         log.info("Time taken to load the excel  :->{} seconds", (end - start) / 1000.0);
+        readSheetThree(workbook.getSheetAt(2));
         readSheetTwo(workbook.getSheetAt(1));
         String res = readSheetOne(workbook.getSheetAt(0));
         end = System.currentTimeMillis();
@@ -94,17 +97,19 @@ public class ExcelProcessorImpl implements ExcelProcessor {
                 log.warn("Skipping row {} due to empty prior notice information or product code information", i);
                 continue;
             }
-            List<String> productList = objectMapper.readValue(productCodeString, new TypeReference<>() {
-            });
+            List<String> productList =List.of("");
+
+            //do perform json structure validation
             PriorNoticeData priorNoticeData = objectMapper.treeToValue(objectMapper.readTree(priorNoticeString), PriorNoticeData.class);
             priorNoticeData.setActionCode(transactionInfo.getActionCode());
             priorNoticeData.setUniqueUserIdentifier(transactionInfo.getUniqueUserIdentifier());
             transactionInfo.setPriorNoticeData(priorNoticeData);
             transactionInfo.setProductCode(productList);
             transactionInfos.add(transactionInfo);
+            transactionInfo.setTransactionProductDataString(productCodeString);
         }
-        List<ExcelValidationResponse> excelValidationRespons = validateProduct.validateExcelTransactions(transactionInfos);
-        return transactionSegregator.segregateExcelResponse(excelValidationRespons);
+        List<ExcelValidationResponse> excelValidationResponses = validationEntryPoint.validateExcelTransactions(transactionInfos);
+        return transactionSegregator.segregateExcelResponse(excelValidationResponses);
 
     }
 
@@ -120,17 +125,55 @@ public class ExcelProcessorImpl implements ExcelProcessor {
                     product.getActionCode().equalsIgnoreCase("TU")) {
                 String jsonString = row.getCell(4).getRichStringCellValue().getString();
                 if (StringUtils.isBlank(jsonString)) {
-                    throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,"For action code A or E ,the field Product Information is mandatory");
+                    throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "For action code A or E or R ,the field Product Information is mandatory");
                 }
-                try{
+                try {
                     JsonNode jsonNode = objectMapper.readTree(jsonString);
                     product.setProductInfo(jsonNode);
                 } catch (JsonProcessingException e) {
-                    throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Please re-check the json structure provided for the product "+product.getProductCode()+", reason : "+e.getMessage());
+                    throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Please re-check the json structure provided for the product " + product.getProductCode() + ", reason : " + e.getMessage());
                 }
             }
             userProductInfoDtos.add(product);
         }
         productServicePreProcessor.processProductInfo(userProductInfoDtos);
+    }
+
+    private void readSheetThree(Sheet sheet) throws Exception {
+        List<UserPartyInfoDto> userPartyInfoDtoList = new ArrayList<>();
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            UserPartyInfoDto party = new UserPartyInfoDto();
+            Row row = sheet.getRow(i);
+            mapFields(UserPartyInfoDto.class.getDeclaredFields(), party, row);
+            if(StringUtils.isBlank(party.getActionCode())){
+                throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "Action code is mandatory for every row");
+            }else if("R".equalsIgnoreCase(party.getActionCode())){
+                String jsonString = row.getCell(4).getRichStringCellValue().getString();
+                if (StringUtils.isBlank(jsonString)) {
+                    throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "For action code R, the field Party Information is mandatory");
+                }
+                JsonNode jsonNode = objectMapper.readTree(jsonString);
+                party.setPartyInfo(jsonNode);
+
+            }
+            userPartyInfoDtoList.add(party);
+        }
+        performActionForPartyDetails(userPartyInfoDtoList);
+    }
+
+    private void performActionForPartyDetails(List<UserPartyInfoDto> userPartyInfos){
+        userPartyInfos.stream()
+                .filter(Objects::nonNull)
+                .forEach(obj->{
+                   String actionCode = obj.getActionCode().toUpperCase();
+                   if(actionCode.equals("R")){
+                       validateUserPartyInfoDto(obj);
+                       partyDetailsService.updatedParty(obj);
+                   }else if(actionCode.equals("D")){
+                       partyDetailsService.deletedParty(obj.getUniqueUserIdentifier(),obj.getPartyIdentifierId());
+                   }else {
+                       throw new FdapnCustomExceptions(ErrorResCodes.UNKNOWN_ACTION, "Invalid action code provided, valid codes are R for replace, D for delete");
+                   }
+                });
     }
 }

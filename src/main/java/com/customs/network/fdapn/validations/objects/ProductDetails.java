@@ -14,10 +14,8 @@ public class ProductDetails {
     @NotNull(message = "governmentAgencyProgramCode is mandatory")
     @Size(min = 3, max = 3,message = "governmentAgencyProgramCode must be exactly {max} characters")
     private String governmentAgencyProgramCode;
-    @NotNull(message = "governmentAgencyProcessingCode is mandatory")
-    @Size(min = 3, max = 3,message = "governmentAgencyProcessingCode must be exactly {max} characters")
+    @Size(max = 3,message = "governmentAgencyProcessingCode must be exactly {max} characters")
     private String governmentAgencyProcessingCode;
-    @NotNull(message = "productCodeNumber is mandatory")
     @Size(min = 7, max = 7,message = "productCodeNumber must be exactly {max} characters")
     private String productCodeNumber;
     @NotNull(message = "commodityDesc must not be null")
@@ -31,24 +29,34 @@ public class ProductDetails {
     private String correctionIndicator;
     private String disclaimer;
     private String pgaLineNumber;
+    @Size(min = 3 ,max = 3,message = "remarksTypeCode can have maximum {max} characters")
     private String remarksTypeCode;
+    @Size(max = 68, message = "remarksText can have maximum {max} characters")
     private String remarksText;
     private String itemType;
     private String packageTrackingCode;
     private String packageTrackingNumber;
 
     private List<AnticipatedArrivalInformation> anticipatedArrivalInformations;
+    @Valid
     private List<ProductConstituentElement> productConstituentElements;
+    @NotNull(message = "productOrigin cannot be null")
+    @Valid
     private List<ProductOrigin> productOrigin;
+    @Valid
     private TradeOrBrandNameInfo tradeOrBrandNameInfo;
-    @NotNull(message = "Party details must not be null")
+
     @Valid
     private List<EntityDetails> partyDetails;
+
     private List<List<ProductPackaging>> productPackaging;
-    @NotNull(message = "AffirmationOfCompliance must not be null")
+
     @Valid
     private List<AffirmationOfCompliance> affirmationOfCompliance;
+
     private List<ProductCondition> productCondition;
+
+    @Valid
     private List<ContainerInformation> containerInformation;
 
 }

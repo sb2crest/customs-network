@@ -1,6 +1,8 @@
 package com.customs.network.fdapn.dto;
 
 import com.customs.network.fdapn.model.ExcelColumn;
+import com.customs.network.fdapn.validations.objects.TransactionProductData;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -23,7 +25,10 @@ public class ExcelTransactionInfo {
     @ExcelColumn(index = 2)
     private String actionCode;
 
+    @JsonIgnore
+    private String transactionProductDataString;
     private PriorNoticeData priorNoticeData;
-
     private List<String> productCode;
+    private List<TransactionProductData> transactionProductData;
+
 }

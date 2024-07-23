@@ -1,8 +1,16 @@
 package com.customs.network.fdapn.utils;
 
+import com.customs.network.fdapn.dto.UserPartyInfoDto;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
+import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.ValidationError;
+import com.customs.network.fdapn.validations.objects.EntityDetails;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import io.micrometer.common.util.StringUtils;
 
 import java.util.ArrayList;
@@ -11,6 +19,7 @@ import java.util.List;
 import static com.customs.network.fdapn.exception.ErrorResCodes.INVALID_DETAILS;
 
 public class ObjectValidations {
+    private static final ObjectMapper mapper = new ObjectMapper();
     private ObjectValidations() {
     }
 
@@ -39,6 +48,35 @@ public class ObjectValidations {
         }
         if (!errorList.isEmpty()) {
             throw new FdapnCustomExceptions(INVALID_DETAILS, errorList);
+        }
+    }
+
+    public static void validateUserPartyInfoDto(UserPartyInfoDto userPartyInfoDto) {
+        String uniqueUserIdentifier = userPartyInfoDto.getUniqueUserIdentifier();
+        JsonNode partyInfo = userPartyInfoDto.getPartyInfo();
+        if (StringUtils.isBlank(uniqueUserIdentifier)) {
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "unique user identifier is required");
+        }
+        if (partyInfo == null) {
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "party info is required");
+        }
+        validatePartyInfoStructure(partyInfo);
+    }
+
+    private static void validatePartyInfoStructure(JsonNode partyInfo) {
+        try {
+            ObjectMapper strictMapper = mapper.copy();
+            strictMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
+            strictMapper.treeToValue(partyInfo, EntityDetails.class);
+        } catch (JsonProcessingException e) {
+            if (e instanceof UnrecognizedPropertyException unrecognizedPropertyException) {
+                throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,
+                        "Invalid JSON provided for partyInfo: Unknown field '" +
+                                unrecognizedPropertyException.getPropertyName() + "'");
+            } else {
+                throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS,
+                        "Invalid JSON provided for partyInfo: " + e.getMessage());
+            }
         }
     }
 
