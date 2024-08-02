@@ -7,19 +7,19 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Component
 public class UtilMethods {
 
 
     private final JdbcTemplate jdbcTemplate;
-    private static final String FDAPN_PREFIX="fdapn_";
+    private static final String FDAPN_PREFIX = "fdapn_";
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -32,18 +32,18 @@ public class UtilMethods {
         return sdf.format(new Date());
     }
 
-    public String getFormattedDate(String date){
+    public String getFormattedDate(String date) {
         SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat outputFormat = new SimpleDateFormat("yyyyMMdd");
         try {
             return outputFormat.format(inputFormat.parse(date));
         } catch (ParseException e) {
-            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE,"Error in parsing date "+date);
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Error in parsing date " + date);
         }
     }
 
-    public synchronized Long getNumberOfRecords(String schemaName,String tableName){
-        String sql="SELECT COUNT(*) FROM "+schemaName+"."+tableName+";";
+    public synchronized Long getNumberOfRecords(String schemaName, String tableName) {
+        String sql = "SELECT COUNT(*) FROM " + schemaName + "." + tableName + ";";
         return jdbcTemplate.queryForObject(sql, Long.class);
     }
 
@@ -56,8 +56,8 @@ public class UtilMethods {
         return jdbcTemplate.queryForObject(sql, Integer.class, tableNamePrefix + "_%", schemaName);
     }
 
-    public synchronized Long getLastIdInTheTable(String schemaName, String tableName){
-        String sql="SELECT COALESCE(MAX(serial), 0) AS last_id FROM "+schemaName+"."+tableName+";";
+    public synchronized Long getLastIdInTheTable(String schemaName, String tableName) {
+        String sql = "SELECT COALESCE(MAX(serial), 0) AS last_id FROM " + schemaName + "." + tableName + ";";
         return jdbcTemplate.queryForObject(sql, Long.class);
     }
 
@@ -67,44 +67,52 @@ public class UtilMethods {
     }
 
     public synchronized Long getMaxIdForPartition(String schemaName, String tableName, int i) {
-        String sql="SELECT COALESCE(MAX(serial), 0) AS last_id FROM "+schemaName+"."+ tableName + "_" + i + ";";
+        String sql = "SELECT COALESCE(MAX(serial), 0) AS last_id FROM " + schemaName + "." + tableName + "_" + i + ";";
         return jdbcTemplate.queryForObject(sql, Long.class);
     }
-    public String getSchemaNameFromDate(String date){
-        return FDAPN_PREFIX+getFormattedDate(date);
+
+    public String getSchemaNameFromDate(String date) {
+        return FDAPN_PREFIX + getFormattedDate(date);
     }
-    public String getSchemaName(String refId){
+
+    public String getSchemaName(String refId) {
         String datePart = refId.substring(refId.length() - 16, refId.length() - 8);
-        return FDAPN_PREFIX+datePart;
+        return FDAPN_PREFIX + datePart;
     }
-    public String getTableName(String refNum){
+
+    public String getTableName(String refNum) {
         if (refNum.length() <= 6) {
             return "";
         }
-        return FDAPN_PREFIX+refNum.substring(0, refNum.length() - 16);
+        return FDAPN_PREFIX + refNum.substring(0, refNum.length() - 16);
     }
+
     public void deletePartitionTable(String schemaName, String tableName, Integer partition) {
         String sql = "DROP TABLE IF EXISTS " + schemaName + "." + tableName + "_" + partition;
         jdbcTemplate.execute(sql);
     }
-    public boolean isSchemaExist(String schemaName){
+
+    public boolean isSchemaExist(String schemaName) {
         String query = "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = ?)";
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(query, Boolean.class, schemaName));
     }
-    public boolean isTableExist(String schemaName,String tableName){
+
+    public boolean isTableExist(String schemaName, String tableName) {
         String query = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?)";
         return Boolean.TRUE.equals(jdbcTemplate.queryForObject(query, Boolean.class, schemaName, tableName));
     }
-    public List<String> validateRefId(String refId){
-        if(refId.length()!=31){
-            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID,"Length mismatch : Expected 31,Actual "+refId.length());
+
+    public List<String> validateRefId(String refId) {
+        if (refId.length() != 31) {
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID, "Length mismatch : Expected 31,Actual " + refId.length());
         }
-        String schemaName=getSchemaName(refId);
-        String tableName=getTableName(refId).toLowerCase();
-        if(!isSchemaExist(schemaName) && !isTableExist(schemaName,tableName))
+        String schemaName = getSchemaName(refId);
+        String tableName = getTableName(refId).toLowerCase();
+        if (!isSchemaExist(schemaName) && !isTableExist(schemaName, tableName))
             throw new FdapnCustomExceptions(ErrorResCodes.INVALID_REFERENCE_ID);
-        return List.of(schemaName,tableName);
+        return List.of(schemaName, tableName);
     }
+
     @SuppressWarnings("unchecked") // Suppress unchecked warning for casting
     public List<String> getNotificationEmailsByUserIdentifier(String userIdentifier) {
         Query query = entityManager.createNativeQuery("SELECT notification_emails FROM public._user WHERE unique_user_identifier = :userIdentifier");
@@ -132,6 +140,21 @@ public class UtilMethods {
         } else {
             return (String) resultList.get(0); // Cast to String
         }
+    }
+
+    public static String truncateString(String input, int maxLength) {
+        if (input == null || input.length() <= maxLength) {
+            return input;
+        }
+        return input.substring(0, maxLength) + "...";
+    }
+
+    public static <T> boolean isNullOrEmptyCollection(Collection<T> c1) {
+        return c1 == null || c1.isEmpty();
+    }
+
+    public static <T> boolean isNullOrEmptyCollection(Collection<T> c1, Collection<T> c2) {
+        return (c1 == null || c1.isEmpty()) && (c2 == null || c2.isEmpty());
     }
 
 

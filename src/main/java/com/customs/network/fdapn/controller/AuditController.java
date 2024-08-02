@@ -33,7 +33,7 @@ public class AuditController {
                                               @RequestParam(required = false) String period){
         return auditService.getAllTransactionsCounts(userId,period);
     }
-    @GetMapping("/getPortTransactionDetails")
+    @GetMapping("/get-port-transaction-details")
     public List<PortInfoDto> getByUser(@RequestParam String userId,@RequestParam(required = false) String portName,
                                        @RequestParam(required = false) String portCode){
         return auditService.getPortTransactionInfoByUser(userId,portName,portCode);

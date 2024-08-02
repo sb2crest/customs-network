@@ -34,7 +34,7 @@ public class AwsConfig {
     @Bean
     public AmazonS3 amazonS3Client() {
         return AmazonS3ClientBuilder.standard()
-                .withRegion("ap-south-1")
+                .withRegion(region)
                 .build();
     }
 }

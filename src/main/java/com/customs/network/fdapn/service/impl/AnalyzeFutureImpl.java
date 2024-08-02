@@ -34,6 +34,10 @@ public class AnalyzeFutureImpl implements AnalyzeFuture {
         new Thread(() -> {
             List<TransactionFailureResponse> failedTransactionHolder = new ArrayList<>();
             for (Future<ExcelBatchResponse> future : futures) {
+                if(future==null) {
+                    log.info("Future is null in executeFailureRecords");
+                    continue;
+                }
                 ExcelBatchResponse response = getExcelBatchResponseFromFuture(future);
                 if (!response.getFailedList().isEmpty()) {
                     failedTransactionHolder.addAll(response.getFailedList());
@@ -46,7 +50,6 @@ public class AnalyzeFutureImpl implements AnalyzeFuture {
     }
 
     private void executeSuccessRecords(List<Future<ExcelBatchResponse>> futures) {
-        log.info("Total number of processors available: {}", Runtime.getRuntime().availableProcessors());
         List<CompletableFuture<Void>> tasks = futures.stream()
                 .map(this::getExcelBatchResponseFromFuture)
                 .filter(response -> !response.getSuccessList().isEmpty())

@@ -50,10 +50,10 @@ public class FdapnRecordProcessor {
                     transactionInfo.setCreatedOn(new Date());
                     transactionInfo.setUpdatedOn(new Date());
                     transactionInfo.setStatus(SUCCESS_SUBMIT.getStatus());
-                    obj.getExcelTransactionInfo().getPriorNoticeData().setProducts(new ArrayList<>());
-                    JsonNode jsonNode = convertExcelResponse(obj.getExcelTransactionInfo());
+                    obj.getExcelTransactionInfo().getDeclaration().setProducts(new ArrayList<>());
+                    JsonNode jsonNode = convertObjectToJson(obj.getExcelTransactionInfo());
                     transactionInfo.setRequestJson(jsonNode);
-                    JsonNode response = convertResponseToJson(getResponse(obj, true));
+                    JsonNode response = convertObjectToJson(getResponse(obj, true));
                     transactionInfo.setResponseJson(response);
                     return transactionInfo;
                 })
@@ -87,12 +87,11 @@ public class FdapnRecordProcessor {
                             transactionInfos.setUniqueUserIdentifier(uuid);
                             transactionInfos.setEnvelopNumber("ENV003");
                             transactionInfos.setCreatedOn(new Date());
-
                             transactionInfos.setUpdatedOn(new Date());
                             transactionInfos.setStatus(MessageCode.VALIDATION_ERRORS.getStatus());
-                            JsonNode jsonNode = convertExcelResponse(obj.getExcelTransactionInfo());
+                            JsonNode jsonNode = convertObjectToJson(obj.getExcelTransactionInfo());
                             transactionInfos.setRequestJson(jsonNode);
-                            JsonNode saveResponse = convertResponseToJson(getResponse(obj, false));
+                            JsonNode saveResponse = convertObjectToJson(getResponse(obj, false));
                             transactionInfos.setResponseJson(saveResponse);
                             fdaPnFailures.add(dto);
                             return transactionInfos;
@@ -140,7 +139,7 @@ public class FdapnRecordProcessor {
         response.setStatus(status);
         response.setEnvelopNumber(envelopNumber);
         if (!isSuccess) {
-            JsonNode validationError = convertValidationErrorListToJson(excelResponse.getValidationErrorList());
+            JsonNode validationError = convertObjectToJson(excelResponse.getValidationErrorList());
             response.setMessage(validationError);
         }
         return response;

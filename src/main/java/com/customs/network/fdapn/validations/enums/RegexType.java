@@ -9,5 +9,7 @@ public enum RegexType {
     ALPHANUMERIC,
     ALPHANUMERIC_WITH_SPECIAL_CHARS,
     EMAIL,
-    DATE;
+    HH_MM,
+    MM_DD_YYYY,
+    DD_MM_YYYY;
 }

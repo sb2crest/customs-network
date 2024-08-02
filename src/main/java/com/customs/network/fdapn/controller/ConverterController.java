@@ -1,6 +1,8 @@
 package com.customs.network.fdapn.controller;
 
 import com.customs.network.fdapn.dto.*;
+import com.customs.network.fdapn.exception.ErrorResCodes;
+import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.TransactionInfo;
 import com.customs.network.fdapn.orchestrator.TransactionOrchestrator;
 import lombok.AllArgsConstructor;
@@ -8,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
+
+import static com.customs.network.fdapn.utils.ExcelStructureVerifier.isExcelFile;
 
 
 @RestController
@@ -20,6 +24,12 @@ public class ConverterController {
 
     @PostMapping("/process-excel")
     public String convertExcelToXml(@RequestParam("file") MultipartFile file) {
+        if(!isExcelFile(file)){
+            throw new FdapnCustomExceptions(ErrorResCodes.UNSUPPORTED_FILE, "Only excel files are supported");
+        }
+        if (file.isEmpty()) {
+            throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, "File is null or empty");
+        }
         return orchestrator.processExcel(file);
     }
     @GetMapping("/getFdaPn-record")
