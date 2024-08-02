@@ -50,7 +50,7 @@ public class FdapnRecordProcessor {
                     transactionInfo.setCreatedOn(new Date());
                     transactionInfo.setUpdatedOn(new Date());
                     transactionInfo.setStatus(SUCCESS_SUBMIT.getStatus());
-                    obj.getExcelTransactionInfo().getPriorNoticeData().setProducts(new ArrayList<>());
+                    obj.getExcelTransactionInfo().getDeclaration().setProducts(new ArrayList<>());
                     JsonNode jsonNode = convertObjectToJson(obj.getExcelTransactionInfo());
                     transactionInfo.setRequestJson(jsonNode);
                     JsonNode response = convertObjectToJson(getResponse(obj, true));

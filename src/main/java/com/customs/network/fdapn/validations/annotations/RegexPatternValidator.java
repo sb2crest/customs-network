@@ -31,7 +31,9 @@ public class RegexPatternValidator implements ConstraintValidator<Regex, String>
             case ALPHABETIC -> value.matches("[A-Za-z]+");
             case ALPHANUMERIC_WITH_SPECIAL_CHARS -> value.matches("[A-Za-z0-9 !@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]*");
             case EMAIL -> value.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
-            case DATE -> value.matches("^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-(\\d{4})$");
+            case DD_MM_YYYY -> value.matches("^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-(\\d{4})$");
+            case MM_DD_YYYY -> value.matches("(0\\d|1[0-2])-(0\\d|[1-2]\\d|3[0-1])-(\\d{4})");
+            case HH_MM -> value.matches("^(?:(?:[01]\\d|2[0-3])([0-5]\\d)|2400)$");
         };
 
         if (!isValid) {

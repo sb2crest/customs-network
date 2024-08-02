@@ -85,6 +85,11 @@ public class GeneralValidationConstants {
     private static final Set<String> VALID_ITEM_TYPE = Set.of("P");
     private static final Set<String> COUNTRIES_CODE_REQUIRED_ADDRESS = Set.of("US", "CA");
     private static final Set<String> VALID_CONSTITUENT_ACTIVE_INGREDIENT_QUALIFIER = Set.of("Y");
+    private static final Set<String> GOVERNMENT_GEOGRAPHIC_CODE_QUALIFIER = Set.of("PR", "ISO", "MS", "US");
+    private static final Map<String, Set<String>> LOCATION_CODES = Map.of(
+            "PR", CANADA_STATE_CODES, "US", US_STATE_CODES, "MS", MEXICO_STATE_CODES,
+            "ISO", COUNTRY_CODES
+    );
 
 
     static {
@@ -100,6 +105,14 @@ public class GeneralValidationConstants {
         ADDITIONAL_INFO_QUALIFIER_CODE.put("PG21", List.of("INA", "EMA"));
         ADDITIONAL_INFO_QUALIFIER_CODE.put("PG07", List.of("TBN"));
     }
+
+    private static final Set<String> FTZ_ENTRY_TYPES = Set.of("21");
+    private static final Set<String> ARRIVAL_LOCATION_CODES_FOR_FTZ = Set.of("4");
+    private static final Map<Boolean, List<String>> MANDATORY_ARRIVAL_INFORMATION = Map.of(
+            true, List.of("A", "F"), false, List.of("A"));
+    private static final String FTZ_ARRIVAL_INFO_CODE = "F";
+    private static final Set<String> PRIVATELY_OWNED_VEHICLE_CODE_TYPES = Set.of("POV");
+
 
     public boolean isValidConstituentActiveIngredient(String constituentActiveIngredient) {
         return VALID_CONSTITUENT_ACTIVE_INGREDIENT_QUALIFIER.contains(constituentActiveIngredient.toUpperCase());
@@ -195,15 +208,18 @@ public class GeneralValidationConstants {
         return false;
     }
 
-    public boolean isValueExcluded(String key1,String key2,String value) {
+    public boolean isValueExcluded(String key1, String key2, String value) {
         return false;
     }
-    public Map<String,Set<String>> getAocDependencies(){
+
+    public Map<String, Set<String>> getAocDependencies() {
         return Collections.emptyMap();
     }
-    public Map<String,Set<String>> getAocDependencies(String processingCode){
+
+    public Map<String, Set<String>> getAocDependencies(String processingCode) {
         return Collections.emptyMap();
     }
+
 
     public boolean isRequiredIntendedUseCode(String processingCode) {
         return true;
@@ -231,6 +247,40 @@ public class GeneralValidationConstants {
 
     public String getProductCodeStructure() {
         return PRODUCT_CODE_STRUCTURE;
+    }
+
+    public boolean isForeignTradeZoneEntry(String entryType) {
+        return FTZ_ENTRY_TYPES.contains(entryType.toUpperCase());
+    }
+
+    public boolean isValidInspectionOrArrivalLocationCodeForFtz(String inspectionOrArrivalLocationCode) {
+        return ARRIVAL_LOCATION_CODES_FOR_FTZ.contains(inspectionOrArrivalLocationCode.toUpperCase());
+    }
+
+    public String getFtzArrivalInformation() {
+        return FTZ_ARRIVAL_INFO_CODE;
+    }
+
+    public List<String> getMandatoryAnticipatedArrivalInformation(boolean isFTZEntry) {
+        return MANDATORY_ARRIVAL_INFORMATION.get(isFTZEntry);
+    }
+
+    public Set<String> getMandatorySourceCode(String processingCode) {
+        return MANDATORY_SOURCE_CODE;
+    }
+
+    public boolean isValidGovernmentGeographicCodeQualifier(String code) {
+        return GOVERNMENT_GEOGRAPHIC_CODE_QUALIFIER.contains(code.toUpperCase());
+    }
+
+    public boolean isValidLocationCode(String location, String qualifier) {
+        if (LOCATION_CODES.containsKey(qualifier.toUpperCase())) {
+            return LOCATION_CODES.get(qualifier.toUpperCase()).contains(location.toUpperCase());
+        }
+        return false;
+    }
+    public boolean isPrivatelyOwnedVehicle(String code) {
+        return PRIVATELY_OWNED_VEHICLE_CODE_TYPES.contains(code.toUpperCase());
     }
 
 }

@@ -4,7 +4,7 @@ import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.ValidationError;
-import com.customs.network.fdapn.validations.objects.EntityDetails;
+import com.customs.network.fdapn.validations.objects.commodity.EntityDetails;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -46,6 +46,7 @@ public class JsonUtils {
         try {
             ObjectMapper copyMapper = objectMapper.copy();
             copyMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+            copyMapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
             return copyMapper.valueToTree(response);
         } catch (Exception e) {
             throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Error converting SuccessOrFailureResponse to JsonNode ," + e);

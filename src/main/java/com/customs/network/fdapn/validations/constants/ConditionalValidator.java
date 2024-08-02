@@ -7,6 +7,8 @@ import java.util.Set;
 public interface ConditionalValidator {
     boolean isValidCountryCode(String countryCode);
     boolean isValidStateCode(String countryCode,String stateCode);
+    boolean isValidLocationCode(String location,String qualifier);
+    boolean isPrivatelyOwnedVehicle(String code);
     boolean isValidItemType(String itemType);
     boolean isValidIndividualQualifierCode(String individualQualifierCode);
     boolean isValidAOCCode(String aocCode);
@@ -38,6 +40,11 @@ public interface ConditionalValidator {
     boolean isValidLocationOfTemperatureRecording(String locationOfTemperatureRecording);
     boolean isValidTemperatureIndicator(String temperatureIndicator);
     boolean isLotNumberRequired(String processingCode);
+    boolean isForeignTradeZoneEntry(String entryType);
+    boolean isValidInspectionOrArrivalLocationCodeForFtz(String inspectionOrArrivalLocationCode);
+    boolean isValidGovernmentGeographicCodeQualifier(String code);
+    String getFtzArrivalInformation();
+    List<String> getMandatoryAnticipatedArrivalInformation(boolean isFTZEntry);
     String getAOCQSynatx(String aoc);
     String getValidLotNumberQualifier();
     String getProductCodeStructure();
@@ -46,6 +53,7 @@ public interface ConditionalValidator {
     Set<String> getOptionalPartyTypes();
     String getPartyIdentifierNumberSyntax(String partyIdentifierType);
     Set<String> getMandatorySourceCode();
+    Set<String> getMandatorySourceCode(String processingCode);
     Set<String> getRequiredIndividualQualifier();
     List<String> getAdditionalInfoQualifierCode(String pgSegment);
     List<String> getValidPackagingQualifierCode();

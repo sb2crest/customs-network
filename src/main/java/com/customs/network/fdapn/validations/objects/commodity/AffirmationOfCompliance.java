@@ -1,4 +1,4 @@
-package com.customs.network.fdapn.validations.objects;
+package com.customs.network.fdapn.validations.objects.commodity;
 
 import jakarta.validation.constraints.Size;
 import lombok.Data;

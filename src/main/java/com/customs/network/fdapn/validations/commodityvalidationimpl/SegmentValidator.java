@@ -1,6 +1,8 @@
 package com.customs.network.fdapn.validations.commodityvalidationimpl;
 
-import java.util.List;
+import com.customs.network.fdapn.validations.constants.ConditionalValidator;
+import com.customs.network.fdapn.validations.objects.priornotice.Declaration;
+
 import java.util.Set;
 
 public interface SegmentValidator {
@@ -13,4 +15,8 @@ public interface SegmentValidator {
     Set<String> validatePartyDetails(CommonValidations.ValidationContext context);
     void validateProductCondition(CommonValidations.ValidationContext context);
     void validateProductPackaging(CommonValidations.ValidationContext context);
+    void validateAnticipatedArrivalLocation(CommonValidations.ValidationContext context, Declaration declaration);
+    void validateLicensePlateIssuer(CommonValidations.ValidationContext context);
+    void validateLicensePlateNumber(CommonValidations.ValidationContext context);
+    ConditionalValidator getConditionalValidator();
 }

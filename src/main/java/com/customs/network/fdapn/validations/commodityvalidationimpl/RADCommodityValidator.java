@@ -4,7 +4,7 @@ import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
 import com.customs.network.fdapn.validations.constants.RADCommodityConstants;
-import com.customs.network.fdapn.validations.objects.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 
 import java.util.*;
 
@@ -72,7 +72,7 @@ public class RADCommodityValidator extends CommonValidations implements Commodit
     }
 
     @Override
-    public void initialize() {
-        //do initialization if required
+    public ConditionalValidator getConditionalValidator(){
+        return conditionalValidator;
     }
 }

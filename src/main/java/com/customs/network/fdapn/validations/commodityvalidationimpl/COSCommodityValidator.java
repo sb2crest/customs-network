@@ -4,7 +4,7 @@ import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.constants.COSCommodityConstants;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
-import com.customs.network.fdapn.validations.objects.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +20,10 @@ public class COSCommodityValidator extends CommonValidations implements Commodit
 
     public COSCommodityValidator(COSCommodityConstants cosCommodityValidator) {
         this.conditionalValidator = cosCommodityValidator;
+    }
+    @Override
+    public ConditionalValidator getConditionalValidator(){
+        return conditionalValidator;
     }
 
     @Override
@@ -64,10 +68,5 @@ public class COSCommodityValidator extends CommonValidations implements Commodit
     @Override
     public void validateProductConstituentElement(ValidationContext context) {
         //no need to validate
-    }
-
-    @Override
-    public void initialize() {
-        // initialize properties if necessary
     }
 }

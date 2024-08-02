@@ -142,12 +142,6 @@ public class UtilMethods {
         }
     }
 
-    public static boolean isExcelFile(MultipartFile file) {
-        // Check file extension
-        String fileName = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        return fileName.endsWith(".xls") || fileName.endsWith(".xlsx");
-    }
-
     public static String truncateString(String input, int maxLength) {
         if (input == null || input.length() <= maxLength) {
             return input;

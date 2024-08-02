@@ -4,7 +4,7 @@ import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
 import com.customs.network.fdapn.validations.constants.TOBCommodityConstants;
-import com.customs.network.fdapn.validations.objects.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.stereotype.Component;
 
@@ -81,7 +81,7 @@ public class TOBCommodityValidator extends CommonValidations implements Commodit
     }
 
     @Override
-    public void initialize() {
-        //do initialization if necessary
+    public ConditionalValidator getConditionalValidator(){
+        return conditionalValidator;
     }
 }

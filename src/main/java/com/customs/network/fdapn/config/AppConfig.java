@@ -12,7 +12,7 @@ import org.springframework.web.client.RestTemplate;
 
 @Configuration
 public class AppConfig {
-    private static final String organization = "FDA";
+    private static final String ORGANIZATION = "FDA";
 
     @Bean
     public RestTemplate restTemplate() {
@@ -28,7 +28,8 @@ public class AppConfig {
 
     @Bean
     public ConverterService getConverterService() {
-        JsonToEdi jsonToEdi = new JsonToEdi(organization);
+        //Configuring edi mapping with organization
+        JsonToEdi jsonToEdi = new JsonToEdi(ORGANIZATION);
         return new ConverterService(jsonToEdi);
     }
 }

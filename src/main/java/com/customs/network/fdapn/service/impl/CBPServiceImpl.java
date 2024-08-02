@@ -92,11 +92,11 @@ public class CBPServiceImpl {
 
         List<JsonNode> productInfo = getUpdatedJsonNode(uniqueUserIdentifier,transactionProductData);
 
-        obj.getExcelTransactionInfo().getPriorNoticeData().setProducts(productInfo);
-        JsonNode edi = objectMapper.valueToTree(obj.getExcelTransactionInfo().getPriorNoticeData());
+        obj.getExcelTransactionInfo().getDeclaration().setProducts(productInfo);
+        JsonNode ediSubject = objectMapper.valueToTree(obj.getExcelTransactionInfo().getDeclaration());
         String refId = obj.getExcelTransactionInfo().getReferenceId();
         ediRequest.setRefId(refId);
-        ediRequest.setSubject(edi);
+        ediRequest.setSubject(ediSubject);
         try {
             EdiResponse response = converterService.convertToEdi(ediRequest);
             hitCbp(response);

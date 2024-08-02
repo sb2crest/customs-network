@@ -3,20 +3,29 @@ package com.customs.network.fdapn.validations.commodityvalidationimpl;
 import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.validations.DataViolationMessages;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
-import com.customs.network.fdapn.validations.objects.*;
+import com.customs.network.fdapn.validations.constants.DeclarationRules;
+import com.customs.network.fdapn.validations.constants.DeclarationRulesImpl;
+import com.customs.network.fdapn.validations.objects.commodity.*;
+import com.customs.network.fdapn.validations.objects.priornotice.Declaration;
 import io.micrometer.common.util.StringUtils;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-
 import java.util.*;
 import java.util.function.Predicate;
 
+import static com.customs.network.fdapn.utils.UtilMethods.isNullOrEmptyCollection;
 import static com.customs.network.fdapn.validations.DataViolationMessages.getPartyIdentifierNumberErrorMessage;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.checkInitialViolations;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
 @Slf4j
 public class CommonValidations {
+    private final DeclarationRules declarationRules;
+
+    public CommonValidations() {
+        this.declarationRules = new DeclarationRulesImpl();
+    }
+
     public record ValidationContext(String productCode, List<ValidationError> errors,
                                     ConditionalValidator conditionalValidator, String programCode,
                                     ProductDetails productDetails
@@ -165,7 +174,7 @@ public class CommonValidations {
             validateEntityAddressFields(entityAddress, party, context);
             validatePointOfContacts(pointOfContacts, party, context);
             if (!seenPartyDetails.add(party) && !context.conditionalValidator.isPartyTypeRepeatable(party))
-                    context.errors.add(createValidationError(productCode, "partyType", "Duplicate party Type found for the commodity " + context.programCode, party));
+                context.errors.add(createValidationError(productCode, "partyType", "Duplicate party Type found for the commodity " + context.programCode, party));
         }
         mandatoryPartyDetails.removeAll(seenPartyDetails);
         if (!mandatoryPartyDetails.isEmpty())
@@ -486,8 +495,138 @@ public class CommonValidations {
             this.processingCode = processingCode;
             this.intendedUseCode = intendedUseCode;
         }
+
         private boolean isValidCode(String code) {
             return allValidAocForScenario.contains(code.toUpperCase());
         }
     }
+
+    //Anticipated Arrival Information Validation
+    public void validateAnticipatedArrivalLocation(ValidationContext context, Declaration declaration) {
+        String entryType = declaration.getEntryType();
+        if (StringUtils.isNotBlank(entryType) && declarationRules.isValidEntryType(entryType)) {
+            List<AnticipatedArrivalInformations> arrivalInformations = context.productDetails.getAnticipatedArrivalInformations();
+            if (!isNullOrEmptyCollection(arrivalInformations)) {
+                boolean isComingFromForeignTradeZone = context.conditionalValidator.isForeignTradeZoneEntry(entryType);
+                validateFTZEntry(context, isComingFromForeignTradeZone);
+            }
+        }
+    }
+
+    private void validateFTZEntry(ValidationContext context, boolean isFtzEntry) {
+        List<AnticipatedArrivalInformations> arrivalInformations = context.productDetails.getAnticipatedArrivalInformations();
+        List<String> mandatoryArrivalInformations = new ArrayList<>(context.conditionalValidator.getMandatoryAnticipatedArrivalInformation(isFtzEntry));
+        String ftzArrivalInformation = context.conditionalValidator.getFtzArrivalInformation();
+
+        for (AnticipatedArrivalInformations arrival : arrivalInformations) {
+            context.errors.addAll(checkInitialViolations(arrival));
+            validateSingleArrivalInformation(context, arrival, mandatoryArrivalInformations, ftzArrivalInformation);
+        }
+
+        checkMissingMandatoryInformation(context, mandatoryArrivalInformations);
+    }
+
+    private void validateSingleArrivalInformation(ValidationContext context, AnticipatedArrivalInformations arrival,
+                                                  List<String> mandatoryArrivalInformations, String ftzArrivalInformation) {
+        String anticipatedArrivalInformation = arrival.getAnticipatedArrivalInformation().toUpperCase();
+
+        if (!mandatoryArrivalInformations.contains(anticipatedArrivalInformation)) {
+            addInvalidArrivalInformationError(context, anticipatedArrivalInformation, mandatoryArrivalInformations);
+            return;
+        }
+
+        if (isFtzArrivalInformation(anticipatedArrivalInformation, ftzArrivalInformation)) {
+            validateFtzArrivalInformation(context, arrival);
+        } else {
+            validateNonFtzArrivalInformation(context, arrival);
+        }
+
+        mandatoryArrivalInformations.remove(anticipatedArrivalInformation);
+    }
+
+    private boolean isFtzArrivalInformation(String anticipatedArrivalInformation, String ftzArrivalInformation) {
+        return ftzArrivalInformation != null && ftzArrivalInformation.equalsIgnoreCase(anticipatedArrivalInformation);
+    }
+
+    private void validateFtzArrivalInformation(ValidationContext context, AnticipatedArrivalInformations arrival) {
+        if (StringUtils.isBlank(arrival.getInspectionOrArrivalLocation())) {
+            addError(context, "inspectionOrArrivalLocation", "Inspection or Arrival Location is required for FTZ Anticipated Arrival Information");
+        }
+        if (StringUtils.isBlank(arrival.getInspectionOrArrivalLocationCode())) {
+            addError(context, "inspectionOrArrivalLocationCode", "Inspection or Arrival Location Code is required for FTZ Anticipated Arrival Information");
+        } else {
+            if (!context.conditionalValidator.isValidInspectionOrArrivalLocationCodeForFtz(arrival.getInspectionOrArrivalLocationCode())) {
+                addError(context, "inspectionOrArrivalLocationCode", "Invalid Inspection or Arrival Location Code for FTZ Anticipated Arrival Information");
+            }
+        }
+    }
+
+    private void validateNonFtzArrivalInformation(ValidationContext context, AnticipatedArrivalInformations arrival) {
+        if (StringUtils.isBlank(arrival.getAnticipatedArrivalDate())) {
+            addError(context, "anticipatedArrivalDate", "Anticipated Arrival Date is required for Anticipated Arrival Information");
+        }
+        if (StringUtils.isBlank(arrival.getAnticipatedArrivalTime())) {
+            addError(context, "anticipatedArrivalTime", "Anticipated Arrival Time is required for Anticipated Arrival Information");
+        }
+    }
+
+    private void addInvalidArrivalInformationError(ValidationContext context, String anticipatedArrivalInformation, List<String> mandatoryArrivalInformations) {
+        context.errors.add(createValidationError(context.productCode, "anticipatedArrivalInformation",
+                "Invalid anticipatedArrivalInformation provided ", anticipatedArrivalInformation, mandatoryArrivalInformations.toString()));
+    }
+
+    private void checkMissingMandatoryInformation(ValidationContext context, List<String> mandatoryArrivalInformations) {
+        if (!mandatoryArrivalInformations.isEmpty()) {
+            context.errors.add(createValidationError(context.productCode, "anticipatedArrivalInformation",
+                    "Missing mandatory Anticipated Arrival Information", null, mandatoryArrivalInformations.toString()));
+        }
+    }
+
+    private void addError(ValidationContext context, String field, String message) {
+        context.errors.add(createValidationError(context.productCode, field, message, null, null));
+    }
+
+    //License plate issuer validations -------------------------------------------------------
+    public void validateLicensePlateIssuer(ValidationContext context) {
+        LicensePlateIssuer licensePlateIssuer = context.productDetails.getLicensePlateIssuer();
+        if (licensePlateIssuer != null) {
+            //            String issuerOfLPCO = licensePlateIssuer.getIssuerOfLPCO(); // for future use
+            String governmentGeographicCodeQualifier = licensePlateIssuer.getGovernmentGeographicCodeQualifier();
+            String locationOfIssuerOfTheLPCO = licensePlateIssuer.getLocationOfIssuerOfTheLPCO();
+            String issuingAgencyLocation = licensePlateIssuer.getIssuingAgencyLocation();
+            if (StringUtils.isNotBlank(governmentGeographicCodeQualifier)) {
+                if (!context.conditionalValidator.isValidGovernmentGeographicCodeQualifier(governmentGeographicCodeQualifier))
+                    context.errors.add(createValidationError(context.productCode, "governmentGeographicCodeQualifier", "Invalid Government Geographic Code Qualifier", governmentGeographicCodeQualifier, null));
+                if (StringUtils.isNotBlank(locationOfIssuerOfTheLPCO) &&
+                        !context.conditionalValidator.isValidLocationCode(locationOfIssuerOfTheLPCO, governmentGeographicCodeQualifier) &&
+                        StringUtils.isBlank(issuingAgencyLocation)) {
+                    context.errors.add(createValidationError(context.productCode, "locationOfIssuerOfTheLPCO", "Invalid Location Code provided with the governmentGeographicCodeQualifier " + governmentGeographicCodeQualifier, locationOfIssuerOfTheLPCO, null));
+                }
+            }
+            LicensePlateNumber licensePlateNumber = context.productDetails.getLicensePlateNumber();
+            if (licensePlateNumber == null) {
+                context.errors.add(createValidationError(context.productCode, "licensePlateNumber", "License Plate Number is required", null, null));
+            }
+        }
+    }
+
+    //license plate number validation ------------------------------------------------
+    public void validateLicensePlateNumber(ValidationContext context) {
+        LicensePlateNumber licensePlateNumber = context.productDetails.getLicensePlateNumber();
+        if (licensePlateNumber != null) {
+            String lpcoOrCodeType = licensePlateNumber.getLpcoOrCodeType();
+            String lpcoOrPncNumber = licensePlateNumber.getLpcoOrPncNumber();
+            if(StringUtils.isNotBlank(lpcoOrCodeType) && context.conditionalValidator.isPrivatelyOwnedVehicle(lpcoOrCodeType)){
+                LicensePlateIssuer licensePlateIssuer = context.productDetails.getLicensePlateIssuer();
+                if(licensePlateIssuer == null){
+                    context.errors.add(createValidationError(context.productCode, "licensePlateIssuer", "License Plate Issuer information mandatory for privately owned vehicles", null, null));
+                }
+                if(StringUtils.isBlank(lpcoOrPncNumber)){
+                    context.errors.add(createValidationError(context.productCode, "lpcoOrPncNumber", "Privately Owned Vehicle LPCO or PNC Number is required", null, null));
+                }
+            }
+        }
+    }
+
+
 }

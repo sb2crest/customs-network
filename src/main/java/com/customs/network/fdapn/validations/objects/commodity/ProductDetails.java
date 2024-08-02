@@ -1,4 +1,4 @@
-package com.customs.network.fdapn.validations.objects;
+package com.customs.network.fdapn.validations.objects.commodity;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -9,7 +9,7 @@ import java.util.List;
 
 @Data
 public class ProductDetails {
-
+    private String typeOfSubmission;
     private String governmentAgencyCode;
     @NotNull(message = "governmentAgencyProgramCode is mandatory")
     @Size(min = 3, max = 3,message = "governmentAgencyProgramCode must be exactly {max} characters")
@@ -37,7 +37,7 @@ public class ProductDetails {
     private String packageTrackingCode;
     private String packageTrackingNumber;
 
-    private List<AnticipatedArrivalInformation> anticipatedArrivalInformations;
+    private List<AnticipatedArrivalInformations> anticipatedArrivalInformations;
     @Valid
     private List<ProductConstituentElement> productConstituentElements;
     @NotNull(message = "productOrigin cannot be null")
@@ -45,7 +45,10 @@ public class ProductDetails {
     private List<ProductOrigin> productOrigin;
     @Valid
     private TradeOrBrandNameInfo tradeOrBrandNameInfo;
-
+    @Valid
+    private LicensePlateIssuer licensePlateIssuer;
+    @Valid
+    private LicensePlateNumber licensePlateNumber;
     @Valid
     private List<EntityDetails> partyDetails;
 

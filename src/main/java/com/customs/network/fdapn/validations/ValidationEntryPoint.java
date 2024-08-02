@@ -2,17 +2,20 @@ package com.customs.network.fdapn.validations;
 
 import com.customs.network.fdapn.dto.*;
 import com.customs.network.fdapn.validations.constants.GeneralValidationConstants;
-import com.customs.network.fdapn.validations.objects.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 import com.customs.network.fdapn.model.ValidationError;
+import com.customs.network.fdapn.validations.objects.priornotice.Declaration;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.checkInitialViolations;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
@@ -57,13 +60,14 @@ public class ValidationEntryPoint {
                 .filter(Objects::nonNull)
                 .map(obj -> {
                     ExcelValidationResponse response = new ExcelValidationResponse();
-                    PriorNoticeData priorNoticeData = obj.getPriorNoticeData();
+                    Declaration declaration = obj.getDeclaration();
                     List<String> productCodes = new ArrayList<>();
-                    List<ValidationError> validationErrors = transactionLevelValidations.validateDataOnPNLevel(priorNoticeData, obj, productCodes);
-                    List<ValidationError> validationErrorList = new ArrayList<>(validationErrors);
+                    List<ValidationError> validationErrors = obj.getValidationErrors();
+                    validationErrors.addAll(transactionLevelValidations.validateDataOnPNLevel(declaration, obj, productCodes));
                     obj.setProductCode(productCodes);
+                    obj.setValidationErrors(null);
                     response.setExcelTransactionInfo(obj);
-                    response.setValidationErrorList(validationErrorList);
+                    response.setValidationErrorList(validationErrors);
                     return response;
                 }).toList();
     }

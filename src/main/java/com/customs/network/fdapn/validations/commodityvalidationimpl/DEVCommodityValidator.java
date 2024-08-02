@@ -4,10 +4,10 @@ import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
 import com.customs.network.fdapn.validations.constants.DEVCommodityConstants;
-import com.customs.network.fdapn.validations.objects.EntityAddress;
-import com.customs.network.fdapn.validations.objects.EntityData;
-import com.customs.network.fdapn.validations.objects.EntityDetails;
-import com.customs.network.fdapn.validations.objects.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.EntityAddress;
+import com.customs.network.fdapn.validations.objects.commodity.EntityData;
+import com.customs.network.fdapn.validations.objects.commodity.EntityDetails;
+import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.stereotype.Component;
 
@@ -42,7 +42,7 @@ public class DEVCommodityValidator extends CommonValidations implements Commodit
 
     @Override
     public void validateProductConstituentElement(ValidationContext context) {
-
+        //no need to validate
     }
 
     //additional validation for affirmation of compliance
@@ -103,8 +103,8 @@ public class DEVCommodityValidator extends CommonValidations implements Commodit
     }
 
     @Override
-    public void initialize() {
-        //Initialize necessary properties
+    public ConditionalValidator getConditionalValidator(){
+        return conditionalValidator;
     }
     // Implement validation rules specific to development commodities
 }

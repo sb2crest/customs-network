@@ -34,6 +34,10 @@ public class AnalyzeFutureImpl implements AnalyzeFuture {
         new Thread(() -> {
             List<TransactionFailureResponse> failedTransactionHolder = new ArrayList<>();
             for (Future<ExcelBatchResponse> future : futures) {
+                if(future==null) {
+                    log.info("Future is null in executeFailureRecords");
+                    continue;
+                }
                 ExcelBatchResponse response = getExcelBatchResponseFromFuture(future);
                 if (!response.getFailedList().isEmpty()) {
                     failedTransactionHolder.addAll(response.getFailedList());

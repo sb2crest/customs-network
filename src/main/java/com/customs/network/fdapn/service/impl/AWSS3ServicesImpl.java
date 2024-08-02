@@ -9,6 +9,7 @@ import com.customs.network.fdapn.utils.CustomIdGenerator;
 import com.customs.network.fdapn.utils.UtilMethods;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -23,6 +24,8 @@ public class AWSS3ServicesImpl implements AWSS3Services {
     private final CustomIdGenerator idGenerator;
     private final UtilMethods utilMethods;
     private final AmazonS3 s3Client;
+    @Value("${aws.bucketName}")
+    private  String cbpDownS3Bucket;
 
     public AWSS3ServicesImpl(TransactionManagerRepo transactionRepository,
                              CustomIdGenerator idGenerator,
@@ -61,7 +64,7 @@ public class AWSS3ServicesImpl implements AWSS3Services {
         }
         List<String> textFiles = new ArrayList<>();
         ListObjectsV2Request request = new ListObjectsV2Request()
-                .withBucketName("fdapn-submit-cbp-down-records")
+                .withBucketName(cbpDownS3Bucket)
                 .withPrefix(folderKey);
 
         ListObjectsV2Result result;
@@ -79,7 +82,7 @@ public class AWSS3ServicesImpl implements AWSS3Services {
         textFiles.forEach(txt->{
             String refId  = txt.substring(txt.lastIndexOf("/") + 1, txt.lastIndexOf("."));
             transactionRepository.changeTransactionStatus(refId, MessageCode.SUCCESS_SUBMIT.getStatus());
-            s3Client.deleteObject(new DeleteObjectRequest("fdapn-submit-cbp-down-records", txt));
+            s3Client.deleteObject(new DeleteObjectRequest(cbpDownS3Bucket, txt));
         });
         return textFiles;
     }

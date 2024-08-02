@@ -5,7 +5,7 @@ import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.ValidationError;
-import com.customs.network.fdapn.validations.objects.EntityDetails;
+import com.customs.network.fdapn.validations.objects.commodity.EntityDetails;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;

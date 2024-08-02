@@ -40,7 +40,6 @@ public class ProductServicePreProcessorImpl implements ProductServicePreProcesso
                 .forEach(this::performAction);
     }
 
-
     private void performAction(UserProductInfoDto object) {
         switch (object.getActionCode().toUpperCase()) {
             case "A":

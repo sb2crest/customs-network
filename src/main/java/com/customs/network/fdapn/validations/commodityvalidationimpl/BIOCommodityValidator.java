@@ -4,8 +4,8 @@ import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.constants.BIOCommodityConstants;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
-import com.customs.network.fdapn.validations.objects.ProductConstituentElement;
-import com.customs.network.fdapn.validations.objects.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.ProductConstituentElement;
+import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -24,6 +24,10 @@ public class BIOCommodityValidator extends CommonValidations implements Commodit
     public BIOCommodityValidator(BIOCommodityConstants bioCommodityConstants) {
         this.conditionalValidator = bioCommodityConstants;
     }
+    @Override
+    public ConditionalValidator getConditionalValidator(){
+        return conditionalValidator;
+    }
 
     @Override
     public List<ValidationError> validate(ProductDetails productDetails) {
@@ -41,10 +45,6 @@ public class BIOCommodityValidator extends CommonValidations implements Commodit
         validateProductCondition(context);
         validateProductPackaging(context);
         return errors;
-    }
-    @Override
-    public void initialize() {
-        // Initialize any necessary resources or configurations
     }
 
     //constituentElementValidation----------------------------------------------------------------

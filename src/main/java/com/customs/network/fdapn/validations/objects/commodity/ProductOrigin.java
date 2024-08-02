@@ -1,4 +1,4 @@
-package com.customs.network.fdapn.validations.objects;
+package com.customs.network.fdapn.validations.objects.commodity;
 
 import com.customs.network.fdapn.validations.annotations.Regex;
 import com.customs.network.fdapn.validations.enums.RegexType;

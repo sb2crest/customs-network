@@ -1,4 +1,4 @@
-package com.customs.network.fdapn.validations.objects;
+package com.customs.network.fdapn.validations.objects.commodity;
 
 import com.customs.network.fdapn.validations.annotations.Regex;
 import com.customs.network.fdapn.validations.enums.RegexType;
@@ -40,11 +40,11 @@ public class ProductCondition {
     private String locationOfTemperatureRecording;
 
     @Size(min = 10, max = 10, message = "productionStartDate must be exactly {max} characters")
-    @Regex(value = RegexType.DATE, message = "productionStartDate must be a valid date in the format of dd-mm-yyyy")
+    @Regex(value = RegexType.DD_MM_YYYY, message = "productionStartDate must be a valid date in the format of dd-mm-yyyy")
     private String productionStartDate;
 
     @Size(min = 10, max = 10, message = "productionStartDate must be exactly {max} characters")
-    @Regex(value = RegexType.DATE, message = "productionStartDate must be a valid date in the format of dd-mm-yyyy")
+    @Regex(value = RegexType.DD_MM_YYYY, message = "productionStartDate must be a valid date in the format of dd-mm-yyyy")
     private String productionEndDate;
 
 }

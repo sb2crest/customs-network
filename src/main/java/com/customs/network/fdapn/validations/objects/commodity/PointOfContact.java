@@ -1,9 +1,8 @@
-package com.customs.network.fdapn.validations.objects;
+package com.customs.network.fdapn.validations.objects.commodity;
 
 import com.customs.network.fdapn.validations.annotations.Regex;
 import com.customs.network.fdapn.validations.enums.RegexType;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;

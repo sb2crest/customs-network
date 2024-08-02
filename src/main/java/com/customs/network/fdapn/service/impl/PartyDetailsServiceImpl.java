@@ -1,6 +1,5 @@
 package com.customs.network.fdapn.service.impl;
 
-import com.customs.network.fdapn.dto.PageDTO;
 import com.customs.network.fdapn.dto.UserPartyInfoDto;
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
@@ -9,7 +8,7 @@ import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.repository.UserPartyInfoRepository;
 import com.customs.network.fdapn.service.PartyDetailsService;
 import com.customs.network.fdapn.utils.JsonUtils;
-import com.customs.network.fdapn.validations.objects.EntityDetails;
+import com.customs.network.fdapn.validations.objects.commodity.EntityDetails;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -17,17 +16,14 @@ import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static com.customs.network.fdapn.utils.CustomIdGenerator.generatePartyIdentifierId;
-import static com.customs.network.fdapn.utils.JsonUtils.convertJsonNodeToEntityDetails;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
 @Service

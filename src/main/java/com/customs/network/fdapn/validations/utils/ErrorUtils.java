@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.Set;
 
 public class ErrorUtils {
+    private ErrorUtils(){
+
+    }
     public static ValidationError createValidationError(String fieldName, String message, Object actual) {
         ValidationError validationError = new ValidationError();
         validationError.setFieldName(fieldName);
@@ -54,14 +57,8 @@ public class ErrorUtils {
         Validator validator = factory.getValidator();
         Set<ConstraintViolation<T>> violations = validator.validate(obj);
         for (ConstraintViolation<T> violation : violations) {
-            String fieldName = violation.getPropertyPath().toString();
-            String message = violation.getMessage();
-            Object actual = violation.getInvalidValue();
-            ValidationError validationError = new ValidationError();
-            validationError.setFieldName(fieldName);
-            validationError.setMessage(message);
-            validationError.setActual(actual);
-            validationErrorList.add(validationError);
+            validationErrorList.add(createValidationError(violation.getPropertyPath().toString(),
+                    violation.getMessage(),violation.getInvalidValue()));
         }
         return validationErrorList;
     }

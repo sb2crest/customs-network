@@ -1,7 +1,9 @@
 package com.customs.network.fdapn.dto;
 
 import com.customs.network.fdapn.model.ExcelColumn;
+import com.customs.network.fdapn.model.ValidationError;
 import com.customs.network.fdapn.validations.objects.TransactionProductData;
+import com.customs.network.fdapn.validations.objects.priornotice.Declaration;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
@@ -27,8 +29,10 @@ public class ExcelTransactionInfo {
 
     @JsonIgnore
     private String transactionProductDataString;
-    private PriorNoticeData priorNoticeData;
+    private Declaration declaration;
     private List<String> productCode;
+    @JsonIgnore
+    private List<ValidationError> validationErrors;
     private List<TransactionProductData> transactionProductData;
 
 }

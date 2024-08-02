@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
-import static com.customs.network.fdapn.utils.UtilMethods.isExcelFile;
+import static com.customs.network.fdapn.utils.ExcelStructureVerifier.isExcelFile;
 
 
 @RestController

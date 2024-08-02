@@ -5,8 +5,8 @@ import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
 import com.customs.network.fdapn.validations.constants.ProductCodeValidator;
 import com.customs.network.fdapn.validations.constants.VMECommodityConstants;
-import com.customs.network.fdapn.validations.objects.ProductConstituentElement;
-import com.customs.network.fdapn.validations.objects.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.ProductConstituentElement;
+import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.stereotype.Component;
 
@@ -145,7 +145,7 @@ public class VMECommodityValidator extends CommonValidations implements Commodit
     }
 
     @Override
-    public void initialize() {
-        //do initialization if necessary
+    public ConditionalValidator getConditionalValidator(){
+        return conditionalValidator;
     }
 }

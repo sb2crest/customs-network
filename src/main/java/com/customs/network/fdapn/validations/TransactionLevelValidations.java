@@ -1,7 +1,8 @@
 package com.customs.network.fdapn.validations;
 
 import com.customs.network.fdapn.dto.ExcelTransactionInfo;
-import com.customs.network.fdapn.dto.PriorNoticeData;
+import com.customs.network.fdapn.validations.commodityvalidationimpl.DeclarationValidator;
+import com.customs.network.fdapn.validations.objects.priornotice.Declaration;
 import com.customs.network.fdapn.dto.UserPartyInfoDto;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
@@ -11,8 +12,8 @@ import com.customs.network.fdapn.service.UserProductInfoServices;
 import com.customs.network.fdapn.validations.commodityvalidationimpl.CommonValidations;
 import com.customs.network.fdapn.validations.commodityvalidationimpl.SegmentValidator;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
-import com.customs.network.fdapn.validations.objects.EntityDetails;
-import com.customs.network.fdapn.validations.objects.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.EntityDetails;
+import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 import com.customs.network.fdapn.validations.objects.TransactionProductData;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -62,17 +64,19 @@ public class TransactionLevelValidations {
     private final ObjectMapper objectMapper;
     private final UserProductInfoServices productInfoServices;
     private final PartyDetailsService partyDetailsService;
+    private final DeclarationValidator declarationValidator;
     private final Map<String, SegmentValidator> segmentValidators;
     private final Map<String, ConditionalValidator> conditionalValidators;
 
     public TransactionLevelValidations(ObjectMapper objectMapper,
                                        UserProductInfoServices productInfoServices,
                                        PartyDetailsService partyDetailsService,
-                                       List<SegmentValidator> segmentValidators,
+                                       DeclarationValidator declarationValidator, List<SegmentValidator> segmentValidators,
                                        List<ConditionalValidator> conditionalValidatorList) {
         this.objectMapper = objectMapper;
         this.productInfoServices = productInfoServices;
         this.partyDetailsService = partyDetailsService;
+        this.declarationValidator = declarationValidator;
         this.segmentValidators = segmentValidators.stream()
                 .collect(Collectors.toMap(validation -> validation.getClass().getSimpleName().replace("CommodityValidator", "").toUpperCase(), Function.identity()));
         this.conditionalValidators = conditionalValidatorList.stream()
@@ -80,13 +84,18 @@ public class TransactionLevelValidations {
 
     }
 
-    public List<ValidationError> validateDataOnPNLevel(PriorNoticeData data, ExcelTransactionInfo info, List<String> productCodes) {
+    public List<ValidationError> validateDataOnPNLevel(Declaration data, ExcelTransactionInfo info, List<String> productCodes) {
         List<ValidationError> errors = new ArrayList<>();
         try {
             List<TransactionProductData> transactionProductData = objectMapper.readValue(info.getTransactionProductDataString(), new TypeReference<>() {
             });
-            errors.addAll(mapInfoToProduct(data, transactionProductData, productCodes));
             info.setTransactionProductData(transactionProductData);
+            if (info.getValidationErrors().isEmpty()) {
+                List<ValidationError> validationErrors = declarationValidator.validate(data);
+                if (validationErrors.isEmpty())
+                    errors.addAll(mapInfoToProduct(data, transactionProductData, productCodes));
+                errors.addAll(validationErrors);
+            } else errors.addAll(info.getValidationErrors());
         } catch (JsonMappingException e) {
             String truncatedInput = truncateString(info.getTransactionProductDataString(), 50);
             errors.add(createValidationError(null, "Invalid transactionProductData on transaction serial number :" + info.getSlNo(), truncatedInput));
@@ -99,9 +108,9 @@ public class TransactionLevelValidations {
         return errors;
     }
 
-    private List<ValidationError> mapInfoToProduct(PriorNoticeData priorNoticeData, List<TransactionProductData> transactionProductData, List<String> productCodes) {
+    private List<ValidationError> mapInfoToProduct(Declaration declaration, List<TransactionProductData> transactionProductData, List<String> productCodes) {
         List<ValidationError> errors = new ArrayList<>();
-        String uniqueUserIdentifier = priorNoticeData.getUniqueUserIdentifier();
+        String uniqueUserIdentifier = declaration.getUniqueUserIdentifier();
         for (TransactionProductData transactionProduct : transactionProductData) {
             String productCode = transactionProduct.getProductIdentifier();
             UserProductInfoDto productByProductCode;
@@ -122,7 +131,7 @@ public class TransactionLevelValidations {
             ProductDetails productDetails;
             try {
                 productDetails = objectMapper.treeToValue(productDetailsJson, ProductDetails.class);
-                List<ValidationError> validationErrors = validateSegments(priorNoticeData, transactionProduct, productDetails);
+                List<ValidationError> validationErrors = validateSegments(declaration, transactionProduct, productDetails);
                 errors.addAll(validationErrors);
             } catch (JsonProcessingException e) {
                 String truncatedInput = truncateString(productDetailsJson.toString(), 50);
@@ -132,27 +141,30 @@ public class TransactionLevelValidations {
         return errors;
     }
 
-    private List<ValidationError> validateSegments(PriorNoticeData priorNoticeData, TransactionProductData transactionProductData, ProductDetails productDetails) {
+    private List<ValidationError> validateSegments(Declaration declaration, TransactionProductData transactionProductData, ProductDetails productDetails) {
         List<ValidationError> errors = new ArrayList<>();
         String programCode = productDetails.getGovernmentAgencyProgramCode();
         String productCode = productDetails.getProductCodeNumber();
+
+        //Below can replace by the method getConditionalValidator method in the SegmentValidation
         ConditionalValidator conditionalValidator = supplyConditionalValidator(programCode);
         if (conditionalValidator == null) {
-            log.error("ConditionalValidator not found for program code {} , occurred when executing validation for user {} and product {} ", programCode, priorNoticeData.getUniqueUserIdentifier(), productCode);
+            log.error("ConditionalValidator not found for program code {} , occurred when executing validation for user {} and product {} ", programCode, declaration.getUniqueUserIdentifier(), productCode);
             errors.add(createValidationError(productCode, "An unexpected error occurred during validation. Please contact support.", "System Error"));
             return errors;
         }
+        //consider creating a context inside the executeValidation
         CommonValidations.ValidationContext context = new CommonValidations.ValidationContext(productCode, errors, conditionalValidator, programCode.toUpperCase(), productDetails);
-        executeValidations(context, priorNoticeData, transactionProductData, errors);
+        executeValidations(context, declaration, transactionProductData, errors);
         return errors;
     }
 
     private void executeValidations(CommonValidations.ValidationContext context,
-                                    PriorNoticeData priorNoticeData,
+                                    Declaration declaration,
                                     TransactionProductData transactionProductData, List<ValidationError> errors) {
 
         List<EntityDetails> partyDetails = new ArrayList<>();
-        String uniqueUserIdentifier = priorNoticeData.getUniqueUserIdentifier();
+        String uniqueUserIdentifier = declaration.getUniqueUserIdentifier();
         for (String partyIdentifier : transactionProductData.getPartyIdentifiers()) {
             UserPartyInfoDto userPartyInfo = null;
             try {
@@ -169,28 +181,29 @@ public class TransactionLevelValidations {
             }
         }
         transactionProductData.setPartyDetails(partyDetails);
-        SegmentValidator validator = supplySegmentValidator(context.programCode());
-        if (validator == null) {
-            log.error("SegmentValidator not found for program code {} , occurred when executing validation for user {} ", context.programCode(), priorNoticeData.getUniqueUserIdentifier());
+        SegmentValidator segmentValidator = supplySegmentValidator(context.programCode());
+        if (segmentValidator == null) {
+            log.error("SegmentValidator not found for program code {} , occurred when executing validation for user {} ", context.programCode(), declaration.getUniqueUserIdentifier());
             errors.add(createValidationError(null, "An unexpected error occurred during validation. Please contact support.", "System Error"));
             return;
         }
         if (!partyDetails.isEmpty()) {
             context.productDetails().setPartyDetails(partyDetails);
         }
-        doValidate(context, priorNoticeData, transactionProductData, errors, validator);
+        doValidate(context, declaration, transactionProductData, errors, segmentValidator);
     }
 
     private void doValidate(CommonValidations.ValidationContext context,
-                            PriorNoticeData priorNoticeData,
+                            Declaration declaration,
                             TransactionProductData transactionProductData,
                             List<ValidationError> errors,
                             SegmentValidator validator) {
         validatePartyDetails(context, errors, validator);
-        validateAnticipatedArrivalInformations(context, transactionProductData, errors);
+        validateAnticipatedArrivalInformations(context, declaration, transactionProductData, errors, validator);
         validateProductPackaging(context, transactionProductData, errors, validator);
         validateProductCondition(context, transactionProductData, errors, validator);
         validateContainerInformation(context, transactionProductData, errors);
+
     }
 
     private void validatePartyDetails(CommonValidations.ValidationContext context, List<ValidationError> errors, SegmentValidator validator) {
@@ -203,12 +216,14 @@ public class TransactionLevelValidations {
         }
     }
 
-    private void validateAnticipatedArrivalInformations(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors) {
+    private void validateAnticipatedArrivalInformations(CommonValidations.ValidationContext context, Declaration declaration, TransactionProductData transactionProductData, List<ValidationError> errors, SegmentValidator validator) {
         if (isNullOrEmptyCollection(transactionProductData.getAnticipatedArrivalInformations(), context.productDetails().getAnticipatedArrivalInformations())) {
             errors.add(createValidationError("anticipatedArrivalInformations", "This field is mandatory, But not provided in either basic product level or transactional Product level " + context.productCode(), transactionProductData.getAnticipatedArrivalInformations()));
         } else if (!isNullOrEmptyCollection(transactionProductData.getAnticipatedArrivalInformations())) {
             context.productDetails().setAnticipatedArrivalInformations(transactionProductData.getAnticipatedArrivalInformations());
             //anticipatedArrivalLocation validation method call goes here
+            errors.addAll(checkInitialViolations(transactionProductData.getAnticipatedArrivalInformations()));
+            validator.validateAnticipatedArrivalLocation(context, declaration);
         }
     }
 
@@ -232,9 +247,10 @@ public class TransactionLevelValidations {
     }
 
     private void validateContainerInformation(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors) {
+
         if (isNullOrEmptyCollection(transactionProductData.getContainerInformation(), context.productDetails().getContainerInformation())) {
             errors.add(createValidationError("containerInformation", "This field is mandatory, But not provided in either basic product level or transactional Product level " + context.productCode(), transactionProductData.getContainerInformation()));
-        } else if (!isNullOrEmptyCollection(transactionProductData.getPartyDetails())) {
+        } else if (!isNullOrEmptyCollection(transactionProductData.getContainerInformation())) {
             context.productDetails().setContainerInformation(transactionProductData.getContainerInformation());
             errors.addAll(checkInitialViolations(transactionProductData.getContainerInformation()));
         }

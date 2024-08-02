@@ -5,7 +5,7 @@ import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
 import com.customs.network.fdapn.validations.constants.DRUCommodityConstants;
 import com.customs.network.fdapn.validations.constants.ProductCodeValidator;
-import com.customs.network.fdapn.validations.objects.*;
+import com.customs.network.fdapn.validations.objects.commodity.*;
 import io.micrometer.common.util.StringUtils;
 import org.springframework.stereotype.Component;
 
@@ -43,8 +43,6 @@ public class DRUCommodityValidator extends CommonValidations implements Commodit
         validateProductOrigin(context);
         validateProductCondition(context);
         validateProductPackaging(context);
-
-
         return errors;
     }
 
@@ -261,7 +259,7 @@ public class DRUCommodityValidator extends CommonValidations implements Commodit
     }
 
     @Override
-    public void initialize() {
-        //initialize anything if necessary
+    public ConditionalValidator getConditionalValidator(){
+        return conditionalValidator;
     }
 }
