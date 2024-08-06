@@ -28,7 +28,7 @@ public class DEVCommodityValidator extends CommonValidations implements Commodit
     public List<ValidationError> validate(ProductDetails productDetails) {
         List<ValidationError> errors = new ArrayList<>();
         String productCode = productDetails.getProductCodeNumber();
-        ValidationContext context = new ValidationContext(productCode, errors, conditionalValidator, PROGRAMME_CODE, productDetails);
+        ValidationContext context = new ValidationContext(productCode, errors, conditionalValidator, PROGRAMME_CODE, productDetails,null);
         validatePGAIdentifier(context);
         validateProductIdentifier(context);
         validateProductOrigin(context);

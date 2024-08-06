@@ -15,7 +15,7 @@ public interface SegmentValidator {
     Set<String> validatePartyDetails(CommonValidations.ValidationContext context);
     void validateProductCondition(CommonValidations.ValidationContext context);
     void validateProductPackaging(CommonValidations.ValidationContext context);
-    void validateAnticipatedArrivalLocation(CommonValidations.ValidationContext context, Declaration declaration);
+    void validateAnticipatedArrivalLocation(CommonValidations.ValidationContext context);
     void validateLicensePlateIssuer(CommonValidations.ValidationContext context);
     void validateLicensePlateNumber(CommonValidations.ValidationContext context);
     ConditionalValidator getConditionalValidator();

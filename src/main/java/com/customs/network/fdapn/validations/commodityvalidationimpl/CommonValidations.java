@@ -28,7 +28,7 @@ public class CommonValidations {
 
     public record ValidationContext(String productCode, List<ValidationError> errors,
                                     ConditionalValidator conditionalValidator, String programCode,
-                                    ProductDetails productDetails
+                                    ProductDetails productDetails,Declaration declaration
     ) {
     }
 
@@ -237,11 +237,10 @@ public class CommonValidations {
         if (pointOfContacts == null)
             return;
         String pgSegment = "PG21";
-        Set<String> mandatoryIndividualQualifiers = new HashSet<>(context.conditionalValidator.getRequiredIndividualQualifier());
+        Set<String> mandatoryIndividualQualifiers = new HashSet<>(context.conditionalValidator.getRequiredIndividualQualifier()); // this validation may move to the party details List level , Not in the individual party object
         Set<String> seenIndividualQualifiers = new HashSet<>();
         if (pointOfContacts.isEmpty()) {
             context.errors.add(createValidationError(context.productCode, "pointOfContacts", "pointOfContacts must contain mandatory individual Qualifiers for the Party " + partyType, 0, mandatoryIndividualQualifiers.toString()));
-
         } else {
             for (PointOfContact pointOfContact : pointOfContacts) {
                 String individualQualifier = pointOfContact.getIndividualQualifier();
@@ -426,7 +425,6 @@ public class CommonValidations {
             } else {
                 validationContext.errors().add(createValidationError(validationContext.productCode(), "affirmationOfComplianceCode", "Provided Affirmation of Code is not valid for the scenario ", affirmationOfComplianceCode));
             }
-
         }
 
         String syntax = validationContext.conditionalValidator.getAOCQSynatx(affirmationOfComplianceCode);
@@ -502,15 +500,18 @@ public class CommonValidations {
     }
 
     //Anticipated Arrival Information Validation
-    public void validateAnticipatedArrivalLocation(ValidationContext context, Declaration declaration) {
-        String entryType = declaration.getEntryType();
-        if (StringUtils.isNotBlank(entryType) && declarationRules.isValidEntryType(entryType)) {
-            List<AnticipatedArrivalInformations> arrivalInformations = context.productDetails.getAnticipatedArrivalInformations();
-            if (!isNullOrEmptyCollection(arrivalInformations)) {
-                boolean isComingFromForeignTradeZone = context.conditionalValidator.isForeignTradeZoneEntry(entryType);
-                validateFTZEntry(context, isComingFromForeignTradeZone);
+    public void validateAnticipatedArrivalLocation(ValidationContext context) {
+        if(context.declaration != null ){
+            String entryType = context.declaration.getEntryType();
+            if (StringUtils.isNotBlank(entryType) && declarationRules.isValidEntryType(entryType)) {
+                List<AnticipatedArrivalInformations> arrivalInformations = context.productDetails.getAnticipatedArrivalInformations();
+                if (!isNullOrEmptyCollection(arrivalInformations)) {
+                    boolean isComingFromForeignTradeZone = context.conditionalValidator.isForeignTradeZoneEntry(entryType);
+                    validateFTZEntry(context, isComingFromForeignTradeZone);
+                }
             }
         }
+
     }
 
     private void validateFTZEntry(ValidationContext context, boolean isFtzEntry) {

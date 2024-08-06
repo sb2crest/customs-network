@@ -154,17 +154,16 @@ public class TransactionLevelValidations {
             return errors;
         }
         //consider creating a context inside the executeValidation
-        CommonValidations.ValidationContext context = new CommonValidations.ValidationContext(productCode, errors, conditionalValidator, programCode.toUpperCase(), productDetails);
-        executeValidations(context, declaration, transactionProductData, errors);
+        CommonValidations.ValidationContext context = new CommonValidations.ValidationContext(productCode, errors, conditionalValidator, programCode.toUpperCase(), productDetails,declaration);
+        executeValidations(context, transactionProductData, errors);
         return errors;
     }
 
     private void executeValidations(CommonValidations.ValidationContext context,
-                                    Declaration declaration,
                                     TransactionProductData transactionProductData, List<ValidationError> errors) {
 
         List<EntityDetails> partyDetails = new ArrayList<>();
-        String uniqueUserIdentifier = declaration.getUniqueUserIdentifier();
+        String uniqueUserIdentifier = context.declaration().getUniqueUserIdentifier();
         for (String partyIdentifier : transactionProductData.getPartyIdentifiers()) {
             UserPartyInfoDto userPartyInfo = null;
             try {
@@ -183,23 +182,22 @@ public class TransactionLevelValidations {
         transactionProductData.setPartyDetails(partyDetails);
         SegmentValidator segmentValidator = supplySegmentValidator(context.programCode());
         if (segmentValidator == null) {
-            log.error("SegmentValidator not found for program code {} , occurred when executing validation for user {} ", context.programCode(), declaration.getUniqueUserIdentifier());
+            log.error("SegmentValidator not found for program code {} , occurred when executing validation for user {} ", context.programCode(), context.declaration().getUniqueUserIdentifier());
             errors.add(createValidationError(null, "An unexpected error occurred during validation. Please contact support.", "System Error"));
             return;
         }
         if (!partyDetails.isEmpty()) {
             context.productDetails().setPartyDetails(partyDetails);
         }
-        doValidate(context, declaration, transactionProductData, errors, segmentValidator);
+        doValidate(context, transactionProductData, errors, segmentValidator);
     }
 
     private void doValidate(CommonValidations.ValidationContext context,
-                            Declaration declaration,
                             TransactionProductData transactionProductData,
                             List<ValidationError> errors,
                             SegmentValidator validator) {
         validatePartyDetails(context, errors, validator);
-        validateAnticipatedArrivalInformations(context, declaration, transactionProductData, errors, validator);
+        validateAnticipatedArrivalInformations(context, transactionProductData, errors, validator);
         validateProductPackaging(context, transactionProductData, errors, validator);
         validateProductCondition(context, transactionProductData, errors, validator);
         validateContainerInformation(context, transactionProductData, errors);
@@ -216,14 +214,14 @@ public class TransactionLevelValidations {
         }
     }
 
-    private void validateAnticipatedArrivalInformations(CommonValidations.ValidationContext context, Declaration declaration, TransactionProductData transactionProductData, List<ValidationError> errors, SegmentValidator validator) {
+    private void validateAnticipatedArrivalInformations(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors, SegmentValidator validator) {
         if (isNullOrEmptyCollection(transactionProductData.getAnticipatedArrivalInformations(), context.productDetails().getAnticipatedArrivalInformations())) {
             errors.add(createValidationError("anticipatedArrivalInformations", "This field is mandatory, But not provided in either basic product level or transactional Product level " + context.productCode(), transactionProductData.getAnticipatedArrivalInformations()));
         } else if (!isNullOrEmptyCollection(transactionProductData.getAnticipatedArrivalInformations())) {
             context.productDetails().setAnticipatedArrivalInformations(transactionProductData.getAnticipatedArrivalInformations());
             //anticipatedArrivalLocation validation method call goes here
             errors.addAll(checkInitialViolations(transactionProductData.getAnticipatedArrivalInformations()));
-            validator.validateAnticipatedArrivalLocation(context, declaration);
+            validator.validateAnticipatedArrivalLocation(context);
         }
     }
 

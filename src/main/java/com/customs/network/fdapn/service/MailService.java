@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 public class MailService {
     private final JavaMailSender javaMailSender;
     private static final int MAX_RETRIES = 3;
-    private static final long RETRY_DELAY_SECONDS = 3;
+    private static final long RETRY_DELAY_SECONDS = 5;
 
     public MailService(JavaMailSender javaMailSender) {
         this.javaMailSender = javaMailSender;
@@ -31,9 +31,11 @@ public class MailService {
 
         while (!success && retryCount < MAX_RETRIES) {
             try {
+                long start = System.currentTimeMillis();
                 MimeMessage message = createEmailMessage(data, recipients);
                 javaMailSender.send(message);
-                log.info("Sent mail successfully");
+                long end = System.currentTimeMillis();
+                log.info("Sent mail successfully to recipients {} (took {} milliseconds)",recipients,end-start);
                 success = true;
             } catch (MessagingException | MailSendException e) {
                 retryCount++;

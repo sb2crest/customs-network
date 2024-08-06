@@ -128,6 +128,7 @@ public class GeneralValidationConstants {
         return STATE_CODES.get(countryCode.toUpperCase()).contains(stateCode.toUpperCase());
     }
 
+
     public static boolean isValidProgramCode(String programCode) {
         return FDA_PROGRAM_CODES.contains(programCode.toUpperCase());
     }
@@ -279,6 +280,7 @@ public class GeneralValidationConstants {
         }
         return false;
     }
+
     public boolean isPrivatelyOwnedVehicle(String code) {
         return PRIVATELY_OWNED_VEHICLE_CODE_TYPES.contains(code.toUpperCase());
     }

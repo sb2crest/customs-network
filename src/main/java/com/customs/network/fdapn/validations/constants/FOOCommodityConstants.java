@@ -4,13 +4,30 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
-public class FOOCommodityConstants extends  GeneralValidationConstants implements ConditionalValidator{
-    private static final Set<String> VALID_PROCESSING_CODES = Set.of("NSF", "PRO","FEE","ADD","DSU","CCW");
-    private static final Set<String> INTENDED_USE_CODES = Set.of("260.000","015.000","210.000");
+public class FOOCommodityConstants extends GeneralValidationConstants implements ConditionalValidator {
+    private static final Set<String> VALID_PROCESSING_CODES = Set.of("NSF", "PRO", "FEE", "ADD", "DSU");
+    private static final Set<String> INTENDED_USE_CODES = Set.of("260.000", "015.000", "210.000");
     private static final Map<String, Set<String>> MANDATORY_SOURCE_TYPE_CODES = Map.of();
+    private static final Set<String> MANDATORY_PARTY_TYPES = Set.of("PNS", "PNT", "DEQ");
+    private static final Set<String> OPTIONAL_PARTY_TYPES = Set.of("LG", "FSV", "FD1", "UC", "PK", "DFP");
+    private static final Map<Set<String>, Set<String>> CONDITIONAL_PARTY_TYPES = Map.of(
+            Set.of("PRO", "ADD", "DSU"), Set.of("MF"),
+            Set.of("NSF", "FEE"), Set.of("DFI", "FDC")
+    );
+    private static final Set<String> MANDATORY_INDIVIDUAL_QUALIFIERS = Set.of("PNS", "PNT");
+    private static final Set<String> ALL_VALID_INDIVIDUAL_QUALIFIERS = Set.of("PNS", "PNT", "FSV", "FD1", "PK");
+    private static final Set<String> AOC_CODES = Set.of(
+            "FME", "RNO", "CAN", "VFT", "VES", "PFR", "FCE", "SID", "VOL", "FSX", "RNE",
+            "SFR", "UFR", "IFR", "TFR", "ORN", "SRN", "CFR", "GFR", "LFR",
+            "CIN", "ERR", "FAP", "FCC", "IBP", "IFE", "PKC"+
+            "AIN", "JIF", "SIF", "VQI", "REG", "VFL", "VFD");
+    private static final Map<String,String> AOC_SYNTAX = Map.ofEntries(
+            Map.entry("","")
+    );
+
     @Override
     public boolean isValidAOCCode(String aocCode) {
-        return false;
+         return AOC_CODES.contains(aocCode.toUpperCase());
     }
 
     @Override
@@ -25,8 +42,13 @@ public class FOOCommodityConstants extends  GeneralValidationConstants implement
 
     @Override
     public boolean isValidPartyType(String partyType) {
-        return false;
+        return MANDATORY_PARTY_TYPES.contains(partyType.toUpperCase()) ||
+                OPTIONAL_PARTY_TYPES.contains(partyType.toUpperCase()) ||
+                CONDITIONAL_PARTY_TYPES.values()
+                        .stream()
+                        .anyMatch(val -> val.contains(partyType.toUpperCase()));
     }
+
 
     @Override
     public boolean isValidIntendedUseCode(String intendedUseCode) {
@@ -63,22 +85,48 @@ public class FOOCommodityConstants extends  GeneralValidationConstants implement
         return false;
     }
 
+
     @Override
     public String getAOCQSynatx(String aoc) {
+        if(AOC_SYNTAX.containsKey(aoc.toUpperCase())){
+            return AOC_SYNTAX.get(aoc.toUpperCase());
+        }
         return null;
     }
 
     @Override
     public Set<String> getConditionalPartyTypes(String processingCode) {
+        for (Map.Entry<Set<String>, Set<String>> entry : CONDITIONAL_PARTY_TYPES.entrySet()) {
+            if (entry.getKey().contains(processingCode.toUpperCase())) {
+                return entry.getValue();
+            }
+        }
         return Collections.emptySet();
     }
 
     @Override
-    public Set<String> getOptionalPartyTypes() {
-        return Collections.emptySet();
+    public Set<String> getMandatoryPartyTypes() {
+        return MANDATORY_PARTY_TYPES;
     }
-    public Set<String> getMandatorySourceCode(String processingCode){
+
+    @Override
+    public Set<String> getOptionalPartyTypes() {
+        return OPTIONAL_PARTY_TYPES;
+    }
+
+    @Override
+    public Set<String> getMandatorySourceCode(String processingCode) {
         return MANDATORY_SOURCE_TYPE_CODES.get(processingCode);
+    }
+
+    @Override
+    public Set<String> getRequiredIndividualQualifier() {
+        return MANDATORY_INDIVIDUAL_QUALIFIERS;
+    }
+
+    @Override
+    public boolean isValidIndividualQualifierCode(String individualQualifierCode) {
+        return ALL_VALID_INDIVIDUAL_QUALIFIERS.contains(individualQualifierCode.toUpperCase());
     }
 
     @Override
