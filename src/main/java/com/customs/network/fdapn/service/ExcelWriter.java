@@ -68,7 +68,7 @@ public class ExcelWriter {
 
             workbook.write(out);
             long end = System.currentTimeMillis();
-            log.info("Creating validation error report for customer {} completed in {} seconds", userId, (end - start) / 1000);
+            log.info("Creating validation error report for customer {} completed in {} milli-seconds", userId, end - start);
             mailService.sendEmailWithAttachment(out.toByteArray(), recipients);
         } catch (IOException e) {
             log.error(e.getMessage(), e);
