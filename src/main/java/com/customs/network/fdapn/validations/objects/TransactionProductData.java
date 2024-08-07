@@ -14,4 +14,6 @@ public class TransactionProductData {
     private List<List<ProductPackaging>> productPackaging;
     private List<ProductCondition> productCondition;
     private List<ContainerInformation> containerInformation;
+    private LicensePlateIssuer licensePlateIssuer;
+    private LicensePlateNumber licensePlateNumber;
 }

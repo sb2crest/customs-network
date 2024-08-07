@@ -26,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static com.customs.network.fdapn.utils.ExcelStructureVerifier.validateExcelStructure;
+import static com.customs.network.fdapn.utils.JsonUtils.convertJsonToValidationErrorList;
 import static com.customs.network.fdapn.utils.ObjectValidations.validateUserPartyInfoDto;
 import static com.customs.network.fdapn.utils.RowMapper.mapFields;
 import static com.customs.network.fdapn.utils.UtilMethods.truncateString;
@@ -41,18 +42,22 @@ public class ExcelProcessorImpl implements ExcelProcessor {
     private final ProductServicePreProcessor productServicePreProcessor;
     private final AnalyzeFuture analyzeFuture;
     private final PartyDetailsService partyDetailsService;
+    private final ExcelWriter excelWriter;
+    private final CBPServiceImpl cbpService;
     public long processStartTime;
 
     public ExcelProcessorImpl(ObjectMapper objectMapper,
                               TransactionSegregator transactionSegregator,
                               ValidationEntryPoint validationEntryPoint, ProductServicePreProcessor productServicePreProcessor,
-                              AnalyzeFuture analyzeFuture, PartyDetailsService partyDetailsService) {
+                              AnalyzeFuture analyzeFuture, PartyDetailsService partyDetailsService, ExcelWriter excelWriter, CBPServiceImpl cbpService) {
         this.objectMapper = objectMapper;
         this.transactionSegregator = transactionSegregator;
         this.validationEntryPoint = validationEntryPoint;
         this.productServicePreProcessor = productServicePreProcessor;
         this.analyzeFuture = analyzeFuture;
         this.partyDetailsService = partyDetailsService;
+        this.excelWriter = excelWriter;
+        this.cbpService = cbpService;
     }
 
     @Override
@@ -70,6 +75,30 @@ public class ExcelProcessorImpl implements ExcelProcessor {
         end = System.currentTimeMillis();
         log.info("Time taken by processExcel() :->{} seconds", (end - start) / 1000.0);
         return res;
+    }
+
+    @Override
+    public String processRequestJson(JsonNode requestJson) {
+        try {
+            ExcelTransactionInfo excelTransactionInfo = objectMapper.treeToValue(requestJson, ExcelTransactionInfo.class);
+            excelTransactionInfo.setValidationErrors(new ArrayList<>());
+            String transactionProductInfoString = objectMapper.writeValueAsString(excelTransactionInfo.getTransactionProductData());
+            excelTransactionInfo.setTransactionProductDataString(transactionProductInfoString);
+            List<ExcelValidationResponse> excelValidationResponses = validationEntryPoint.validateExcelTransactions(List.of(excelTransactionInfo));
+            ExcelBatchResponse excelBatchResponse = transactionSegregator.segregateExcelResponse(excelValidationResponses);
+            if (!excelBatchResponse.getFailedList().isEmpty()) {
+                new Thread(()->{
+                    excelWriter.writeExcel(excelBatchResponse.getFailedList());
+                }).start();
+                List<ValidationError> validationErrors = convertJsonToValidationErrorList(excelBatchResponse.getFailedList().get(0).getResponseJson().getMessage());
+                throw new FdapnCustomExceptions(ErrorResCodes.INVALID_DETAILS, validationErrors, "The Transaction is invalid, Having validation errors");
+            } else {
+                cbpService.executeFinalProcessingAndSendToCBP(excelBatchResponse.getSuccessList());
+            }
+        } catch (JsonProcessingException e) {
+            throw new FdapnCustomExceptions(ErrorResCodes.CONVERSION_FAILURE, "Invalid requestJson provided");
+        }
+        return "Submitted To CBP";
     }
 
     public String processTransactionSheet(Sheet sheet) {

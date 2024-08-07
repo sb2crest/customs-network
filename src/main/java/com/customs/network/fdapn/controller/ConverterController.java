@@ -5,6 +5,7 @@ import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
 import com.customs.network.fdapn.model.TransactionInfo;
 import com.customs.network.fdapn.orchestrator.TransactionOrchestrator;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +33,11 @@ public class ConverterController {
         }
         return orchestrator.processExcel(file);
     }
+    @PostMapping("/process-request-json")
+    public String processRequestJson(@RequestBody JsonNode requestJson){
+        return orchestrator.processRequestJson(requestJson);
+    }
+
     @GetMapping("/getFdaPn-record")
     public TransactionInfo getFdaRecordByReferenceId(@RequestParam String referenceId) {
         return orchestrator.getFdapnTransaction(referenceId);

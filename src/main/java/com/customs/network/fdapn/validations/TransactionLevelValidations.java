@@ -2,6 +2,7 @@ package com.customs.network.fdapn.validations;
 
 import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.validations.commodityvalidationimpl.DeclarationValidator;
+import com.customs.network.fdapn.validations.objects.commodity.LicensePlateIssuer;
 import com.customs.network.fdapn.validations.objects.priornotice.Declaration;
 import com.customs.network.fdapn.dto.UserPartyInfoDto;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
@@ -201,7 +202,7 @@ public class TransactionLevelValidations {
         validateProductPackaging(context, transactionProductData, errors, validator);
         validateProductCondition(context, transactionProductData, errors, validator);
         validateContainerInformation(context, transactionProductData, errors);
-
+        validateLicensePlateIssuerAndNumber(context, transactionProductData, errors, validator);
     }
 
     private void validatePartyDetails(CommonValidations.ValidationContext context, List<ValidationError> errors, SegmentValidator validator) {
@@ -245,7 +246,6 @@ public class TransactionLevelValidations {
     }
 
     private void validateContainerInformation(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors) {
-
         if (isNullOrEmptyCollection(transactionProductData.getContainerInformation(), context.productDetails().getContainerInformation())) {
             errors.add(createValidationError("containerInformation", "This field is mandatory, But not provided in either basic product level or transactional Product level " + context.productCode(), transactionProductData.getContainerInformation()));
         } else if (!isNullOrEmptyCollection(transactionProductData.getContainerInformation())) {
@@ -253,6 +253,19 @@ public class TransactionLevelValidations {
             errors.addAll(checkInitialViolations(transactionProductData.getContainerInformation()));
         }
     }
+
+    private void validateLicensePlateIssuerAndNumber(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors, SegmentValidator validator) {
+
+        if (transactionProductData.getLicensePlateIssuer() != null && transactionProductData.getLicensePlateNumber() == null) {
+            context.productDetails().setLicensePlateIssuer(transactionProductData.getLicensePlateIssuer());
+            context.productDetails().setLicensePlateNumber(transactionProductData.getLicensePlateNumber());
+            errors.addAll(checkInitialViolations(transactionProductData.getLicensePlateIssuer()));
+            errors.addAll(checkInitialViolations(transactionProductData.getLicensePlateNumber()));
+            validator.validateLicensePlateIssuer(context);
+            validator.validateLicensePlateNumber(context);
+        }
+    }
+
 
     private SegmentValidator supplySegmentValidator(String programCode) {
         if (StringUtils.isBlank(programCode)) {
