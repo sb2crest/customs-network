@@ -60,6 +60,10 @@ public class DataViolationMessages {
                 "NDC", "Invalid NDC (National Drug Code) '123456789'. It must be exactly 10 digits.",
                 "MFL", "Invalid format for Medicated Feed Mill License (MFL) number."
         ));
+        AOCQ_SYNTAX_ERROR_MESSAGES.put("FOO",Map.ofEntries(
+               Map.entry("PFR","The Food Facility Registration Number must be exactly 11 numeric characters."),
+                Map.entry("FME","The Food Processing Facility Registration Exemption field requires exactly one alphabetic character (A-Z).")
+        ));
         PARTY_IDENTIFIER_NUMBER_ERROR_MESSAGES.put("16", "Expected Exact 9-digit Party Identifier Number for partyIdentifier type 16");
         PARTY_IDENTIFIER_NUMBER_ERROR_MESSAGES.put("47", "Expected 1-10-digit Party Identifier Number for partyIdentifier type 47");
 
