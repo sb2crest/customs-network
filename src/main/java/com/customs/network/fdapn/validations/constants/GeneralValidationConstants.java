@@ -225,6 +225,9 @@ public class GeneralValidationConstants {
     public boolean isRequiredIntendedUseCode(String processingCode) {
         return true;
     }
+    public  boolean isRepeatableAoc(String aoc){
+        return false;
+    }
 
 
     public boolean isValidBaseUom(String baseUom) {

@@ -203,6 +203,7 @@ public class TransactionLevelValidations {
         validateProductCondition(context, transactionProductData, errors, validator);
         validateContainerInformation(context, transactionProductData, errors);
         validateLicensePlateIssuerAndNumber(context, transactionProductData, errors, validator);
+        validateAffirmationOfCompliance(context, transactionProductData, errors, validator);
     }
 
     private void validatePartyDetails(CommonValidations.ValidationContext context, List<ValidationError> errors, SegmentValidator validator) {
@@ -242,6 +243,15 @@ public class TransactionLevelValidations {
             context.productDetails().setProductCondition(transactionProductData.getProductCondition());
             errors.addAll(checkInitialViolations(transactionProductData.getProductCondition()));
             validator.validateProductCondition(context);
+        }
+    }
+    private void validateAffirmationOfCompliance(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors, SegmentValidator validator) {
+        if (isNullOrEmptyCollection(transactionProductData.getAffirmationOfCompliance(), context.productDetails().getAffirmationOfCompliance())) {
+            errors.add(createValidationError("affirmationOfCompliance", "This field is mandatory, But not provided in either basic product level or transactional Product level " + context.productCode(), transactionProductData.getAffirmationOfCompliance()));
+        } else if (!isNullOrEmptyCollection(transactionProductData.getAffirmationOfCompliance())) {
+            context.productDetails().setAffirmationOfCompliance(transactionProductData.getAffirmationOfCompliance());
+            errors.addAll(checkInitialViolations(transactionProductData.getAffirmationOfCompliance()));
+            validator.validateAffirmationOfCompliance(context);
         }
     }
 

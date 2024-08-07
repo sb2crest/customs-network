@@ -43,6 +43,7 @@ public interface ConditionalValidator {
     boolean isForeignTradeZoneEntry(String entryType);
     boolean isValidInspectionOrArrivalLocationCodeForFtz(String inspectionOrArrivalLocationCode);
     boolean isValidGovernmentGeographicCodeQualifier(String code);
+    boolean isRepeatableAoc(String aoc);
     String getFtzArrivalInformation();
     List<String> getMandatoryAnticipatedArrivalInformation(boolean isFTZEntry);
     String getAOCQSynatx(String aoc);

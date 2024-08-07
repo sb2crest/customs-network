@@ -1,9 +1,13 @@
 package com.customs.network.fdapn.validations.constants;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-
+@Component
+@Slf4j
 public class FOOCommodityConstants extends GeneralValidationConstants implements ConditionalValidator {
     private static final Set<String> VALID_PROCESSING_CODES = Set.of("NSF", "PRO", "FEE", "ADD", "DSU");
     private static final Set<String> INTENDED_USE_CODES = Set.of("260.000", "015.000", "210.000");
@@ -16,6 +20,7 @@ public class FOOCommodityConstants extends GeneralValidationConstants implements
     );
     private static final Set<String> MANDATORY_INDIVIDUAL_QUALIFIERS = Set.of("PNS", "PNT");
     private static final Set<String> ALL_VALID_INDIVIDUAL_QUALIFIERS = Set.of("PNS", "PNT", "FSV", "FD1", "PK");
+    private static final Set<String> REPEATABLE_AOC_CODES = Set.of("RNO");
     private static final Set<String> AOC_CODES = Set.of(
             "FME", "RNO", "CAN", "VFT", "VES", "PFR", "FCE", "SID", "VOL", "FSX", "RNE",
             "SFR", "UFR", "IFR", "TFR", "ORN", "SRN", "CFR", "GFR", "LFR",
@@ -104,6 +109,10 @@ public class FOOCommodityConstants extends GeneralValidationConstants implements
     @Override
     public boolean isRequiredEveryConstituentElementFields(String code) {
         return false;
+    }
+    @Override
+    public  boolean isRepeatableAoc(String aoc){
+        return REPEATABLE_AOC_CODES.contains(aoc.toUpperCase());
     }
 
 
