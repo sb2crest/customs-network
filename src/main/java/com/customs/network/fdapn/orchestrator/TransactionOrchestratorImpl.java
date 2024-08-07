@@ -9,6 +9,7 @@ import com.customs.network.fdapn.model.TransactionInfo;
 import com.customs.network.fdapn.repository.TransactionManagerRepo;
 import com.customs.network.fdapn.service.AWSS3Services;
 import com.customs.network.fdapn.service.ExcelProcessor;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -75,5 +76,10 @@ public class TransactionOrchestratorImpl implements TransactionOrchestrator {
     @Override
     public List<String> getFoldersInBucket() {
         return awss3Services.getFoldersInBucket(cbpDownBucketName);
+    }
+
+    @Override
+    public String processRequestJson(JsonNode requestJson) {
+        return excelProcessor.processRequestJson(requestJson);
     }
 }

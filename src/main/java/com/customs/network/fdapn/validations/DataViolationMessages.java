@@ -62,7 +62,27 @@ public class DataViolationMessages {
         ));
         AOCQ_SYNTAX_ERROR_MESSAGES.put("FOO",Map.ofEntries(
                Map.entry("PFR","The Food Facility Registration Number must be exactly 11 numeric characters."),
-                Map.entry("FME","The Food Processing Facility Registration Exemption field requires exactly one alphabetic character (A-Z).")
+                Map.entry("FME", "The Food Processing Facility Registration Exemption field requires exactly one alphabetic character (A-Z)."),
+                Map.entry("FCE", "The Food Canning Establishment Number must be exactly 5 numeric digits. Please enter a valid number."),
+                Map.entry("SID", "The SID Schedule Identifier Number must be exactly 11 numeric characters long."),
+                Map.entry("SFR", "The Shipper Food Facility Registration Number (SFR) must be exactly 11 numeric digits long."),
+                Map.entry("UFR", "The Ultimate Consignee Food Facility Registration Number (UFR) must be exactly 11 numeric digits long."),
+                Map.entry("IFR", "The Importer Food Facility Registration Number (IFR) must be exactly 11 numeric digits long."),
+                Map.entry("TFR", "The Transmitter Food Facility Registration Number (TFR) must be exactly 11 numeric digits."),
+                Map.entry("ORN", "The Owners Food Facility Registration Number (ORN) must contain exactly 11 digits without any spaces or non-numeric characters."),
+                Map.entry("SRN", "The Submitter Food Facility Registration Number (SRN) must be exactly 11 digits long."),
+                Map.entry("CFR", "Consolidator Food Facility Registration Number (CFR) must be exactly 11 numeric digits."),
+                Map.entry("GFR", "The Grower Food Facility Registration Number (GFR) must be exactly 11 numeric digits long."),
+                Map.entry("LFR", "The Location of Goods Holding Facility Registration Number (LFR) must be exactly 11 numeric digits."),
+                Map.entry("CIN", "The Color Identification Number Text (CIN) must be up to 30 alphanumeric characters."),
+                Map.entry("FAP", "Food Additive Petition Approval Number (FAP) must be exactly 6 numeric digits."),
+                Map.entry("FCC", "French Cheese Facility Certification Number (FCC) must be either 9 or 10 numeric characters. If the number is 9 digits, it should be in the format 'NN NNN NN'. If the number is 10 digits, it should be in the format 'NN NNN NNN'."),
+                Map.entry("AIN", "Food Additive Identification Number (AIN) must be either 6 numeric digits, 8 numeric digits, or an alphanumeric format starting with 'E' followed by exactly 7 numeric digits. Ensure the number matches one of these formats: 'NNNNNN', 'NNNNNNNN', or 'EYYYYYYY' where 'Y' represents numeric digits."),
+                Map.entry("JIF", "Juice HACCP Importer Firm Number (JIF) must be between 1 to 10 numeric digits long."),
+                Map.entry("SIF", "The Seafood HACCP Importer Firm Number (SIF) must be between 1 to 10 numeric digits long."),
+                Map.entry("VQI", "Voluntary Qualified Importer Number (VQI) must be exactly 5 numeric digits long."),
+                Map.entry("REG", "Animal Drug Establishment Registration Number (REG) must be exactly 9 numeric digits long."),
+                Map.entry("VFL", "Medicated Feed Mill License (MFL) number (VFL) must be exactly 7 alphanumeric or special characters.")
         ));
         PARTY_IDENTIFIER_NUMBER_ERROR_MESSAGES.put("16", "Expected Exact 9-digit Party Identifier Number for partyIdentifier type 16");
         PARTY_IDENTIFIER_NUMBER_ERROR_MESSAGES.put("47", "Expected 1-10-digit Party Identifier Number for partyIdentifier type 47");

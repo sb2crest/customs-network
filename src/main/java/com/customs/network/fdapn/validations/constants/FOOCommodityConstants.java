@@ -22,7 +22,28 @@ public class FOOCommodityConstants extends GeneralValidationConstants implements
             "CIN", "ERR", "FAP", "FCC", "IBP", "IFE", "PKC"+
             "AIN", "JIF", "SIF", "VQI", "REG", "VFL", "VFD");
     private static final Map<String,String> AOC_SYNTAX = Map.ofEntries(
-            Map.entry("","")
+            Map.entry("FME","^(\\d[A-Za-z]|[A-Za-z])$"),
+            Map.entry("PFR","^\\d{11}$"),
+            Map.entry("FCE","^\\d{5}$"),
+            Map.entry("SID","^\\d{11}$"),
+            Map.entry("SFR","^\\d{11}$"),
+            Map.entry("UFR","^\\d{11}$"),
+            Map.entry("IFR","^\\d{11}$"),
+            Map.entry("TFR","^\\d{11}$"),
+            Map.entry("ORN","^\\d{11}$"),
+            Map.entry("SRN","^\\d{11}$"),
+            Map.entry("CFR","^\\d{11}$"),
+            Map.entry("GFR","^\\d{11}$"),
+            Map.entry("LFR","^\\d{11}$"),
+            Map.entry("CIN","^.{0,30}$"),
+            Map.entry("FAP","^\\d{6}$"),
+            Map.entry("FCC","^(\\d{2} \\d{3} \\d{2}|\\d{2} \\d{3} \\d{3})$"),
+            Map.entry("AIN","^(\\d{6}|\\d{8}|E\\d{7})$"),
+            Map.entry("JIF","^\\d{1,10}$"),
+            Map.entry("SIF","^\\d{1,10}$"),
+            Map.entry("VQI","^\\d{5}$"),
+            Map.entry("REG","^\\d{9}$"),
+            Map.entry("VFL","^[\\w\\W]{7}$")
     );
 
     @Override
