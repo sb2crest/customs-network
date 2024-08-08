@@ -25,9 +25,9 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
     private final ProductCodeValidator productCodeValidator;
     private static final String PROGRAMME_CODE = "FOO";
 
-    public FOOCommodityValidator(FOOCommodityConstants fooCommodityConstants, ProductCodeValidator productCodeValidator) {
+    public FOOCommodityValidator(FOOCommodityConstants fooCommodityConstants) {
         this.conditionalValidator = fooCommodityConstants;
-        this.productCodeValidator = productCodeValidator;
+        this.productCodeValidator = fooCommodityConstants;
     }
 
     @Override
