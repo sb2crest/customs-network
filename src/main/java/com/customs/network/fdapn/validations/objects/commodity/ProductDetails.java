@@ -50,6 +50,8 @@ public class ProductDetails {
     @Valid
     private LicensePlateNumber licensePlateNumber;
     @Valid
+    private CourierTrackingAndDimensions courierTrackingAndDimensions;
+    @Valid
     private List<EntityDetails> partyDetails;
 
     private List<List<ProductPackaging>> productPackaging;
