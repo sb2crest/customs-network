@@ -164,6 +164,21 @@ public class DRUCommodityConstants extends GeneralValidationConstants implements
     }
 
     @Override
+    public boolean isLACFProduct(String productCode) {
+        return false;
+    }
+
+    @Override
+    public boolean isAFProduct(String productCode) {
+        return false;
+    }
+
+    @Override
+    public boolean isInfantFormula(String productCode) {
+        return false;
+    }
+
+    @Override
     public boolean isValidProcessIndicatorCode(String processingCode, String intendedUseCode, String processIndicatorCode) {
         Map<String, String> intendedUseMap = VALID_PROCESS_INDICATOR_CODE.get(processingCode);
         if (intendedUseMap == null) {

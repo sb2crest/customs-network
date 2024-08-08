@@ -6,11 +6,12 @@ import org.springframework.stereotype.Component;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+
 @Component
 @Slf4j
-public class FOOCommodityConstants extends GeneralValidationConstants implements ConditionalValidator {
+public class FOOCommodityConstants extends GeneralValidationConstants implements ConditionalValidator, ProductCodeValidator {
     private static final Set<String> VALID_PROCESSING_CODES = Set.of("NSF", "PRO", "FEE", "ADD", "DSU");
-    private static final Set<String> INTENDED_USE_CODES = Set.of("260.000", "015.000", "210.000");
+    private static final Set<String> INTENDED_USE_CODES = Set.of("260.000", "015.000", "210.000", "UNK");
     private static final Map<String, Set<String>> MANDATORY_SOURCE_TYPE_CODES = Map.of();
     private static final Set<String> MANDATORY_PARTY_TYPES = Set.of("PNS", "PNT", "DEQ");
     private static final Set<String> OPTIONAL_PARTY_TYPES = Set.of("LG", "FSV", "FD1", "UC", "PK", "DFP");
@@ -21,39 +22,51 @@ public class FOOCommodityConstants extends GeneralValidationConstants implements
     private static final Set<String> MANDATORY_INDIVIDUAL_QUALIFIERS = Set.of("PNS", "PNT");
     private static final Set<String> ALL_VALID_INDIVIDUAL_QUALIFIERS = Set.of("PNS", "PNT", "FSV", "FD1", "PK");
     private static final Set<String> REPEATABLE_AOC_CODES = Set.of("RNO");
+    private static final Map<String, String> LOT_NUMBER_QUALIFIERS = Map.of(
+            "NSF", "3"
+    );
+    private static final Map<Set<String>, Set<String>> LACF_CODES = Map.of(
+            Set.of("F", "E"), Set.of("02", "03", "04", "05", "07", "09", "12", "13", "14", "15", "16", "17", "18", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "71", "72")
+    );
+    private static final Map<Set<String>, Set<String>> AF_CODES = Map.of(
+            Set.of("I"), Set.of("02", "03", "04", "05", "07", "09", "12", "13", "14", "15", "16", "17", "18", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "71", "72")
+    );
+    private static final Map<String, Set<String>> INFANT_FORMULA_CODES = Map.of(
+            "40", Set.of("C", "N", "O", "P", "R")
+    );
     private static final Set<String> AOC_CODES = Set.of(
             "FME", "RNO", "CAN", "VFT", "VES", "PFR", "FCE", "SID", "VOL", "FSX", "RNE",
             "SFR", "UFR", "IFR", "TFR", "ORN", "SRN", "CFR", "GFR", "LFR",
-            "CIN", "ERR", "FAP", "FCC", "IBP", "IFE", "PKC"+
-            "AIN", "JIF", "SIF", "VQI", "REG", "VFL", "VFD");
-    private static final Map<String,String> AOC_SYNTAX = Map.ofEntries(
-            Map.entry("FME","^(\\d[A-Za-z]|[A-Za-z])$"),
-            Map.entry("PFR","^\\d{11}$"),
-            Map.entry("FCE","^\\d{5}$"),
-            Map.entry("SID","^\\d{11}$"),
-            Map.entry("SFR","^\\d{11}$"),
-            Map.entry("UFR","^\\d{11}$"),
-            Map.entry("IFR","^\\d{11}$"),
-            Map.entry("TFR","^\\d{11}$"),
-            Map.entry("ORN","^\\d{11}$"),
-            Map.entry("SRN","^\\d{11}$"),
-            Map.entry("CFR","^\\d{11}$"),
-            Map.entry("GFR","^\\d{11}$"),
-            Map.entry("LFR","^\\d{11}$"),
-            Map.entry("CIN","^.{0,30}$"),
-            Map.entry("FAP","^\\d{6}$"),
-            Map.entry("FCC","^(\\d{2} \\d{3} \\d{2}|\\d{2} \\d{3} \\d{3})$"),
-            Map.entry("AIN","^(\\d{6}|\\d{8}|E\\d{7})$"),
-            Map.entry("JIF","^\\d{1,10}$"),
-            Map.entry("SIF","^\\d{1,10}$"),
-            Map.entry("VQI","^\\d{5}$"),
-            Map.entry("REG","^\\d{9}$"),
-            Map.entry("VFL","^[\\w\\W]{7}$")
+            "CIN", "ERR", "FAP", "FCC", "IBP", "IFE", "PKC" +
+                    "AIN", "JIF", "SIF", "VQI", "REG", "VFL", "VFD");
+    private static final Map<String, String> AOC_SYNTAX = Map.ofEntries(
+            Map.entry("FME", "^(\\d[A-Za-z]|[A-Za-z])$"),
+            Map.entry("PFR", "^\\d{11}$"),
+            Map.entry("FCE", "^\\d{5}$"),
+            Map.entry("SID", "^\\d{11}$"),
+            Map.entry("SFR", "^\\d{11}$"),
+            Map.entry("UFR", "^\\d{11}$"),
+            Map.entry("IFR", "^\\d{11}$"),
+            Map.entry("TFR", "^\\d{11}$"),
+            Map.entry("ORN", "^\\d{11}$"),
+            Map.entry("SRN", "^\\d{11}$"),
+            Map.entry("CFR", "^\\d{11}$"),
+            Map.entry("GFR", "^\\d{11}$"),
+            Map.entry("LFR", "^\\d{11}$"),
+            Map.entry("CIN", "^.{0,30}$"),
+            Map.entry("FAP", "^\\d{6}$"),
+            Map.entry("FCC", "^(\\d{2} \\d{3} \\d{2}|\\d{2} \\d{3} \\d{3})$"),
+            Map.entry("AIN", "^(\\d{6}|\\d{8}|E\\d{7})$"),
+            Map.entry("JIF", "^\\d{1,10}$"),
+            Map.entry("SIF", "^\\d{1,10}$"),
+            Map.entry("VQI", "^\\d{5}$"),
+            Map.entry("REG", "^\\d{9}$"),
+            Map.entry("VFL", "^[\\w\\W]{7}$")
     );
 
     @Override
     public boolean isValidAOCCode(String aocCode) {
-         return AOC_CODES.contains(aocCode.toUpperCase());
+        return AOC_CODES.contains(aocCode.toUpperCase());
     }
 
     @Override
@@ -110,15 +123,22 @@ public class FOOCommodityConstants extends GeneralValidationConstants implements
     public boolean isRequiredEveryConstituentElementFields(String code) {
         return false;
     }
+
     @Override
-    public  boolean isRepeatableAoc(String aoc){
+    public boolean isRepeatableAoc(String aoc) {
         return REPEATABLE_AOC_CODES.contains(aoc.toUpperCase());
     }
 
+    @Override
+    public boolean isValidLotNumberQualifier(String lotNumberQualifier, String processingCode) {
+        if (LOT_NUMBER_QUALIFIERS.containsKey(processingCode.toUpperCase())) {
+            return LOT_NUMBER_QUALIFIERS.get(processingCode.toUpperCase()).contains(lotNumberQualifier.toUpperCase());
+        } else return super.isValidLotNumberQualifier(lotNumberQualifier);
+    }
 
     @Override
     public String getAOCQSynatx(String aoc) {
-        if(AOC_SYNTAX.containsKey(aoc.toUpperCase())){
+        if (AOC_SYNTAX.containsKey(aoc.toUpperCase())) {
             return AOC_SYNTAX.get(aoc.toUpperCase());
         }
         return null;
@@ -167,5 +187,60 @@ public class FOOCommodityConstants extends GeneralValidationConstants implements
     @Override
     public Map<String, Set<String>> getScenarioBasedAocCode(String processingCode, String intendedUseCode) {
         return Collections.emptyMap();
+    }
+
+
+    //Product code related methods
+    @Override
+    public boolean isValidIndustryCode(String processingCode, String industryCode) {
+        return false;
+    }
+
+    @Override
+    public boolean isValidSubClassCode(String processingCode, String industryCode, String subClassCode) {
+        return false;
+    }
+
+    @Override
+    public boolean isLACFProduct(String productCode) {
+        String industryCode = productCode.toUpperCase().substring(0, 2);
+        String pic = productCode.toUpperCase().substring(4, 5);
+        for (Map.Entry<Set<String>, Set<String>> entry : LACF_CODES.entrySet()) {
+            Set<String> keySet = entry.getKey();
+            if (keySet.contains(pic)) {
+                Set<String> valueSet = entry.getValue();
+                return valueSet.contains(industryCode);
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isAFProduct(String productCode) {
+        String industryCode = productCode.toUpperCase().substring(0, 2);
+        String pic = productCode.toUpperCase().substring(4, 5);
+        for (Map.Entry<Set<String>, Set<String>> entry : AF_CODES.entrySet()) {
+            Set<String> keySet = entry.getKey();
+            if (keySet.contains(pic)) {
+                Set<String> valueSet = entry.getValue();
+                return valueSet.contains(industryCode);
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isInfantFormula(String productCode) {
+        String industryCode = productCode.toUpperCase().substring(0, 2);
+        String cls = productCode.toUpperCase().substring(2, 3);
+        if(INFANT_FORMULA_CODES.containsKey(cls.toUpperCase())){
+            return INFANT_FORMULA_CODES.get(cls.toUpperCase()).contains(industryCode);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isValidProcessIndicatorCode(String processingCode, String intendedUseCode, String processIndicatorCode) {
+        return false;
     }
 }

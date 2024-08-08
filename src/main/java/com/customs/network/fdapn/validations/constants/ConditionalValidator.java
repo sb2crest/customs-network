@@ -36,6 +36,7 @@ public interface ConditionalValidator {
     boolean isValidAdditionalInfoQualifierCode(String pgSegment, String additionalInfoQualifierCode);
     boolean isValidTemperatureQualifierCode(String temperatureQualifierCode);
     boolean isValidLotNumberQualifier(String lotNumberQualifier);
+    boolean isValidLotNumberQualifier(String lotNumberQualifier,String processingCode);
     boolean isValidDegreeType(String degreeType);
     boolean isValidLocationOfTemperatureRecording(String locationOfTemperatureRecording);
     boolean isValidTemperatureIndicator(String temperatureIndicator);

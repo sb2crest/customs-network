@@ -5,7 +5,9 @@ import com.customs.network.fdapn.validations.CommodityValidator;
 import com.customs.network.fdapn.validations.DataViolationMessages;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
 import com.customs.network.fdapn.validations.constants.FOOCommodityConstants;
+import com.customs.network.fdapn.validations.constants.ProductCodeValidator;
 import com.customs.network.fdapn.validations.objects.commodity.AffirmationOfCompliance;
+import com.customs.network.fdapn.validations.objects.commodity.ProductCondition;
 import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -13,17 +15,19 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-import static com.customs.network.fdapn.utils.UtilMethods.isNullOrEmptyCollection;
+import static com.customs.network.fdapn.utils.UtilMethods.*;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
 @Component
 @Slf4j
 public class FOOCommodityValidator extends CommonValidations implements CommodityValidator, SegmentValidator {
     private final ConditionalValidator conditionalValidator;
+    private final ProductCodeValidator productCodeValidator;
     private static final String PROGRAMME_CODE = "FOO";
 
-    public FOOCommodityValidator(FOOCommodityConstants fooCommodityConstants) {
+    public FOOCommodityValidator(FOOCommodityConstants fooCommodityConstants, ProductCodeValidator productCodeValidator) {
         this.conditionalValidator = fooCommodityConstants;
+        this.productCodeValidator = productCodeValidator;
     }
 
     @Override
@@ -37,6 +41,8 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
         validateProductTradeNames(context);
         validatePartyDetails(context);
         validateAffirmationOfCompliance(context);
+        validateProductCondition(context);
+        validateProductPackaging(context);
         return errors;
     }
 
@@ -59,7 +65,7 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
         return seenPartyTypes;
     }
 
-    //validate affirmation of Compliance
+    //validate affirmation of Compliance (It doesn't check for the conditions of AOC use cases, whereas other commodities are checked. Add in the future)
     @Override
     public Set<String> validateAffirmationOfCompliance(ValidationContext context) {
         List<AffirmationOfCompliance> affirmationOfCompliance = context.productDetails().getAffirmationOfCompliance();
@@ -89,7 +95,7 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
             if (syntax != null) {
                 if (StringUtils.isNotBlank(aocq) && !aocq.matches(syntax)) {
                     String programCode = context.programCode();
-                    context.errors().add(createValidationError(context.productCode(), "affirmationComplianceQualifier - "+ aocCode, DataViolationMessages.getAOCQSyntaxErrorMessage(programCode, aocCode), aocq));
+                    context.errors().add(createValidationError(context.productCode(), "affirmationComplianceQualifier - " + aocCode, DataViolationMessages.getAOCQSyntaxErrorMessage(programCode, aocCode), aocq));
                 } else if (StringUtils.isBlank(aocq)) {
                     context.errors().add(createValidationError(context.productCode(), "affirmationComplianceQualifier",
                             "Affirmation of Compliance Qualifier is required for the affirmationOfComplianceCode " + aocCode, null, null));
@@ -97,6 +103,53 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
             }
         }
         return isValidAoc;
+    }
+
+    //product condition additional validations ----------------------------------------------------------------
+    @Override
+    public void validateProductCondition(ValidationContext context) {
+        List<ProductCondition> productConditions = context.productDetails().getProductCondition();
+        if (!isNullOrEmptyCollection(productConditions)) {
+            ProductCondition firstCondition = productConditions.get(0);
+            validateIndividualProductCondition(firstCondition, context, true);
+            productConditions.remove(0);
+            for (ProductCondition productCondition : productConditions) {
+                validateIndividualProductCondition(productCondition, context, false);
+            }
+        }
+    }
+
+    private void validateIndividualProductCondition(ProductCondition condition, ValidationContext context, boolean isFirst) {
+        String temperatureQualifier = condition.getTemperatureQualifier();
+        String lotNumberQualifier = condition.getLotNumberQualifier();
+        String lotNumber = condition.getLotNumber();
+        String pgaLineValue = condition.getPgaLineValue();
+        String processingCode = context.productDetails().getGovernmentAgencyProcessingCode();
+        if (isFirst && !isTwoParameterizedFunctionTestPassed(context.conditionalValidator()::isValidLotNumberQualifier, lotNumberQualifier, processingCode, false)) {
+            context.errors().add(createValidationError(context.productCode(), "lotNumberQualifier",
+                    "Invalid lot number qualifier provided", lotNumberQualifier, null));
+        } else if (!isFirst) {
+            if (StringUtils.isNotBlank(lotNumberQualifier)) {
+                context.errors().add(createValidationError(context.productCode(), "lotNumberQualifier", "lotNumberQualifier is allowed only in the first productCondition", null));
+            }
+            if (StringUtils.isNotBlank(pgaLineValue)) {
+                context.errors().add(createValidationError(context.productCode(), "pgaLineValue", "PGA Line Value is allowed only in the first productCondition", null));
+            }
+        }
+        if (!isSingleParameterizedFunctionTestPassed(context.conditionalValidator()::isValidTemperatureQualifierCode, temperatureQualifier, false)) {
+            context.errors().add(createValidationError(context.productCode(), "temperatureQualifier",
+                    "Invalid temperature qualifier provided", temperatureQualifier, null));
+        }
+        if (isRequiredLotNumber(context.productCode()) && StringUtils.isBlank(lotNumber)) {
+            context.errors().add(createValidationError(context.productCode(), "lotNumber",
+                    "Lot Number is required for the product condition", null, null));
+        }
+    }
+
+    private boolean isRequiredLotNumber(String productCode) {
+        return productCodeValidator.isAFProduct(productCode) ||
+                productCodeValidator.isLACFProduct(productCode) ||
+                productCodeValidator.isInfantFormula(productCode);
     }
 
 

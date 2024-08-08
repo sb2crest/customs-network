@@ -2,7 +2,6 @@ package com.customs.network.fdapn.validations;
 
 import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.validations.commodityvalidationimpl.DeclarationValidator;
-import com.customs.network.fdapn.validations.objects.commodity.LicensePlateIssuer;
 import com.customs.network.fdapn.validations.objects.priornotice.Declaration;
 import com.customs.network.fdapn.dto.UserPartyInfoDto;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
@@ -221,7 +220,6 @@ public class TransactionLevelValidations {
             errors.add(createValidationError("anticipatedArrivalInformations", "This field is mandatory, But not provided in either basic product level or transactional Product level " + context.productCode(), transactionProductData.getAnticipatedArrivalInformations()));
         } else if (!isNullOrEmptyCollection(transactionProductData.getAnticipatedArrivalInformations())) {
             context.productDetails().setAnticipatedArrivalInformations(transactionProductData.getAnticipatedArrivalInformations());
-            //anticipatedArrivalLocation validation method call goes here
             errors.addAll(checkInitialViolations(transactionProductData.getAnticipatedArrivalInformations()));
             validator.validateAnticipatedArrivalLocation(context);
         }

@@ -240,6 +240,9 @@ public class GeneralValidationConstants {
         // generally party types are not repeatable
         return REPEATABLE_PARTY_TYPES.contains(partyType.toUpperCase());
     }
+   public boolean isValidLotNumberQualifier(String lotNumberQualifier,String processingCode){
+       return this.isValidLotNumberQualifier(lotNumberQualifier);
+    }
 
     public String getValidLotNumberQualifier() {
         return VALID_LOT_NUMBER_QUALIFIER;

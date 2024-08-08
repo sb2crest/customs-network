@@ -2,17 +2,18 @@ package com.customs.network.fdapn.utils;
 
 import com.customs.network.fdapn.exception.ErrorResCodes;
 import com.customs.network.fdapn.exception.FdapnCustomExceptions;
+import io.micrometer.common.util.StringUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 @Component
 public class UtilMethods {
@@ -156,6 +157,26 @@ public class UtilMethods {
     public static <T> boolean isNullOrEmptyCollection(Collection<T> c1, Collection<T> c2) {
         return (c1 == null || c1.isEmpty()) && (c2 == null || c2.isEmpty());
     }
+    public static boolean isSingleParameterizedFunctionTestPassed(Predicate<String> predicate, String val1, boolean failIfBlank){
+        if(StringUtils.isBlank(val1)){
+            return !failIfBlank;
+        }
+        return predicate.test(val1);
+    }
+    public static boolean isTwoParameterizedFunctionTestPassed(BiPredicate<String,String> predicate, String val1, String val2,boolean failIfBlank){
+        if(StringUtils.isBlank(val1) || StringUtils.isBlank(val2)){
+            return !failIfBlank;
+        }
+        return predicate.test(val1,val2);
+    }
+    public static boolean isTripleParameterizedFunctionTestPassed(TriPredicate<String,String,String> predicate, String val1, String val2,String val3,boolean failIfBlank){
+        if(StringUtils.isBlank(val1) || StringUtils.isBlank(val2) || StringUtils.isBlank(val3)){
+            return !failIfBlank;
+        }
+        return predicate.test(val1,val2,val3);
+    }
+
+
 
 
 }
