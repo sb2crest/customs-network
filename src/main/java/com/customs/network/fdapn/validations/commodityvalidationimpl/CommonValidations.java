@@ -502,7 +502,7 @@ public class CommonValidations {
 
     //Anticipated Arrival Information Validation
     public void validateAnticipatedArrivalLocation(ValidationContext context) {
-        if(context.declaration != null ){
+        if(!isNullObject(context.declaration) ){
             String entryType = context.declaration.getEntryType();
             if (StringUtils.isNotBlank(entryType) && declarationRules.isValidEntryType(entryType)) {
                 List<AnticipatedArrivalInformations> arrivalInformations = context.productDetails.getAnticipatedArrivalInformations();
@@ -512,7 +512,6 @@ public class CommonValidations {
                 }
             }
         }
-
     }
 
     private void validateFTZEntry(ValidationContext context, boolean isFtzEntry) {
@@ -630,5 +629,9 @@ public class CommonValidations {
         }
     }
 
+    //validateCourierTrackingAndDimensions ----------------------------------------------------------------
+    public void validateCourierTrackingAndDimensions(CommonValidations.ValidationContext context){
+        //if necessary validate
+    }
 
 }
