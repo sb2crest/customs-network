@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 import static com.customs.network.fdapn.utils.UtilMethods.*;
+import static com.customs.network.fdapn.validations.utils.ErrorUtils.checkInitialViolations;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
 @Component
@@ -155,6 +156,7 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
     public void validateCourierTrackingAndDimensions(CommonValidations.ValidationContext context) {
         CourierTrackingAndDimensions trackingAndDimensions = context.productDetails().getCourierTrackingAndDimensions();
         if (!isNullObject(trackingAndDimensions)) {
+            context.errors().addAll(checkInitialViolations(trackingAndDimensions));
             boolean isDimensionsAreAllowed = isDimensionsAreAllowed(context.productCode());
             String containerDimensionOne = trackingAndDimensions.getContainerDimensionsOne();
             String containerDimensionsTwo = trackingAndDimensions.getContainerDimensionsTwo();
@@ -177,21 +179,20 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
         if (isNullOrEmptyCollection(anticipatedArrivalInformations)) {
             context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "anticipatedArrivalInformations is mandatory", anticipatedArrivalInformations));
         } else {
-            Set<String> mandatoryArrivalInformations = new HashSet<>(conditionalValidator.getMandatoryAnticipatedArrivalInformation(false));
             if (!context.conditionalValidator().isRepeatableAnticipatedArrivalLocation() && anticipatedArrivalInformations.size() > 1) {
                 context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", String.format("anticipatedArrivalInformations are not repeatable, repeated %d times", anticipatedArrivalInformations.size())));
             } else {
+                Set<String> mandatoryArrivalInformations = new HashSet<>(conditionalValidator.getMandatoryAnticipatedArrivalInformation(false));
                 for (AnticipatedArrivalInformations anticipatedArrivalInformation : anticipatedArrivalInformations) {
                     String validatedAAI = validateAnticipatedArrivalInformation(anticipatedArrivalInformation, context, mandatoryArrivalInformations);
                     if(validatedAAI != null)
                         mandatoryArrivalInformations.remove(validatedAAI.toUpperCase());
                 }
-            }
-            if (!mandatoryArrivalInformations.isEmpty()) {
-                context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "Missing mandatory anticipatedArrivalInformations " + mandatoryArrivalInformations.toString(), mandatoryArrivalInformations.toString()));
+                if (!mandatoryArrivalInformations.isEmpty()) {
+                    context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "Missing mandatory anticipatedArrivalInformations ",null, mandatoryArrivalInformations.toString()));
+                }
             }
         }
-
     }
 
     private String validateAnticipatedArrivalInformation(AnticipatedArrivalInformations anticipatedArrivalInformations, ValidationContext context, Set<String> mandatory) {
@@ -204,7 +205,7 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
             context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "All fields are mandatory for the commodity " + context.programCode(), anticipatedArrivalInformations.toString()));
         } else {
             if (!mandatory.contains(anticipatedArrivalInformation)) {
-                context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "Invalid anticipatedArrival information ", anticipatedArrivalInformation, mandatory.toString()));
+                context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformation", "Invalid anticipatedArrival information ", anticipatedArrivalInformation, mandatory.toString()));
             }
         }
         return anticipatedArrivalInformation;

@@ -210,7 +210,6 @@ public class TransactionLevelValidations {
     private void validateCourierAndDimension(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors, SegmentValidator validator) {
         CourierTrackingAndDimensions courierTrackingAndDimensions = transactionProductData.getCourierTrackingAndDimensions();
         context.productDetails().setCourierTrackingAndDimensions(courierTrackingAndDimensions);
-        context.errors().addAll(checkInitialViolations(courierTrackingAndDimensions));
         validator.validateCourierTrackingAndDimensions(context);
     }
 
