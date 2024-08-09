@@ -188,6 +188,9 @@ public class GeneralValidationConstants {
     public boolean isValidTemperatureQualifierCode(String temperatureQualifierCode) {
         return VALID_TEMPERATURE_QUALIFIER_CODE.contains(temperatureQualifierCode.toUpperCase());
     }
+    public boolean isRepeatableAnticipatedArrivalLocation(){
+        return true;
+    }
 
     public boolean isValidLotNumberQualifier(String lotNumberQualifier) {
         return VALID_LOT_NUMBER_QUALIFIER.equalsIgnoreCase(lotNumberQualifier);

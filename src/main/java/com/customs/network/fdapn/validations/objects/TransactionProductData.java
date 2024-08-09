@@ -17,4 +17,5 @@ public class TransactionProductData {
     private List<AffirmationOfCompliance> affirmationOfCompliance;
     private LicensePlateIssuer licensePlateIssuer;
     private LicensePlateNumber licensePlateNumber;
+    private CourierTrackingAndDimensions courierTrackingAndDimensions;
 }

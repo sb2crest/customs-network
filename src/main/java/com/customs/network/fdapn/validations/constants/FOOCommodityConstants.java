@@ -135,6 +135,10 @@ public class FOOCommodityConstants extends GeneralValidationConstants implements
             return LOT_NUMBER_QUALIFIERS.get(processingCode.toUpperCase()).contains(lotNumberQualifier.toUpperCase());
         } else return super.isValidLotNumberQualifier(lotNumberQualifier);
     }
+    @Override
+    public boolean isRepeatableAnticipatedArrivalLocation(){
+        return false;
+    }
 
     @Override
     public String getAOCQSynatx(String aoc) {

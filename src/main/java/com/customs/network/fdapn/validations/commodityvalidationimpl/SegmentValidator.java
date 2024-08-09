@@ -18,5 +18,6 @@ public interface SegmentValidator {
     void validateAnticipatedArrivalLocation(CommonValidations.ValidationContext context);
     void validateLicensePlateIssuer(CommonValidations.ValidationContext context);
     void validateLicensePlateNumber(CommonValidations.ValidationContext context);
+    void validateCourierTrackingAndDimensions(CommonValidations.ValidationContext context);
     ConditionalValidator getConditionalValidator();
 }

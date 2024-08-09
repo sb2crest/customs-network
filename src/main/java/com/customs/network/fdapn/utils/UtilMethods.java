@@ -157,23 +157,42 @@ public class UtilMethods {
     public static <T> boolean isNullOrEmptyCollection(Collection<T> c1, Collection<T> c2) {
         return (c1 == null || c1.isEmpty()) && (c2 == null || c2.isEmpty());
     }
+    public static boolean isNullObject(Object o) {
+        return o == null;
+    }
+    public static boolean isNullObjects(Object o1,Object o2) {
+        return o1 == null && o2 == null;
+    }
     public static boolean isSingleParameterizedFunctionTestPassed(Predicate<String> predicate, String val1, boolean failIfBlank){
-        if(StringUtils.isBlank(val1)){
-            return !failIfBlank;
-        }
-        return predicate.test(val1);
+        if(areAllNotBlank(val1)){
+            return predicate.test(val1);
+        }else return !failIfBlank;
     }
     public static boolean isTwoParameterizedFunctionTestPassed(BiPredicate<String,String> predicate, String val1, String val2,boolean failIfBlank){
-        if(StringUtils.isBlank(val1) || StringUtils.isBlank(val2)){
-            return !failIfBlank;
-        }
-        return predicate.test(val1,val2);
+        if(areAllNotBlank(val1, val2)){
+            return predicate.test(val1,val2);
+        }else return !failIfBlank;
     }
     public static boolean isTripleParameterizedFunctionTestPassed(TriPredicate<String,String,String> predicate, String val1, String val2,String val3,boolean failIfBlank){
-        if(StringUtils.isBlank(val1) || StringUtils.isBlank(val2) || StringUtils.isBlank(val3)){
-            return !failIfBlank;
+        if(areAllNotBlank(val1, val2,val3)){
+            return predicate.test(val1,val2,val3);
+        }else return !failIfBlank;
+    }
+    public static boolean areAllBlank(String... values) {
+        for (String value : values) {
+            if (StringUtils.isNotBlank(value)) {
+                return false;
+            }
         }
-        return predicate.test(val1,val2,val3);
+        return true;
+    }
+    public static boolean areAllNotBlank(String... values) {
+        for (String value : values) {
+            if (StringUtils.isBlank(value)) {
+                return false;
+            }
+        }
+        return true;
     }
 
 

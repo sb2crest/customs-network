@@ -6,9 +6,7 @@ import com.customs.network.fdapn.validations.DataViolationMessages;
 import com.customs.network.fdapn.validations.constants.ConditionalValidator;
 import com.customs.network.fdapn.validations.constants.FOOCommodityConstants;
 import com.customs.network.fdapn.validations.constants.ProductCodeValidator;
-import com.customs.network.fdapn.validations.objects.commodity.AffirmationOfCompliance;
-import com.customs.network.fdapn.validations.objects.commodity.ProductCondition;
-import com.customs.network.fdapn.validations.objects.commodity.ProductDetails;
+import com.customs.network.fdapn.validations.objects.commodity.*;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -152,6 +150,65 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
                 productCodeValidator.isInfantFormula(productCode);
     }
 
+    //validateCourierTrackingAndDimensions ----------------------------------------------------------------
+    @Override
+    public void validateCourierTrackingAndDimensions(CommonValidations.ValidationContext context) {
+        CourierTrackingAndDimensions trackingAndDimensions = context.productDetails().getCourierTrackingAndDimensions();
+        if (!isNullObject(trackingAndDimensions)) {
+            boolean isDimensionsAreAllowed = isDimensionsAreAllowed(context.productCode());
+            String containerDimensionOne = trackingAndDimensions.getContainerDimensionsOne();
+            String containerDimensionsTwo = trackingAndDimensions.getContainerDimensionsTwo();
+            String containerDimensionsThree = trackingAndDimensions.getContainerDimensionsOne();
+            if (!isDimensionsAreAllowed && !areAllBlank(containerDimensionOne, containerDimensionsTwo, containerDimensionsThree)) {
+                context.errors().add(createValidationError(context.productCode(), "containerDimensions", "Container dimensions are not allowed for LACF or AF ", null));
+            }
+        }
+    }
+
+    private boolean isDimensionsAreAllowed(String productCode) {
+        return productCodeValidator.isAFProduct(productCode) ||
+                productCodeValidator.isLACFProduct(productCode);
+    }
+    //validate anticipated arrival information ----------------------------------------------------------------
+
+    @Override
+    public void validateAnticipatedArrivalLocation(ValidationContext context) {
+        List<AnticipatedArrivalInformations> anticipatedArrivalInformations = context.productDetails().getAnticipatedArrivalInformations();
+        if (isNullOrEmptyCollection(anticipatedArrivalInformations)) {
+            context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "anticipatedArrivalInformations is mandatory", anticipatedArrivalInformations));
+        } else {
+            Set<String> mandatoryArrivalInformations = new HashSet<>(conditionalValidator.getMandatoryAnticipatedArrivalInformation(false));
+            if (!context.conditionalValidator().isRepeatableAnticipatedArrivalLocation() && anticipatedArrivalInformations.size() > 1) {
+                context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", String.format("anticipatedArrivalInformations are not repeatable, repeated %d times", anticipatedArrivalInformations.size())));
+            } else {
+                for (AnticipatedArrivalInformations anticipatedArrivalInformation : anticipatedArrivalInformations) {
+                    String validatedAAI = validateAnticipatedArrivalInformation(anticipatedArrivalInformation, context, mandatoryArrivalInformations);
+                    if(validatedAAI != null)
+                        mandatoryArrivalInformations.remove(validatedAAI.toUpperCase());
+                }
+            }
+            if (!mandatoryArrivalInformations.isEmpty()) {
+                context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "Missing mandatory anticipatedArrivalInformations " + mandatoryArrivalInformations.toString(), mandatoryArrivalInformations.toString()));
+            }
+        }
+
+    }
+
+    private String validateAnticipatedArrivalInformation(AnticipatedArrivalInformations anticipatedArrivalInformations, ValidationContext context, Set<String> mandatory) {
+        String anticipatedArrivalDate = anticipatedArrivalInformations.getAnticipatedArrivalDate();
+        String anticipatedArrivalTime = anticipatedArrivalInformations.getAnticipatedArrivalTime();
+        String inspectionOrArrivalLocation = anticipatedArrivalInformations.getInspectionOrArrivalLocation();
+        String anticipatedArrivalInformation = anticipatedArrivalInformations.getAnticipatedArrivalInformation();
+        String inspectionOrArrivalLocationCode = anticipatedArrivalInformations.getInspectionOrArrivalLocationCode();
+        if (!areAllNotBlank(anticipatedArrivalDate, anticipatedArrivalTime, inspectionOrArrivalLocation, anticipatedArrivalInformation, inspectionOrArrivalLocationCode)) {
+            context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "All fields are mandatory for the commodity " + context.programCode(), anticipatedArrivalInformations.toString()));
+        } else {
+            if (!mandatory.contains(anticipatedArrivalInformation)) {
+                context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "Invalid anticipatedArrival information ", anticipatedArrivalInformation, mandatory.toString()));
+            }
+        }
+        return anticipatedArrivalInformation;
+    }
 
     @Override
     public ConditionalValidator getConditionalValidator() {

@@ -2,6 +2,7 @@ package com.customs.network.fdapn.validations;
 
 import com.customs.network.fdapn.dto.ExcelTransactionInfo;
 import com.customs.network.fdapn.validations.commodityvalidationimpl.DeclarationValidator;
+import com.customs.network.fdapn.validations.objects.commodity.CourierTrackingAndDimensions;
 import com.customs.network.fdapn.validations.objects.priornotice.Declaration;
 import com.customs.network.fdapn.dto.UserPartyInfoDto;
 import com.customs.network.fdapn.dto.UserProductInfoDto;
@@ -30,12 +31,12 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.customs.network.fdapn.utils.UtilMethods.isNullOrEmptyCollection;
-import static com.customs.network.fdapn.utils.UtilMethods.truncateString;
+import static com.customs.network.fdapn.utils.UtilMethods.*;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.checkInitialViolations;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
 /**
+ * Required Entire Refactoring
  * Processes and validates transaction-level data for Prior Notice (PN) submissions.
  * This class handles the detailed validation of product information, party details,
  * anticipated arrival information, product packaging, product conditions, and container information.
@@ -195,7 +196,7 @@ public class TransactionLevelValidations {
     private void doValidate(CommonValidations.ValidationContext context,
                             TransactionProductData transactionProductData,
                             List<ValidationError> errors,
-                            SegmentValidator validator) {
+                            SegmentValidator validator)  {
         validatePartyDetails(context, errors, validator);
         validateAnticipatedArrivalInformations(context, transactionProductData, errors, validator);
         validateProductPackaging(context, transactionProductData, errors, validator);
@@ -203,6 +204,14 @@ public class TransactionLevelValidations {
         validateContainerInformation(context, transactionProductData, errors);
         validateLicensePlateIssuerAndNumber(context, transactionProductData, errors, validator);
         validateAffirmationOfCompliance(context, transactionProductData, errors, validator);
+        validateCourierAndDimension(context, transactionProductData, errors, validator);
+    }
+
+    private void validateCourierAndDimension(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors, SegmentValidator validator) {
+        CourierTrackingAndDimensions courierTrackingAndDimensions = transactionProductData.getCourierTrackingAndDimensions();
+        context.productDetails().setCourierTrackingAndDimensions(courierTrackingAndDimensions);
+        context.errors().addAll(checkInitialViolations(courierTrackingAndDimensions));
+        validator.validateCourierTrackingAndDimensions(context);
     }
 
     private void validatePartyDetails(CommonValidations.ValidationContext context, List<ValidationError> errors, SegmentValidator validator) {
@@ -263,8 +272,7 @@ public class TransactionLevelValidations {
     }
 
     private void validateLicensePlateIssuerAndNumber(CommonValidations.ValidationContext context, TransactionProductData transactionProductData, List<ValidationError> errors, SegmentValidator validator) {
-
-        if (transactionProductData.getLicensePlateIssuer() != null && transactionProductData.getLicensePlateNumber() == null) {
+        if (!isNullObjects(transactionProductData.getLicensePlateIssuer() ,transactionProductData.getLicensePlateNumber())) {
             context.productDetails().setLicensePlateIssuer(transactionProductData.getLicensePlateIssuer());
             context.productDetails().setLicensePlateNumber(transactionProductData.getLicensePlateNumber());
             errors.addAll(checkInitialViolations(transactionProductData.getLicensePlateIssuer()));
