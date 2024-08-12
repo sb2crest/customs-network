@@ -27,7 +27,7 @@ public class CommonValidations {
         this.declarationRules = new DeclarationRulesImpl();
     }
 
-    public record ValidationContext(String productCode, List<ValidationError> errors,
+    public record  ValidationContext(String productCode, List<ValidationError> errors,
                                     ConditionalValidator conditionalValidator, String programCode,
                                     ProductDetails productDetails,Declaration declaration
     ) {

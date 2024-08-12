@@ -182,20 +182,23 @@ public class FOOCommodityValidator extends CommonValidations implements Commodit
             if (!context.conditionalValidator().isRepeatableAnticipatedArrivalLocation() && anticipatedArrivalInformations.size() > 1) {
                 context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", String.format("anticipatedArrivalInformations are not repeatable, repeated %d times", anticipatedArrivalInformations.size())));
             } else {
-                Set<String> mandatoryArrivalInformations = new HashSet<>(conditionalValidator.getMandatoryAnticipatedArrivalInformation(false));
-                for (AnticipatedArrivalInformations anticipatedArrivalInformation : anticipatedArrivalInformations) {
-                    String validatedAAI = validateAnticipatedArrivalInformation(anticipatedArrivalInformation, context, mandatoryArrivalInformations);
-                    if(validatedAAI != null)
-                        mandatoryArrivalInformations.remove(validatedAAI.toUpperCase());
-                }
-                if (!mandatoryArrivalInformations.isEmpty()) {
-                    context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "Missing mandatory anticipatedArrivalInformations ",null, mandatoryArrivalInformations.toString()));
-                }
+                validateIndividualAnticipatedArrivalInfo(anticipatedArrivalInformations,context);
             }
         }
     }
+    private void validateIndividualAnticipatedArrivalInfo(List<AnticipatedArrivalInformations> anticipatedArrivalInformations,ValidationContext context){
+        Set<String> mandatoryArrivalInformations = new HashSet<>(conditionalValidator.getMandatoryAnticipatedArrivalInformation(false));
+        for (AnticipatedArrivalInformations anticipatedArrivalInformation : anticipatedArrivalInformations) {
+            String validatedAAI = checkValidityOfAAIFields(anticipatedArrivalInformation, context, mandatoryArrivalInformations);
+            if(validatedAAI != null)
+                mandatoryArrivalInformations.remove(validatedAAI.toUpperCase());
+        }
+        if (!mandatoryArrivalInformations.isEmpty()) {
+            context.errors().add(createValidationError(context.productCode(), "anticipatedArrivalInformations", "Missing mandatory anticipatedArrivalInformations ",null, mandatoryArrivalInformations.toString()));
+        }
+    }
 
-    private String validateAnticipatedArrivalInformation(AnticipatedArrivalInformations anticipatedArrivalInformations, ValidationContext context, Set<String> mandatory) {
+    private String checkValidityOfAAIFields(AnticipatedArrivalInformations anticipatedArrivalInformations, ValidationContext context, Set<String> mandatory) {
         String anticipatedArrivalDate = anticipatedArrivalInformations.getAnticipatedArrivalDate();
         String anticipatedArrivalTime = anticipatedArrivalInformations.getAnticipatedArrivalTime();
         String inspectionOrArrivalLocation = anticipatedArrivalInformations.getInspectionOrArrivalLocation();

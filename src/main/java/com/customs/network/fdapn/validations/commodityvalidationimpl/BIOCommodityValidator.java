@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+import static com.customs.network.fdapn.utils.UtilMethods.isNullOrEmptyCollection;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
 
 
@@ -51,7 +52,7 @@ public class BIOCommodityValidator extends CommonValidations implements Commodit
     @Override
     public void validateProductConstituentElement(ValidationContext context) {
         List<ProductConstituentElement> constituentElementsList = context.productDetails().getProductConstituentElements();
-        if (constituentElementsList == null || constituentElementsList.isEmpty())
+        if (isNullOrEmptyCollection(constituentElementsList))
             return;
         for (ProductConstituentElement element : constituentElementsList) {
             String constituentActiveIngredientQualifier = element.getConstituentActiveIngredientQualifier();
