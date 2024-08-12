@@ -7,7 +7,7 @@ import lombok.Data;
 
 @Data
 public class CourierTrackingAndDimensions {
-    @Size(min = 4, max = 4, message = "packageTrackingNumberCode must be {max} characters long")
+    @Size(min = 3, max = 4, message = "packageTrackingNumberCode must be {max} characters long")
     @Regex(value = RegexType.ALPHANUMERIC, message = "Invalid pattern of characters, expected Alphanumeric characters")
     private String packageTrackingNumberCode;
 

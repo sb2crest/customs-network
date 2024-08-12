@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.checkInitialViolations;
 import static com.customs.network.fdapn.validations.utils.ErrorUtils.createValidationError;
@@ -46,5 +47,26 @@ public class DeclarationValidatorImpl implements DeclarationValidator{
         if(StringUtils.isNotBlank(entryType) && !declarationRules.isValidEntryType(entryType)){
             errors.add(createValidationError("entryType","Invalid Entry Type provided for the Declaration",entryType));
         }
+        String modeOfTransport = declaration.getModeOfTransportation();
+        if (StringUtils.isNotBlank(modeOfTransport) && !declarationRules.isValidaModeOfTransportCode(modeOfTransport)) {
+            errors.add(createValidationError("modeOfTransport", "invalid Mode of transport code provided for the Declaration", modeOfTransport));
+        }
+        String billTypeIndicatorForPE10 = declaration.getBillTypeIndicator();
+        if ((StringUtils.isNotBlank(billTypeIndicatorForPE10)) && !declarationRules.isValidBillTypeIndicatorForPE10(billTypeIndicatorForPE10)) {
+            errors.add(createValidationError("billTypeIndicatorPE10", "invalid Bill type indicator provided for the Declaration", billTypeIndicatorForPE10));
+        }
+
+        String carrier = declaration.getCarrier();
+        if (StringUtils.isNotBlank(carrier) && !declarationRules.isValidCarrierCode(carrier)){
+            errors.add(createValidationError("carrierCodes","invalid Carrier code provided for the Declaration",carrier));
+        }
+        declaration.getBillOfLadings().stream()
+                .filter(Objects::nonNull)
+                .forEach(lading ->{
+                    String billTypeIndicatorForPE15 = lading.getBillTypeIndicatorPE15();
+                    if (StringUtils.isNotBlank(billTypeIndicatorForPE15) && !declarationRules.isValidBillTypeIndicatorForPE15(billTypeIndicatorForPE15)){
+                        errors.add(createValidationError("billTypeIndicatorPE15","invalid Bill type indicator provided for Declaration",billTypeIndicatorForPE15));
+                    }
+                });
     }
 }
